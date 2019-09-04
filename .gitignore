@@ -1,0 +1,11 @@
+/bin
+/build
+/dist
+/lib
+/.*/
+*.sla
+.classpath
+.project
+.launch
+/eclipse
+/GnuRtti/
