@@ -1,26 +1,31 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
+import java.util.*;
+import java.util.stream.IntStream;
+
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.mem.MemBuffer;
+import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.util.Msg;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.DynamicDataType;
+import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.IntegerDataType;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
-
-import java.util.*;
-import java.util.stream.IntStream;
-
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 
-import static ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoDataType.Flags;
+import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
+import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getCxxAbiCategoryPath;
 
 /**
@@ -29,13 +34,30 @@ import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getCxxAbiCategoryPath;
 public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     public static final String STRUCTURE_NAME = "__vmi_class_type_info";
+    private static final String DESCRIPTION = "Model for Virtual Multiple Inheritance Class Type Info";
 
     public static final String ID_STRING = "N10__cxxabiv121__vmi_class_type_infoE";
 
-    private VmiClassTypeInfoDataType typeInfoDataType;
+    private static final String FLAGS_NAME = "__flags";
+    private static final String BASE_COUNT_NAME = "__base_count";
+    private static final String ARRAY_NAME = "__base_info";
 
-    protected static final CategoryPath SUB_PATH =
-        new CategoryPath(getCxxAbiCategoryPath(), STRUCTURE_NAME);
+    public static final String DIAMOND_MASK_NAME = "__diamond_shaped_mask";
+    public static final String NON_DIAMOND_MASK_NAME = "__non_diamond_repeat_mask";
+
+    private static final int FLAGS_ORDINAL = 1;
+    private static final int BASE_COUNT_ORDINAL = 2;
+    private static final int BASE_ARRAY_ORDINAL = 3;
+
+    protected static final CategoryPath SUB_PATH = new CategoryPath(getCxxAbiCategoryPath(), STRUCTURE_NAME);
+
+    public enum Flags {
+        NON_DIAMOND,
+        DIAMOND,
+        NON_PUBLIC,
+        PUBLIC,
+        UNKNOWN
+    }
 
     private BaseClassTypeInfoModel[] bases;
     private Flags flags;
@@ -43,16 +65,15 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     public VmiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
-        this.typeInfoDataType = (VmiClassTypeInfoDataType) getDataType(program.getDataTypeManager());
         if (!typeName.equals(DEFAULT_TYPENAME)) {
             this.bases = getBases();
-            this.flags = typeInfoDataType.getFlags(getBuffer());
+            this.flags = getFlags(getBuffer());
         }
     }
 
     @Override
-    public DataType getDataType() {
-        return typeInfoDataType;
+    public Structure getDataType() {
+        return getDataType(program.getDataTypeManager());
     }
 
     public Flags getFlags() {
@@ -62,8 +83,26 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     /**
      * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
      */
-    public static DataType getDataType(DataTypeManager dtm) {
-        return VmiClassTypeInfoDataType.dataType.clone(dtm);
+    public static Structure getDataType(DataTypeManager dtm) {
+        DataType existingDt = dtm.getDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME);
+        if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
+            return (Structure) existingDt;
+        }
+        StructureDataType struct = new StructureDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
+        struct.add(ClassTypeInfoModel.getDataType(dtm), AbstractTypeInfoModel.SUPER + ClassTypeInfoModel.STRUCTURE_NAME,
+                null);
+        struct.add(getFlags(dtm, VmiClassTypeInfoModel.SUB_PATH), FLAGS_NAME, null);
+        struct.add(IntegerDataType.dataType.clone(dtm), BASE_COUNT_NAME, null);
+        struct.setFlexibleArrayComponent(BaseClassTypeInfoModel.getDataType(dtm), ARRAY_NAME, null);
+        struct.setDescription(DESCRIPTION);
+        Structure result = (Structure) dtm.resolve(struct, KEEP_HANDLER);
+        Structure flexComponent = (Structure) result.getFlexibleArrayComponent().getDataType();
+        for (DataTypeComponent comp : flexComponent.getComponents()) {
+            if (comp.getDataType() instanceof OffsetShiftDataType) {
+                return result;
+            }
+        }
+        return (Structure) dtm.resolve(struct, REPLACE_HANDLER);
     }
 
     @Override
@@ -72,8 +111,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     private Address getArrayAddress() {
-        MemBuffer buf = getBuffer();
-        DataTypeComponent arrayComponent = typeInfoDataType.getComponent(3, buf);
+        DataTypeComponent arrayComponent = getDataType().getFlexibleArrayComponent();
         return address.add(arrayComponent.getOffset());
     }
 
@@ -105,17 +143,29 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return getBases()[ordinal];
     }
 
+    private int getBaseCount() {
+        MemBuffer buf = getBuffer();
+        DataTypeComponent comp = getDataType().getComponent(BASE_COUNT_ORDINAL);
+        try {
+            return buf.getVarLengthInt(comp.getOffset(), comp.getLength());
+        } catch (MemoryAccessException e) {
+            Msg.error(this, e);
+            return 0;
+        }
+    }
+
     private BaseClassTypeInfoModel[] getBases() {
         if (bases != null) {
             return bases;
         }
         BaseClassTypeInfoModel base = new BaseClassTypeInfoModel(program, getArrayAddress());
-        int baseCount = typeInfoDataType.getBaseCount(getBuffer());
+        int baseCount = getBaseCount();
         bases = new BaseClassTypeInfoModel[baseCount];
         for (int i = 0; i < baseCount; i++) {
             bases[i] = new BaseClassTypeInfoModel(program, base.getAddress());
             base.advance();
-        } return bases;
+        }
+        return bases;
     }
 
     public ClassTypeInfo getParentAtOffset(long offset, boolean virtual)
@@ -209,9 +259,13 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             AbstractClassTypeInfoModel parent = base.getClassModel();
             if (base.isVirtual()) {
                 if (!subBases.contains(parent)) {
-                    int maxLength = ++i+1 == offsets.length ? -1 : (int) offsets[i];
-                    addVirtualBase(struct, parent, (int) offsets[i], maxLength);
-                    subBases.add(parent);
+                    try {
+                        int maxLength = ++i+1 == offsets.length ? -1 : (int) offsets[i];
+                        addVirtualBase(struct, parent, (int) offsets[i], maxLength);
+                        subBases.add(parent);
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        Msg.error(this, e);
+                    }
                 }
             } else {
                 int maxLength = j+1 == bases.length ? -1 : bases[j+1].getOffset();
@@ -234,10 +288,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
         validate();
         if (getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
-            DataType result = TypeInfoUtils.getDataType(program, getTypeName());
-            if (result instanceof DynamicDataType) {
-                return (Structure) ((VmiClassTypeInfoDataType) result).getReplacementBaseType();
-            } return (Structure) result;
+            return TypeInfoUtils.getDataType(program, getTypeName());
         }
         DataTypeManager dtm = program.getDataTypeManager();
         Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
@@ -330,5 +381,57 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
                 }
             }
         }
+    }
+
+    private static DataType getFlags(DataTypeManager dtm, CategoryPath path) {
+        DataType integer = IntegerDataType.dataType.clone(dtm);
+        EnumDataType flags =
+            new EnumDataType(path, "__flags_masks", integer.getLength(), dtm);
+
+        // Populate the flags mask
+        flags.add(NON_DIAMOND_MASK_NAME, 1);
+        flags.add(DIAMOND_MASK_NAME, 2);
+        flags.add("non_public_base_mask", 4);
+        flags.add("public_base_mask", 8);
+        flags.add("__flags_unknown_mask", 16);
+        return dtm.resolve(flags, KEEP_HANDLER);
+    }
+
+    /**
+     * Gets the value of this datatypes's __flags_mask
+     * @param MemBuffer
+     * @return the value of this datatypes's __flags_mask
+     */
+    public Flags getFlags(MemBuffer buf) {
+        try {
+            DataTypeComponent comp = getDataType().getComponent(FLAGS_ORDINAL);
+            int offset = comp.getOffset();
+            int length = comp.getLength();
+            switch(buf.getVarLengthInt(offset, length)) {
+                case 1:
+                    return Flags.NON_DIAMOND;
+                case 2:
+                    return Flags.DIAMOND;
+                case 4:
+                    return Flags.NON_PUBLIC;
+                case 8:
+                    return Flags.PUBLIC;
+                case 16:
+                default:
+                    return Flags.UNKNOWN;
+            }
+        } catch (MemoryAccessException e) {
+            return Flags.UNKNOWN;
+        }
+    }
+
+    public DataType getBaseArrayDataType() {
+        int baseCount = getBaseCount();
+        DataType base = BaseClassTypeInfoModel.getDataType(program.getDataTypeManager());
+        return new ArrayDataType(base, baseCount, base.getLength(), program.getDataTypeManager());
+    }
+
+    public Address getBaseArrayAddress() {
+        return address.add(getDataType().getComponent(BASE_ARRAY_ORDINAL).getOffset());
     }
 }

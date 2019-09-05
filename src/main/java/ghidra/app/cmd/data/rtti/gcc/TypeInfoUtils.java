@@ -16,11 +16,14 @@ import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.TerminatedStringDataType;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
+import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
+import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemangledType;
 
@@ -139,6 +142,11 @@ public class TypeInfoUtils {
     private static String relocationToID(Relocation reloc) {
         String baseTypeName = reloc.getSymbolName();
         if (baseTypeName != null) {
+            if (baseTypeName.contains("_ZTI")) {
+                if (!baseTypeName.contains(TypeInfoModel.STRUCTURE_NAME)) {
+                    return FundamentalTypeInfoModel.ID_STRING;
+                }
+            }
             return baseTypeName.substring(4);
         }
         return null;
@@ -239,7 +247,7 @@ public class TypeInfoUtils {
             program, getDemangledType(typename), program.getGlobalNamespace(), false);
     }
 
-    public static DataType getDataType(Program program, String typename) {
+    public static Structure getDataType(Program program, String typename) {
         return TypeInfoFactory.getDataType(program, typename);
     }
 

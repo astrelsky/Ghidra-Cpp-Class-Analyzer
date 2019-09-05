@@ -9,9 +9,9 @@ import java.lang.reflect.Method;
 import ghidra.util.Msg;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
-import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.app.cmd.data.rtti.TypeInfo;
@@ -114,12 +114,12 @@ public class TypeInfoFactory {
         }
     }
 
-    public static DataType getDataType(Program program, String typename) {
+    public static Structure getDataType(Program program, String typename) {
         if (COPY_MAP.containsKey(typename)) {
             try {
                 Method dataTypeGetter = COPY_MAP.get(typename).getDeclaredMethod(
                     "getDataType", DataTypeManager.class);
-                return (DataType) dataTypeGetter.invoke(null, program.getDataTypeManager());
+                return (Structure) dataTypeGetter.invoke(null, program.getDataTypeManager());
             } catch (Exception e) {
                 Msg.error(THIS, e);
             }

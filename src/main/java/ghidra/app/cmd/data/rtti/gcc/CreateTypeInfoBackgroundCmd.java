@@ -14,6 +14,7 @@ import ghidra.program.model.data.DataUtilities;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.util.exception.CancelledException;
 import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemanglerOptions;
 import ghidra.program.model.util.CodeUnitInsertionException;
@@ -81,6 +82,12 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
             monitor.checkCanceled();
             typename = typeInfo.getTypeName();
             Data data = createData(typeInfo.getAddress(), typeInfo.getDataType());
+            if (typeInfo instanceof VmiClassTypeInfoModel) {
+                VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) typeInfo;
+                DataType array = vmi.getBaseArrayDataType();
+                Address arrayAddress = vmi.getBaseArrayAddress();
+                createData(arrayAddress, array);
+            }
             return applyTypeInfoSymbols() && data != null;
         } catch (CodeUnitInsertionException e) {
             Msg.error(this, e);

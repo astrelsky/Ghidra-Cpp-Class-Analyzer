@@ -46,6 +46,7 @@ public final class GnuUtils {
 
     public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
     public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
+    public static final int UNSUPPORTED_RELOCATION = 5;
 
     private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
 
@@ -125,7 +126,8 @@ public final class GnuUtils {
     }
 
     private static DataType createPtrDiff(DataTypeManager dtm) {
-        DataType dataType = isLLP64(dtm) ? LongLongDataType.dataType : IntegerDataType.dataType;
+        DataType dataType = isLLP64(dtm) ? LongLongDataType.dataType.clone(dtm)
+            : IntegerDataType.dataType.clone(dtm);
         return new TypedefDataType(CategoryPath.ROOT, PTRDIFF, dataType, dtm);
     }
 

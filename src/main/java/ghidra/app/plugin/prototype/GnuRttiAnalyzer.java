@@ -45,7 +45,7 @@ import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
-import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
+import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
 public class GnuRttiAnalyzer extends AbstractAnalyzer {
@@ -58,8 +58,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
     private static final boolean OPTION_DEFAULT_FUNDAMENTAL = false;
     private static final String OPTION_FUNDAMENTAL_DESCRIPTION =
         "Turn on to scan for __fundamental_type_info and its derivatives.";
-        
-    private static final int CLANG_RELOCATION = 5;
+
     private boolean fundamentalOption;
 
     private Program program;
@@ -164,8 +163,8 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
 
     private void addDataTypes() {
         DataTypeManager dtm = program.getDataTypeManager();
-        dtm.resolve(VmiClassTypeInfoDataType.getReplacementBaseType(dtm), KEEP_HANDLER);
-        dtm.resolve(GnuUtils.getVptr(dtm), KEEP_HANDLER);
+        dtm.resolve(VmiClassTypeInfoModel.getDataType(dtm), REPLACE_HANDLER);
+        dtm.resolve(GnuUtils.getVptr(dtm), REPLACE_HANDLER);
     }
 
     private boolean checkTableAddresses(Function[][] functionTables) {
@@ -293,7 +292,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
                 continue;
             }
             if (name.equals(VtableModel.MANGLED_PREFIX+typeString)) {
-                if (reloc.getType() == CLANG_RELOCATION) {
+                if (reloc.getType() == GnuUtils.UNSUPPORTED_RELOCATION) {
                     return getClangDynamicReferences(reloc);
                 }
                 result.add(reloc.getAddress());
