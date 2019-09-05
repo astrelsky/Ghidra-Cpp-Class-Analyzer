@@ -1,7 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
@@ -40,13 +40,13 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
         this.program = (Program) obj;
         this.monitor = monitor;
         try {
-            Vftable vtable = typeinfo.getVtable();
+            Vtable vtable = typeinfo.getVtable();
             VttModel vtt = null;
             if (vtable instanceof VtableModel) {
                 vtt = VtableUtils.getVttModel(program, (VtableModel) vtable);
             }
             if (vtt != null && vtt.isValid()) {
-                for (Vftable parentVtable : vtt.getConstructionVtableModels()) {
+                for (Vtable parentVtable : vtt.getConstructionVtableModels()) {
                     try {
                         setupFunctions(parentVtable);
                     } catch (Exception e) {
@@ -61,7 +61,7 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
         return true;
     }
     
-    private void setupFunctions(Vftable vftable) throws Exception {
+    private void setupFunctions(Vtable vftable) throws Exception {
         ClassTypeInfo type = vftable.getTypeInfo();
         Function[][] functionTables = vftable.getFunctionTables();
         // Also if the function has a reference to this::vtable, then it owns the function
@@ -78,7 +78,7 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
         }
     }
 
-    private void setupThunkFunctions(ClassTypeInfo type, Vftable vftable,
+    private void setupThunkFunctions(ClassTypeInfo type, Vtable vftable,
         Function[] functionTable, int ordinal) throws Exception {
         for (Function function : functionTable) {
             if (isProcessedFunction(function)) {

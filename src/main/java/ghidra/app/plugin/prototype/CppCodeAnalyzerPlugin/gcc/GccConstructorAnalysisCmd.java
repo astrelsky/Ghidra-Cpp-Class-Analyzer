@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
@@ -114,7 +114,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
             return false;
     }
 
-    private void detectVirtualDestructors(Data data, Vftable vtable)
+    private void detectVirtualDestructors(Data data, Vtable vtable)
         throws InvalidDataTypeException {
             Function[][] fTable = vtable.getFunctionTables();
             if (fTable[0][0] == null) {
@@ -128,7 +128,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
             }
     }
 
-    private boolean analyzeVtable(Vftable vtable) throws InvalidDataTypeException {
+    private boolean analyzeVtable(Vtable vtable) throws InvalidDataTypeException {
         Address[] tableAddresses = vtable.getTableAddresses();
         if (tableAddresses.length == 0) {
             // no virtual functions, nothing to analyze.
@@ -179,7 +179,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
     private boolean createFromVttModel() throws InvalidDataTypeException {
         Address address = vtt.getAddress();
         int pointerSize = program.getDefaultPointerSize();
-        Vftable vtable = vtt.getVtableModel(0);
+        Vtable vtable = vtt.getVtableModel(0);
         analyzeVtable(vtable);
         for (int i = 0; i < vtt.getElementCount(); i++) {
             ClassTypeInfo baseType = vtt.getTypeInfo(i);
@@ -270,7 +270,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
 
     private void createVirtualDestructors(ClassTypeInfo typeinfo)
         throws InvalidDataTypeException {
-            Vftable vtable = typeinfo.getVtable();
+            Vtable vtable = typeinfo.getVtable();
             Function[][] functionTables = vtable.getFunctionTables();
             for (int i = 0; i < functionTables.length; i++) {
                 for (int j = 0; j < functionTables[i].length && j < 2; j++) {

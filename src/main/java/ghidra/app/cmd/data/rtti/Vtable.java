@@ -5,9 +5,9 @@ import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 
-public interface Vftable {
+public interface Vtable {
     
-    public static final Vftable INVALID = VtableModel.INVALID;
+    public static final Vtable INVALID = VtableModel.INVALID;
 
     /**
      * Returns the TypeInfo Model this vtable points to.

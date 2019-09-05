@@ -10,7 +10,7 @@ import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.vtable.VtablePrefixDataType;
 import ghidra.program.model.data.DataTypeManager;
@@ -34,7 +34,7 @@ public class VtableDataType extends DynamicDataType {
     protected static final String INHERITED = "inherited";
 
     private VtablePrefixDataType base;
-    private Vftable model = Vftable.INVALID;
+    private Vtable model = Vtable.INVALID;
     private int elementCount = 0;
     public static final VtableDataType dataType = new VtableDataType();
 

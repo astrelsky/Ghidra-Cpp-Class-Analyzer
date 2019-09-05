@@ -10,7 +10,7 @@ import ghidra.app.decompiler.flatapi.FlatDecompilerAPI;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.flatapi.FlatProgramAPI;
@@ -51,7 +51,7 @@ public class ClassTypeInfoUtils {
      * @param TaskMonitor the taskmonitor to be used while searching for the vtable
      * @return The TypeInfo's Vtable Model or null if none exists
      */
-    public static Vftable findVtable(Program program, Address address, TaskMonitor monitor)
+    public static Vtable findVtable(Program program, Address address, TaskMonitor monitor)
         throws CancelledException, InvalidDataTypeException {
             SymbolTable table = program.getSymbolTable();
             Listing listing = program.getListing();
@@ -86,7 +86,7 @@ public class ClassTypeInfoUtils {
             return getValidVtable(program, references, monitor, type);
     }
 
-    private static Vftable getValidVtable(Program program, Set<Address> references,
+    private static Vtable getValidVtable(Program program, Set<Address> references,
         TaskMonitor monitor, ClassTypeInfo typeinfo) throws CancelledException {
         Listing listing = program.getListing();
         for (Address reference : references) {

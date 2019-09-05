@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.VfTableModel;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.InvalidDataTypeException;
@@ -13,7 +13,7 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Program;
 
-public class WindowsVtableModel implements Vftable {
+public class WindowsVtableModel implements Vtable {
 
     private Program program;
     private List<VfTableModel> vftables;

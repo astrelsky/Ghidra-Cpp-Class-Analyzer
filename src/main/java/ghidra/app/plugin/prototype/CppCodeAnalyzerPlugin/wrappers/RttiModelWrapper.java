@@ -14,7 +14,7 @@ import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.Rtti2Model;
 import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Rtti4Model;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.NamespaceUtils;
@@ -269,7 +269,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
     }
 
     @Override
-    public Vftable getVtable(TaskMonitor monitor) throws CancelledException {
+    public Vtable getVtable(TaskMonitor monitor) throws CancelledException {
         if (vtable == null) {
             vtable = new WindowsVtableModel(type.getProgram(), getVftableAddresses(), this);
         }

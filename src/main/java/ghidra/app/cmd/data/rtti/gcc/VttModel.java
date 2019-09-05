@@ -1,7 +1,7 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
@@ -101,7 +101,7 @@ public class VttModel {
      * @param ordinal
      * @return the VtableModel at the specified ordinal.
      */
-    public Vftable getVtableModel(int ordinal) {
+    public Vtable getVtableModel(int ordinal) {
         Address pointee = getElementPointee(ordinal);
         return pointee != null ? getVtableContaining(pointee) : VtableModel.INVALID;
     }

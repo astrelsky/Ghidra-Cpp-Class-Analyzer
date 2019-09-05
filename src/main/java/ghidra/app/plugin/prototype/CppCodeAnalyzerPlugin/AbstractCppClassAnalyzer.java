@@ -27,7 +27,7 @@ import ghidra.util.exception.CancelledException;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
@@ -54,7 +54,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     private AutoAnalysisManager analysisManager;
 
     private List<ClassTypeInfo> classes;
-    private ArrayList<Vftable> vftables;
+    private ArrayList<Vtable> vftables;
 
     /**
      * Constructs an AbstractCppClassAnalyzer.
@@ -110,7 +110,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         monitor.setMessage("Locating vftables...");
         for (ClassTypeInfo type : classes) {
             monitor.checkCanceled();
-            Vftable vftable = type.getVtable();
+            Vtable vftable = type.getVtable();
             try {
                 vftable.validate();
                 vftables.add(vftable);
@@ -141,7 +141,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
             monitor.initialize(vftables.size());
             monitor.setMessage("Filling Class Structures...");
             Msg.setErrorDisplay(new ConsoleErrorDisplay());
-            for (Vftable vtable : vftables) {
+            for (Vtable vtable : vftables) {
                 ClassTypeInfo type = vtable.getTypeInfo();
                 if (type.getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
                     continue;
@@ -198,7 +198,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         List<ClassTypeInfo> namespaces = new ArrayList<>(vftables.size());
         monitor.initialize(vftables.size());
         monitor.setMessage("Setting up namespaces");
-        for (Vftable vtable : vftables) {
+        for (Vtable vtable : vftables) {
             monitor.checkCanceled();
             ClassTypeInfo type = vtable.getTypeInfo();
             try {
@@ -232,7 +232,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         monitor.setMessage("Creating Constructors");
         for (ClassTypeInfo type : namespaces) {
             monitor.checkCanceled();
-            Vftable vtable = type.getVtable();
+            Vtable vtable = type.getVtable();
             BackgroundCommand cmd;
             if (hasVtt()) {
                 VttModel vtt = VtableUtils.getVttModel(program, (VtableModel) vtable);

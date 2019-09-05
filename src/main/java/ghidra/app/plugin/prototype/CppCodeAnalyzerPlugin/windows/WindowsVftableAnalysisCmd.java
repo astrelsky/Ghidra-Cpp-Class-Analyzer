@@ -1,7 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
@@ -35,7 +35,7 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
         }
         this.program = (Program) obj;
         try {
-            Vftable vtable = typeinfo.getVtable();
+            Vtable vtable = typeinfo.getVtable();
             setupFunctions(vtable);
             return true;
         } catch (Exception e) {
@@ -44,7 +44,7 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
         return true;
     }
     
-    private void setupFunctions(Vftable vftable) throws Exception {
+    private void setupFunctions(Vtable vftable) throws Exception {
         ClassTypeInfo type = vftable.getTypeInfo();
         Function[][] functionTables = vftable.getFunctionTables();
         for (Function[] functionTable : functionTables) {

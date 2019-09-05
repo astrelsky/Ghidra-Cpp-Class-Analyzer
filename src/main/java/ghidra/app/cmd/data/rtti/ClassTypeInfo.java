@@ -58,7 +58,7 @@ public interface ClassTypeInfo extends TypeInfo {
      * @throws CancelledException 
      * @throws InvalidDataTypeException
      */
-    Vftable getVtable(TaskMonitor monitor) throws CancelledException, InvalidDataTypeException;
+    Vtable getVtable(TaskMonitor monitor) throws CancelledException, InvalidDataTypeException;
 
     /**
      * Gets the TypeInfo's Vtable Model
@@ -66,7 +66,7 @@ public interface ClassTypeInfo extends TypeInfo {
      * @return The TypeInfo's Vtable Model or null if none exists
      * @throws InvalidDataTypeException
      */
-    default Vftable getVtable() throws InvalidDataTypeException {
+    default Vtable getVtable() throws InvalidDataTypeException {
         try {
             return getVtable(new DummyCancellableTaskMonitor());
         }

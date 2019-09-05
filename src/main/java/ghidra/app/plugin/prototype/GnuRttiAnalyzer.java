@@ -30,7 +30,7 @@ import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.CreateTypeInfoBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCmd;
@@ -183,7 +183,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
         InvalidDataTypeException {
             for (ClassTypeInfo type : classes) {
                 if (type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING)) {
-                    Vftable vtable = type.getVtable(dummy);
+                    Vtable vtable = type.getVtable(dummy);
                     Function[][] functionTables = vtable.getFunctionTables();
                     if (checkTableAddresses(functionTables)) {
                         return functionTables[0][2];
@@ -215,7 +215,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
         monitor.incrementProgress(1);
     }
 
-    private void locateVTT(Vftable vtable) throws Exception {
+    private void locateVTT(Vtable vtable) throws Exception {
         ClassTypeInfo type = vtable.getTypeInfo();
         if (!CLASS_TYPESTRINGS.contains(type.getTypeName())) {
             VttModel vtt = VtableUtils.getVttModel(program, (VtableModel) vtable);
@@ -258,7 +258,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
         try {
             ClassTypeInfo typeinfo = (ClassTypeInfo) TypeInfoUtils.findTypeInfo(
                 program, typeString, dummy);
-            Vftable vtable = typeinfo.getVtable(dummy);
+            Vtable vtable = typeinfo.getVtable(dummy);
             return GnuUtils.getDirectDataReferences(
                 program, vtable.getTableAddresses()[0], dummy);
         } catch (NullPointerException | InvalidDataTypeException e) {

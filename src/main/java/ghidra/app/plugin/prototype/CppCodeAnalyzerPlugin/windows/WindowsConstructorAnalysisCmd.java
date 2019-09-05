@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
@@ -85,7 +85,7 @@ public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
         return functions;
     }
 
-    private void detectVirtualDestructors(Function destructor, Vftable vtable)
+    private void detectVirtualDestructors(Function destructor, Vtable vtable)
         throws InvalidDataTypeException {
             Function[][] fTable = vtable.getFunctionTables();
             if (fTable.length == 0) {
@@ -158,7 +158,7 @@ public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
         return null;
     }
 
-    private boolean analyzeVtable(Vftable vtable) throws CancelledException,
+    private boolean analyzeVtable(Vtable vtable) throws CancelledException,
         InvalidDataTypeException {
             Address[] tableAddresses = vtable.getTableAddresses();
             if (tableAddresses.length == 0) {

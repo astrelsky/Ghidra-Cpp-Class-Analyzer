@@ -21,8 +21,7 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vbtable;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -30,7 +29,7 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
 /**
  * Model for GNU Vtables
  */
-public class VtableModel implements Vftable, Vbtable {
+public class VtableModel implements Vtable {
 
     public static final String SYMBOL_NAME = "vtable";
     public static final String CONSTRUCTION_SYMBOL_NAME = "construction-"+SYMBOL_NAME;
@@ -126,8 +125,11 @@ public class VtableModel implements Vftable, Vbtable {
         return isValid ? ((VtableModel) object).getAddress().equals(address) : false;
     }
 
-    @Override
-    
+    /**
+     * Gets the corrected start address of the vtable.
+     * 
+     * @return the correct start address or NO_ADDRESS if invalid.
+     */
     public Address getAddress() {
         return address;
     }
@@ -236,9 +238,14 @@ public class VtableModel implements Vftable, Vbtable {
         resetBuffer();
         return dataType.getLength(buf, 0);
     }
-
-    @Override
     
+    /**
+     * Gets the ptrdiff_t value within the offset array.
+     * 
+     * @param ordinal the offset ordinal.
+     * @return the offset value.
+     * @throws InvalidDataTypeException 
+     */
     public long getOffset(int ordinal) throws InvalidDataTypeException {
         validate();
         if (ordinal >= getElementCount()) {
@@ -248,7 +255,12 @@ public class VtableModel implements Vftable, Vbtable {
         return dataType.getOffsetToVirtualBase(buf, ordinal);
     }
 
-    @Override
+    /**
+     * Gets the whole ptrdiff_t array.
+     * 
+     * @return the whole ptrdiff_t array.
+     * @throws InvalidDataTypeException
+     */
     public long[] getOffsetArray() throws InvalidDataTypeException {
         if (offsets == null) {
             offsets = doGetOffsetArray();

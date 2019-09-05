@@ -3,7 +3,7 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.cmd.data.rtti.Vftable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.AbstractTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.vtable.VtableDataType;
@@ -148,7 +148,7 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
     protected void addVptr(Structure struct) throws InvalidDataTypeException {
         DataTypeComponent comp = struct.getComponentAt(0);
         if (comp == null || isUndefined(comp.getDataType())) {
-            Vftable subVtable = getVtable();
+            Vtable subVtable = getVtable();
             try {
                 subVtable.validate();
             } catch (InvalidDataTypeException e) {
