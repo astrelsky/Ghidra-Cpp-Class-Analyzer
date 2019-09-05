@@ -120,7 +120,7 @@ public class ClassTypeInfoUtils {
             }
             return vtable;
         }
-        return VtableModel.INVALID;
+        return VtableModel.NO_VTABLE;
     }
 
     /**

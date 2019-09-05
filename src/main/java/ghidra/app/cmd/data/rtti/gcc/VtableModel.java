@@ -48,7 +48,7 @@ public class VtableModel implements Vtable {
     private ClassTypeInfo type = null;
     private long[] offsets;
 
-    public static final VtableModel INVALID = new VtableModel();
+    public static final VtableModel NO_VTABLE = new VtableModel();
 
     private VtableModel() {
         isValid = false;

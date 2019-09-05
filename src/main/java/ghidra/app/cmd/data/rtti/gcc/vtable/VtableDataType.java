@@ -34,7 +34,7 @@ public class VtableDataType extends DynamicDataType {
     protected static final String INHERITED = "inherited";
 
     private VtablePrefixDataType base;
-    private Vtable model = Vtable.INVALID;
+    private Vtable model = Vtable.NO_VTABLE;
     private int elementCount = 0;
     public static final VtableDataType dataType = new VtableDataType();
 

@@ -7,7 +7,7 @@ import ghidra.program.model.listing.Function;
 
 public interface Vtable {
     
-    public static final Vtable INVALID = VtableModel.INVALID;
+    public static final Vtable NO_VTABLE = VtableModel.NO_VTABLE;
 
     /**
      * Returns the TypeInfo Model this vtable points to.

@@ -77,7 +77,7 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         try {
             vtable = (VtableModel) ClassTypeInfoUtils.findVtable(program, address, monitor);
         } catch (CancelledException e) {
-            vtable = VtableModel.INVALID;
+            vtable = VtableModel.NO_VTABLE;
         }
         return vtable;
     }

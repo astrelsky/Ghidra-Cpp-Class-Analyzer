@@ -103,7 +103,7 @@ public class VttModel {
      */
     public Vtable getVtableModel(int ordinal) {
         Address pointee = getElementPointee(ordinal);
-        return pointee != null ? getVtableContaining(pointee) : VtableModel.INVALID;
+        return pointee != null ? getVtableContaining(pointee) : VtableModel.NO_VTABLE;
     }
 
     /**
