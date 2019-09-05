@@ -136,6 +136,14 @@ public class TypeInfoUtils {
             return typeInfoAddresses;
     }
 
+    private static String relocationToID(Relocation reloc) {
+        String baseTypeName = reloc.getSymbolName();
+        if (baseTypeName != null) {
+            return baseTypeName.substring(4);
+        }
+        return null;
+    }
+
     /**
      * Gets the identifier string for the __type_info at the specified address.
      * @param Program the program to be searched.
@@ -144,12 +152,24 @@ public class TypeInfoUtils {
      */
     public static String getIDString(Program program, Address address) {
         RelocationTable table = program.getRelocationTable();
-        if (table.isRelocatable()) {
-            Relocation reloc = table.getRelocation(address);
-            if (reloc != null) {
-                String baseTypeName = reloc.getSymbolName();
-                if (baseTypeName != null) {
-                    return baseTypeName.substring(4);
+        Relocation reloc = table.getRelocation(address);
+        if (reloc != null) {
+            String name = relocationToID(reloc);
+            if (name != null) {
+                return name;
+            }
+        } else {
+            Address relocAddress = getAbsoluteAddress(program, address);
+            if (relocAddress != null) {
+                Data data = program.getListing().getDataContaining(relocAddress);
+                if (data != null) {
+                    reloc = table.getRelocation(data.getAddress());
+                    if (reloc != null) {
+                        String name = relocationToID(reloc);
+                        if (name != null) {
+                            return name;
+                        }
+                    }
                 }
             }
         }

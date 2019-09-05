@@ -46,8 +46,8 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
     private Program program;
     private TaskMonitor monitor;
     private FunctionManager fManager;
-    private ReferenceManager manager;
     private Listing listing;
+    private ReferenceManager manager;
 
     private GccConstructorAnalysisCmd() {
         super(NAME, false, true, false);
@@ -82,7 +82,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
         this.manager = program.getReferenceManager();
         try {
             return vtt != null ? createFromVttModel() : analyzeVtable(type.getVtable());
-        } catch (InvalidDataTypeException e) {
+        } catch (Exception e) {
             Msg.error(this, e);
             return false;
         }
@@ -118,6 +118,9 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
         throws InvalidDataTypeException {
             Function[][] fTable = vtable.getFunctionTables();
             if (fTable[0][0] == null) {
+                return;
+            } else if (fTable[0][0].getName().equals(vtable.getTypeInfo().getName())) {
+                createVirtualDestructors(vtable.getTypeInfo());
                 return;
             }
             List<Address> addresses = Arrays.asList(XReferenceUtil.getOffcutXRefList(data));
@@ -176,10 +179,16 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
         return true;
     }
 
-    private boolean createFromVttModel() throws InvalidDataTypeException {
+    private boolean createFromVttModel() throws Exception {
         Address address = vtt.getAddress();
-        int pointerSize = program.getDefaultPointerSize();
         Vtable vtable = vtt.getVtableModel(0);
+        Data data = program.getListing().getDataAt(address);
+        if (data != null) {
+            for (Address reference : XReferenceUtil.getXRefList(data)) {
+                createConstructor(vtable.getTypeInfo(), reference, true);
+            }
+            detectVirtualDestructors(data, vtable);
+        }
         analyzeVtable(vtable);
         for (int i = 0; i < vtt.getElementCount(); i++) {
             ClassTypeInfo baseType = vtt.getTypeInfo(i);
@@ -203,7 +212,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
                     }
                 }
             }
-            address = address.add(pointerSize);
+            address = address.add(program.getDefaultPointerSize());
         }
         return true;
     }
@@ -218,9 +227,8 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
             setFunction(typeinfo, function, false);
             if (vttParam) {
                 setVttParam(function);
-            } else {
-                createSubConstructors(typeinfo, function, false);
             }
+            createSubConstructors(typeinfo, function, false);
     }
 
     private void createSubConstructors(ClassTypeInfo typeinfo, Function constructor,

@@ -95,7 +95,8 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
     }
 
     @Override
-    public GhidraClass getGhidraClass() {
+    public GhidraClass getGhidraClass() throws InvalidDataTypeException {
+        validate();
         if (!(namespace instanceof GhidraClass)) {
             try {
                 namespace = NamespaceUtils.convertNamespaceToClass(namespace);

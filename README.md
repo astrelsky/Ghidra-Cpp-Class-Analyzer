@@ -13,6 +13,7 @@ Supported Compilers
 -------------------
 
 * GCC  
+* Clang  
 * Visual Studio
 
 Information

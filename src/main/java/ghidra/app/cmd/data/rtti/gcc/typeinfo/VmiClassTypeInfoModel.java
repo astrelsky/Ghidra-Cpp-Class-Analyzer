@@ -44,8 +44,10 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     public VmiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
         this.typeInfoDataType = (VmiClassTypeInfoDataType) getDataType(program.getDataTypeManager());
-        this.bases = getBases();
-        this.flags = typeInfoDataType.getFlags(getBuffer());
+        if (!typeName.equals(DEFAULT_TYPENAME)) {
+            this.bases = getBases();
+            this.flags = typeInfoDataType.getFlags(getBuffer());
+        }
     }
 
     @Override

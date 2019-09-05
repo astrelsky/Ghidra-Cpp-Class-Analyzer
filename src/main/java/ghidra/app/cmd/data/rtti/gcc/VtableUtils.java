@@ -90,6 +90,9 @@ public class VtableUtils {
                     return count;
                 }
                 value = getValue.applyAsLong(0);
+                if (value < 0 && direction < 0) {
+                    return count;
+                }
                 if (value > 0 && direction < 0) {
                     if (values.contains(value)) {
                         return 0;
@@ -129,6 +132,9 @@ public class VtableUtils {
                     } return 0;
                 }
                 value = getValue.applyAsLong(0);
+                if (value < 0 && direction < 0) {
+                    return count;
+                }
                 if (value > 0 && direction < 0) {
                     if (values.contains(value)) {
                         return 0;

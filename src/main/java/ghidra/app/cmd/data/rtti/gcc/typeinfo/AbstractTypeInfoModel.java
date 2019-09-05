@@ -32,13 +32,15 @@ import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
  */
 public abstract class AbstractTypeInfoModel implements TypeInfo {
 
+    protected static final String DEFAULT_TYPENAME = "";
+
     protected static final int BASE_ORDINAL = 0;
 
     protected Program program;
     protected Address address;
     private DataType dataType = null;
 
-    private String typeName = "";
+    protected String typeName = DEFAULT_TYPENAME;
     protected Namespace namespace;
     private MemoryBufferImpl buf;
 
@@ -61,6 +63,10 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
         if (!TypeInfoUtils.getIDString(program, address).equals(getIdentifier())) {
             throw new InvalidDataTypeException(
                 "Invalid "+getIdentifier()+" instance at "+address.toString());
+        }
+        if (typeName.equals(DEFAULT_TYPENAME)) {
+            throw new InvalidDataTypeException(
+                getIdentifier()+" at "+address.toString()+" is a relocation");
         }
     }
 

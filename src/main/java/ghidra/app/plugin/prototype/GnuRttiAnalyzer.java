@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 
@@ -18,10 +19,12 @@ import ghidra.app.services.AnalysisPriority;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
+import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.GenericCallingConvention;
@@ -55,7 +58,8 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
     private static final boolean OPTION_DEFAULT_FUNDAMENTAL = false;
     private static final String OPTION_FUNDAMENTAL_DESCRIPTION =
         "Turn on to scan for __fundamental_type_info and its derivatives.";
-
+        
+    private static final int CLANG_RELOCATION = 5;
     private boolean fundamentalOption;
 
     private Program program;
@@ -114,17 +118,13 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
             
             dummy = new CancelOnlyWrappingTaskMonitor(monitor);
             classes = new ArrayList<>();
-            if (relocatable) {
-                boolean hasRtti = false;
-                for (String typeString : CLASS_TYPESTRINGS) {
-                    if (hasRtti) {
-                        break;
-                    } hasRtti = !getDynamicReferences(typeString).isEmpty();
-                } if (!hasRtti) {
-                    log.appendMsg(this.getName(), "RTTI not detected");
-                    return false;
+            for (String typeString : CLASS_TYPESTRINGS) {
+                if (!getDynamicReferences(typeString).isEmpty()) {
+                    relocatable = true;
+                    break;
                 }
-            } else {
+            }
+            if (!relocatable) {
                 if (TypeInfoUtils.findTypeInfo(
                     program, set, TypeInfoModel.ID_STRING, dummy) == null) {
                         log.appendMsg(this.getName(), "RTTI not detected");
@@ -266,7 +266,24 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
         }
     }
 
-    private Set<Address> getDynamicReferences(String typeString) {
+    private Set<Address> getClangDynamicReferences(Relocation reloc) throws CancelledException {
+        Data data = program.getListing().getDataContaining(reloc.getAddress());
+        if (data == null) {
+            Msg.error(this, "Null data at clang relocation");
+            return null;
+        }
+        int start = 0;
+        int ptrdiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
+        Set<Address> result = new HashSet<>();
+        while (start < data.getLength()) {
+            result.addAll(GnuUtils.getDirectDataReferences(
+                program, data.getAddress().add(start), dummy));
+            start += ptrdiffSize;
+        }
+        return result;
+    }
+
+    private Set<Address> getDynamicReferences(String typeString) throws CancelledException {
         Iterator<Relocation> relocations = program.getRelocationTable().getRelocations();
         Set<Address> result = new LinkedHashSet<>();
         while (relocations.hasNext()) {
@@ -276,6 +293,9 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
                 continue;
             }
             if (name.equals(VtableModel.MANGLED_PREFIX+typeString)) {
+                if (reloc.getType() == CLANG_RELOCATION) {
+                    return getClangDynamicReferences(reloc);
+                }
                 result.add(reloc.getAddress());
             }
         } return result;
@@ -304,15 +324,19 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
             monitor.checkCanceled();
             TypeInfo type = TypeInfoFactory.getTypeInfo(program, reference);
             if (type == null) {
-                throw new Exception("Null type: "+reference.toString());
+                monitor.incrementProgress(1);
+                continue;
             }
-            if (isClass) {
+            try {
+                type.validate();
+                if (isClass) {
                     ClassTypeInfo classType = ((ClassTypeInfo) type);
                     classType.getGhidraClass();
                     classes.add(classType);
                 }
-            CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
-            cmd.applyTo(program, dummy);
+                CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
+                cmd.applyTo(program, dummy);
+            } catch (InvalidDataTypeException e) {}
             monitor.incrementProgress(1);
         }
     }
