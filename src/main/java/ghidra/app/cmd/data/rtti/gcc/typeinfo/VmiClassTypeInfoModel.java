@@ -88,19 +88,22 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
             return (Structure) existingDt;
         }
-        StructureDataType struct = new StructureDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
-        struct.add(ClassTypeInfoModel.getDataType(dtm), AbstractTypeInfoModel.SUPER + ClassTypeInfoModel.STRUCTURE_NAME,
-                null);
+        StructureDataType struct =
+            new StructureDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
+        struct.add(ClassTypeInfoModel.getDataType(dtm),
+                   AbstractTypeInfoModel.SUPER + ClassTypeInfoModel.STRUCTURE_NAME,
+                   null);
         struct.add(getFlags(dtm, VmiClassTypeInfoModel.SUB_PATH), FLAGS_NAME, null);
         struct.add(IntegerDataType.dataType.clone(dtm), BASE_COUNT_NAME, null);
-        struct.setFlexibleArrayComponent(BaseClassTypeInfoModel.getDataType(dtm), ARRAY_NAME, null);
+        struct.setFlexibleArrayComponent(
+            BaseClassTypeInfoModel.getDataType(dtm), ARRAY_NAME, null);
         struct.setDescription(DESCRIPTION);
         Structure result = (Structure) dtm.resolve(struct, KEEP_HANDLER);
         Structure flexComponent = (Structure) result.getFlexibleArrayComponent().getDataType();
-        for (DataTypeComponent comp : flexComponent.getComponents()) {
-            if (comp.getDataType() instanceof OffsetShiftDataType) {
-                return result;
-            }
+        DataTypeComponent baseFlagsComp = flexComponent.getComponent(
+            BaseClassTypeInfoModel.FLAGS_ORDINAL);
+        if (baseFlagsComp.getDataType() instanceof Structure) {
+            return result;
         }
         return (Structure) dtm.resolve(struct, REPLACE_HANDLER);
     }

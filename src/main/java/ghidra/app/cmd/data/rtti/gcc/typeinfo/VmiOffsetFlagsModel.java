@@ -5,6 +5,8 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.AbstractIntegerDataType;
+import ghidra.program.model.data.DataOrganization;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.data.EnumDataType;
@@ -94,11 +96,11 @@ final class VmiOffsetFlagsModel {
     protected static DataType getDataType(DataTypeManager dtm) {
         StructureDataType struct = new StructureDataType(VmiClassTypeInfoModel.SUB_PATH, DATA_TYPE_NAME, 0, dtm);
         if (dtm.getDataOrganization().isBigEndian()) {
-            struct.add(OffsetShiftDataType.dataType.clone(dtm), "__offset", null);
+            struct.add(getOffsetFlags(dtm), "__offset", null);
             struct.add(getFlags(dtm), "__flags", null);
         } else {
             struct.add(getFlags(dtm), "__flags", null);
-            struct.add(OffsetShiftDataType.dataType.clone(dtm), "__offset", null);
+            struct.add(getOffsetFlags(dtm), "__offset", null);
         }
         struct.setInternallyAligned(true);
         DataType base = GnuUtils.isLLP64(dtm) ? LongLongDataType.dataType.clone(dtm)
@@ -108,9 +110,17 @@ final class VmiOffsetFlagsModel {
         struct.setDescription(DESCRIPTION);
         return dtm.resolve(struct, KEEP_HANDLER);
     }
+
+    private static DataType getOffsetFlags(DataTypeManager dtm) {
+        DataOrganization org = dtm.getDataOrganization();
+        int size = GnuUtils.isLLP64(dtm) ? (org.getLongLongSize())
+            : (org.getLongSize());
+        return AbstractIntegerDataType.getSignedDataType(size - 1, dtm);
+    }
     
     private static DataType getFlags(DataTypeManager dtm) {
-        EnumDataType flags = new EnumDataType(VmiClassTypeInfoModel.SUB_PATH, "offset_flags", 1, dtm);
+        EnumDataType flags =
+            new EnumDataType(VmiClassTypeInfoModel.SUB_PATH, "offset_flags", 1, dtm);
         flags.add("__virtual_mask", VIRTUAL_MASK);
         flags.add("__public_mask", PUBLIC_MASK);
         // the offset shift parameter is meaningless here
