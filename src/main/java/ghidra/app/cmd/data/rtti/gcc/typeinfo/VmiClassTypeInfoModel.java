@@ -7,6 +7,7 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DynamicDataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
@@ -42,7 +43,6 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     public VmiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
-        this.isValid = isValid();
         this.typeInfoDataType = (VmiClassTypeInfoDataType) getDataType(program.getDataTypeManager());
         this.bases = getBases();
         this.flags = typeInfoDataType.getFlags(getBuffer());
@@ -70,9 +70,6 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     private Address getArrayAddress() {
-        if (!isValid) {
-            return Address.NO_ADDRESS;
-        }
         MemBuffer buf = getBuffer();
         DataTypeComponent arrayComponent = typeInfoDataType.getComponent(3, buf);
         return address.add(arrayComponent.getOffset());
@@ -80,14 +77,12 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     @Override
     public boolean hasParent() {
-        return isValid;
+        return true;
     }
 
     @Override
-    public ClassTypeInfo[] getParentModels() {
-        if (!isValid) {
-            return new ClassTypeInfo[0];
-        }
+    public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
+        validate();
         List<ClassTypeInfo> parents = new ArrayList<>();
         for (int i = 0; i < bases.length; i++) {
             if (!bases[i].isVirtual()) {
@@ -98,7 +93,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return parents.toArray(new ClassTypeInfo[parents.size()]);
     }
 
-    private Set<ClassTypeInfo> getVirtualParents() {
+    private Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
         Set<ClassTypeInfo> result = new LinkedHashSet<>();
         getVirtualBases().values().forEach(result::addAll);
         return result;
@@ -121,41 +116,44 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         } return bases;
     }
 
-    public ClassTypeInfo getParentAtOffset(long offset, boolean virtual) {
-        if (isValid) {
+    public ClassTypeInfo getParentAtOffset(long offset, boolean virtual)
+        throws InvalidDataTypeException {
+            validate();
             for (BaseClassTypeInfoModel base : bases) {
-                if (base.isVirtual() == virtual) {
-                    if (base.getFlags().getOffset() == offset) {
-                        return base.getClassModel();
+                    if (base.isVirtual() == virtual) {
+                        if (base.getFlags().getOffset() == offset) {
+                            return base.getClassModel();
+                        }
                     }
                 }
-            }
-        } return null;
+            return null;
     }
 
-    private Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> getVirtualBases() {
-        Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> baseMap = new LinkedHashMap<>();
-        for (BaseClassTypeInfoModel base : bases) {
-            AbstractClassTypeInfoModel parent = base.getClassModel();
-            Set<AbstractClassTypeInfoModel> subSet = new LinkedHashSet<>();
-            baseMap.put(parent, subSet);
-            if (base.isVirtual()) {
-                baseMap.put(parent, Collections.singleton(parent));
-            }
-            if (parent.hasParent()) {
-                if (isVmi(parent)) {
-                    VmiClassTypeInfoModel vmi = toVmi(parent);
-                    for (ClassTypeInfo grandParent : vmi.getVirtualBases().keySet()) {
-                        subSet.add(toSuper(grandParent));
-                    }
-                } else {
-                    // __si_class_type_info is virtual iff it's parent is virtual
-                    if (base.isVirtual()) {
-                        subSet.add(toSuper(parent.getParentModels()[0]));
+    private Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> getVirtualBases()
+        throws InvalidDataTypeException {
+            Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> baseMap =
+                new LinkedHashMap<>();
+            for (BaseClassTypeInfoModel base : bases) {
+                AbstractClassTypeInfoModel parent = base.getClassModel();
+                Set<AbstractClassTypeInfoModel> subSet = new LinkedHashSet<>();
+                baseMap.put(parent, subSet);
+                if (base.isVirtual()) {
+                    baseMap.put(parent, Collections.singleton(parent));
+                }
+                if (parent.hasParent()) {
+                    if (isVmi(parent)) {
+                        VmiClassTypeInfoModel vmi = toVmi(parent);
+                        for (ClassTypeInfo grandParent : vmi.getVirtualBases().keySet()) {
+                            subSet.add(toSuper(grandParent));
+                        }
+                    } else {
+                        // __si_class_type_info is virtual iff it's parent is virtual
+                        if (base.isVirtual()) {
+                            subSet.add(toSuper(parent.getParentModels()[0]));
+                        }
                     }
                 }
-            }
-        } return baseMap;
+            } return baseMap;
     }
 
     private static void shrinkStruct(DataType dt, int length) {
@@ -169,15 +167,16 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
     }
 
-    private void addBase(Structure struct, BaseClassTypeInfoModel base, int maxLength) {
-        AbstractClassTypeInfoModel parent = base.getClassModel();
-        Structure parentStruct = parent.getSuperClassDataType();
-        shrinkStruct(parentStruct, maxLength);
-        replaceComponent(struct, parentStruct, SUPER+base.getName(), base.getOffset());
+    private void addBase(Structure struct, BaseClassTypeInfoModel base, int maxLength)
+        throws InvalidDataTypeException {
+            AbstractClassTypeInfoModel parent = base.getClassModel();
+            Structure parentStruct = parent.getSuperClassDataType();
+            shrinkStruct(parentStruct, maxLength);
+            replaceComponent(struct, parentStruct, SUPER+base.getName(), base.getOffset());
     }
 
     private void addVirtualBase(Structure struct, AbstractClassTypeInfoModel base,
-        int offset, int maxLength) {
+        int offset, int maxLength) throws InvalidDataTypeException {
             Structure parentStruct = base.getSuperClassDataType();
             shrinkStruct(parentStruct, maxLength);
             replaceComponent(struct, parentStruct, SUPER+base.getName(), offset);
@@ -195,16 +194,14 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return (AbstractClassTypeInfoModel) type;
     }
 
-    private void addBases(Structure struct) {
+    private void addBases(Structure struct) throws InvalidDataTypeException {
         Set<AbstractClassTypeInfoModel> subBases = new HashSet<>();
         VtableModel vtable = (VtableModel) getVtable();
-        if (vtable == null || !vtable.isValid()) {
-            return;
-        }
         long[] offsets = vtable.getOffsetArray();
         Arrays.sort(offsets);
         int i = 0;
-        Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> vBases = getVirtualBases();
+        Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> vBases =
+            getVirtualBases();
         for (int j = 0; j < bases.length; j++) {
             BaseClassTypeInfoModel base = bases[j];
             AbstractClassTypeInfoModel parent = base.getClassModel();
@@ -232,10 +229,9 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     @Override
-    public Structure getClassDataType(boolean repopulate) {
-        if (!isValid) {
-            return null;
-        } if (getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
+    public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
+        validate();
+        if (getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
             DataType result = TypeInfoUtils.getDataType(program, getTypeName());
             if (result instanceof DynamicDataType) {
                 return (Structure) ((VmiClassTypeInfoDataType) result).getReplacementBaseType();
@@ -269,51 +265,51 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     @Override
-    protected Structure getSuperClassDataType() {
+    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
         return getSuperClassDataType(false, null);
     }
     
-    private Structure getSuperClassDataType(boolean repopulate, DataType classDt) {
-        if (!isValid) {
-            return null;
-        }
-        Structure struct = super.getSuperClassDataType();
-        if (!ClassTypeInfoUtils.isPlaceholder(struct) &&!repopulate) {
-            return struct;
-        }
-        struct = new StructureDataType(getName(), 0, program.getDataTypeManager());
-        if (classDt != null) {
-            struct.replaceWith(classDt);
-        } else {
-            struct.replaceWith(getClassDataType());
-        }
-        setSuperStructureCategoryPath(struct);
-        Set<String> parents = new HashSet<>();
-        for (Map.Entry<AbstractClassTypeInfoModel,Set<AbstractClassTypeInfoModel>> parent :
-            getVirtualBases().entrySet()) {
-                parents.add(SUPER+parent.getKey().getName());
-                for (ClassTypeInfo grandparent : parent.getValue()) {
-                    parents.add(SUPER+grandparent.getName());
+    private Structure getSuperClassDataType(boolean repopulate, DataType classDt)
+        throws InvalidDataTypeException {
+            validate();
+            Structure struct = super.getSuperClassDataType();
+            if (!ClassTypeInfoUtils.isPlaceholder(struct) &&!repopulate) {
+                return struct;
             }
-        }
-        DataTypeComponent[] comps = struct.getComponents();
-        for (DataTypeComponent comp : comps) {
-            if (parents.contains(comp.getFieldName())) {
-                int ordinal = comp.getOrdinal();
-                int[] ordinals = IntStream.rangeClosed(ordinal, comps.length - 1).toArray();
+            struct = new StructureDataType(getName(), 0, program.getDataTypeManager());
+            if (classDt != null) {
+                struct.replaceWith(classDt);
+            } else {
+                struct.replaceWith(getClassDataType());
+            }
+            setSuperStructureCategoryPath(struct);
+            Set<String> parents = new HashSet<>();
+            for (Map.Entry<AbstractClassTypeInfoModel,Set<AbstractClassTypeInfoModel>> parent :
+                getVirtualBases().entrySet()) {
+                    parents.add(SUPER+parent.getKey().getName());
+                    for (ClassTypeInfo grandparent : parent.getValue()) {
+                        parents.add(SUPER+grandparent.getName());
+                }
+            }
+            DataTypeComponent[] comps = struct.getComponents();
+            for (DataTypeComponent comp : comps) {
+                if (parents.contains(comp.getFieldName())) {
+                    int ordinal = comp.getOrdinal();
+                    int[] ordinals = IntStream.rangeClosed(ordinal, comps.length - 1).toArray();
+                    struct.delete(ordinals);
+                    break;
+                }
+            }
+            comps = struct.getDefinedComponents();
+            if (comps.length > 0) {
+                int ordinal = comps[comps.length-1].getOrdinal();
+                int[] ordinals = IntStream.rangeClosed(
+                    ordinal+1, struct.getNumComponents() - 1).toArray();
                 struct.delete(ordinals);
-                break;
             }
-        }
-        comps = struct.getDefinedComponents();
-        if (comps.length > 0) {
-            int ordinal = comps[comps.length-1].getOrdinal();
-            int[] ordinals = IntStream.rangeClosed(ordinal+1, struct.getNumComponents() - 1).toArray();
-            struct.delete(ordinals);
-        }
-        addVptr(struct);
-        fixComponents(struct);
-        return resolveStruct(struct);
+            addVptr(struct);
+            fixComponents(struct);
+            return resolveStruct(struct);
     }
 
     private boolean validFieldName(String name) {

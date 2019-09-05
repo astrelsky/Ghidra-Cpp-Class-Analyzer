@@ -10,7 +10,7 @@ public class VtableModelTest extends AbstractGenericTest {
 
     public void test(AbstractTypeInfoProgramBuilder builder) throws Exception {
         for (VtableModel vtable : builder.getVtableList()) {
-            assert vtable.isValid();
+            vtable.validate();
         }
     }
 

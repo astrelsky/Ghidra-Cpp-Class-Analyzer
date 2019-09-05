@@ -19,6 +19,7 @@ import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.data.Dynamic;
+import ghidra.program.model.data.InvalidDataTypeException;
 
 import javax.lang.model.element.Modifier;
 
@@ -356,7 +357,7 @@ public class TestBuilder extends GhidraScript {
         return null;
     }
 
-    private int getVtableLength(VtableModel vtable) {
+    private int getVtableLength(VtableModel vtable) throws InvalidDataTypeException {
         DataType dt = vtable.getDataType();
         if (dt instanceof Dynamic) {
             MemoryBufferImpl buf = new MemoryBufferImpl(currentProgram.getMemory(), vtable.getAddress());
@@ -370,7 +371,10 @@ public class TestBuilder extends GhidraScript {
         SymbolTable table = currentProgram.getSymbolTable();
         for (Symbol symbol : table.getSymbols(TypeInfo.SYMBOL_NAME)) {
             TypeInfo type = getTypeInfo(currentProgram, symbol.getAddress());
-            if (!type.isValid()) {
+            try {
+                type.validate();
+            } catch (InvalidDataTypeException e) {
+                printerr("TypeInfo at "+symbol.getAddress().toString()+" is invalid");
                 continue;
             }
             DataType dt = type.getDataType();
@@ -385,7 +389,10 @@ public class TestBuilder extends GhidraScript {
             if (type instanceof ClassTypeInfo) {
                 ClassTypeInfo classType = (ClassTypeInfo) type;
                 VtableModel vtable = (VtableModel) classType.getVtable();
-                if (!vtable.isValid()) {
+                try {
+                    vtable.validate();
+                } catch (InvalidDataTypeException e) {
+                    printerr(type.getName()+"'s vtable is invalid");
                     continue;
                 }
                 int vtableLength = getVtableLength(vtable);

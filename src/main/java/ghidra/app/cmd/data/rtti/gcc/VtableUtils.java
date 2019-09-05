@@ -4,14 +4,13 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
-import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -159,7 +158,7 @@ public class VtableUtils {
      * 
      * @param program program the vtable is in.
      * @param address address of the start of the vtable.
-     * @return the pointed to TypeInfo Model.
+     * @return the pointed to TypeInfo Model or null if none found.
      */
     public static ClassTypeInfo getTypeInfo(Program program, Address address) {
         DataTypeManager dtm = program.getDataTypeManager();
@@ -169,7 +168,8 @@ public class VtableUtils {
         Address currentAddress = address.add(ptrDiffSize * numPtrDiffs);
         if (TypeInfoUtils.isTypeInfoPointer(program, currentAddress)) {
             return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, getAbsoluteAddress(program, currentAddress));
-        } return ClassTypeInfo.INVALID;
+        }
+        return null;
     }
 
     /**
@@ -217,67 +217,39 @@ public class VtableUtils {
      * @param program
      * @param vtable
      * @return the VttModel or invalid if none.
+     * @throws InvalidDataTypeException
      */
-    public static VttModel getVttModel(Program program, VtableModel vtable) {
-        if (!vtable.isValid()) {
-            return VttModel.INVALID;
-        } else if (!(vtable.getTypeInfo() instanceof VmiClassTypeInfoModel)) {
-            return VttModel.INVALID;
-        }
-        // The VTT is usually at the end of the vtable.
-        Address nextDataAddress = vtable.getAddress().add(vtable.getLength());
-        VttModel vtt = new VttModel(program, nextDataAddress);
-        if (vtt.isValid()) {
-            return vtt;
-        }
-        Address[] tableAddresses = vtable.getTableAddresses();
-        if (tableAddresses.length == 0) {
-            return VttModel.INVALID;
-        }
-        Set<Address> references = GnuUtils.getDirectDataReferences(program, tableAddresses[0]);
-        if (references.isEmpty()) {
-            return VttModel.INVALID;
-        }
-        // VTT typically follows the vtable
-        Address address = vtable.getAddress().add(vtable.getLength());
-        if (references.contains(address)) {
-            vtt = new VttModel(program, address);
+    public static VttModel getVttModel(Program program, VtableModel vtable)
+        throws InvalidDataTypeException {
+            // The VTT is usually at the end of the vtable.
+            Address nextDataAddress = vtable.getAddress().add(vtable.getLength());
+            VttModel vtt = new VttModel(program, nextDataAddress);
             if (vtt.isValid()) {
                 return vtt;
             }
-        }
-        Iterator<Address> refIterator = references.iterator();
-        while (refIterator.hasNext()) {
-            vtt = new VttModel(program, refIterator.next());
-            if (vtt.isValid()) {
-                return vtt;
+            Address[] tableAddresses = vtable.getTableAddresses();
+            if (tableAddresses.length == 0) {
+                return VttModel.INVALID;
             }
-        }
-        return VttModel.INVALID;
-    }
-
-    /**
-     * Sorts the list of vtables by order of least derived.
-     * 
-     * @param program
-     * @param vtables
-     */
-    public static void sortByLeastDerived(Program program, List<VtableModel> vtables) {
-        vtables.sort((a, b) -> Integer.compare(getRefCount(program, a), getRefCount(program, b)));
-    }
-
-    /**
-     * Sorts the list of vtables by order of most derived.
-     * 
-     * @param program
-     * @param vtables
-     */
-    public static void sortByMostDerived(Program program, List<VtableModel> vtables) {
-        vtables.sort((b, a) -> Integer.compare(getRefCount(program, a), getRefCount(program, b)));
-    }
-
-    private static int getRefCount(Program program, VtableModel vtable) {
-        ReferenceManager manager = program.getReferenceManager();
-        return manager.getReferenceCountTo(vtable.getTableAddresses()[0]);
+            Set<Address> references = GnuUtils.getDirectDataReferences(program, tableAddresses[0]);
+            if (references.isEmpty()) {
+                return VttModel.INVALID;
+            }
+            // VTT typically follows the vtable
+            Address address = vtable.getAddress().add(vtable.getLength());
+            if (references.contains(address)) {
+                vtt = new VttModel(program, address);
+                if (vtt.isValid()) {
+                    return vtt;
+                }
+            }
+            Iterator<Address> refIterator = references.iterator();
+            while (refIterator.hasNext()) {
+                vtt = new VttModel(program, refIterator.next());
+                if (vtt.isValid()) {
+                    return vtt;
+                }
+            }
+            return VttModel.INVALID;
     }
 }

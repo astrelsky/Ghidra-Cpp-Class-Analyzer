@@ -2,19 +2,20 @@ package ghidra.app.cmd.data.rtti.gcc.vtable;
 
 import java.util.ArrayList;
 
-import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.docking.settings.Settings;
 import ghidra.program.model.data.DataType;
-import ghidra.program.model.mem.DumbMemBufferImpl;
-import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
+import ghidra.program.model.mem.DumbMemBufferImpl;
+import ghidra.program.model.mem.MemBuffer;
+import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.Vftable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.vtable.VtablePrefixDataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DynamicDataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeDisplayOptions;
 import ghidra.program.model.data.ReadOnlyDataTypeComponent;
@@ -115,8 +116,18 @@ public class VtableDataType extends DynamicDataType {
 
     @Override
     public Object getValue(MemBuffer buf, Settings settings, int length) {
-        return model.isValid() ?
-            model : new VtableModel(buf.getMemory().getProgram(), buf.getAddress());
+        try {
+            model.validate();
+            return model;
+        } catch (InvalidDataTypeException | NullPointerException e) {
+            VtableModel vtable = 
+                new VtableModel(buf.getMemory().getProgram(), buf.getAddress());
+            try {
+                vtable.validate();
+                return vtable;
+            } catch (InvalidDataTypeException e2) {}
+        }
+        return null;
     }
     
     @Override

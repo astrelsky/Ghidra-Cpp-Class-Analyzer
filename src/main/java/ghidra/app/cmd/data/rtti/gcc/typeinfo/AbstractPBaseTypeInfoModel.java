@@ -7,6 +7,7 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Enum;
 import ghidra.program.model.data.EnumDataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
@@ -175,10 +176,8 @@ public abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
         return testFlags(Mask.NO_EXCEPT);
     }
 
-    public TypeInfo getPointee() {
-        if (!isValid()) {
-            return null;
-        }
+    public TypeInfo getPointee() throws InvalidDataTypeException {
+        validate();
         Structure struct = (Structure) getDataType();
         DataTypeComponent comp;
         if (this instanceof PBaseTypeInfoModel) {
@@ -192,12 +191,11 @@ public abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     @Override
-    public DataType getRepresentedDataType() {
-        if (isValid()) {
-            if (dataType == null) {
-                DataType pointeeType = parseDataType(getPointee().getTypeName());
-                dataType = program.getDataTypeManager().getPointer(pointeeType);
-            }
+    public DataType getRepresentedDataType() throws InvalidDataTypeException {
+        validate();
+        if (dataType == null) {
+            DataType pointeeType = parseDataType(getPointee().getTypeName());
+            dataType = program.getDataTypeManager().getPointer(pointeeType);
         }
         return dataType;
     }

@@ -8,6 +8,7 @@ import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.Structure;
 
@@ -21,25 +22,13 @@ public class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     public static final String ID_STRING = "N10__cxxabiv117__class_type_infoE";
 
-    private DataType typeInfoDataType;
-
-    @SuppressWarnings("hiding")
-    public static final ClassTypeInfo INVALID = new ClassTypeInfoModel();
-
-    private ClassTypeInfoModel() {
-        super();
-    }
-
     public ClassTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 
     @Override
     public DataType getDataType() {
-        if (typeInfoDataType == null) {
-            typeInfoDataType = getDataType(STRUCTURE_NAME, DESCRIPTION);
-        }
-        return isValid() ? typeInfoDataType : null;
+        return getDataType(STRUCTURE_NAME, DESCRIPTION);
     }
 
     /**
@@ -74,10 +63,9 @@ public class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     @Override
-    public Structure getClassDataType(boolean repopulate) {
-        if (!isValid) {
-            return null;
-        } if (getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
+    public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
+        validate();
+        if (getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
             return (Structure) getDataType();
         }
         Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(
@@ -90,7 +78,7 @@ public class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     @Override
-    protected Structure getSuperClassDataType() {
+    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
         return getClassDataType();
     }
 }

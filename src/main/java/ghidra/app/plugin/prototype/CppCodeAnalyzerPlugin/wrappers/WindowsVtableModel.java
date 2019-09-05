@@ -8,7 +8,7 @@ import ghidra.app.cmd.data.rtti.VfTableModel;
 import ghidra.app.cmd.data.rtti.Vftable;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Program;
@@ -18,20 +18,16 @@ public class WindowsVtableModel implements Vftable {
     private Program program;
     private List<VfTableModel> vftables;
     private ClassTypeInfo type;
-    private ClassTypeInfo[] parents;
 
     private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 
-    public WindowsVtableModel(Program program, List<Address> addresses,
-        ClassTypeInfo[] parents, ClassTypeInfo type) {
-            this.program = program;
-            this.vftables = new ArrayList<>(addresses.size());
-            this.parents = parents;
-            this.type = type;
-            for (Address address : addresses) {
-                vftables.add(
-                    new VfTableModel(program, address, DEFAULT_OPTIONS));
-            }
+    public WindowsVtableModel(Program program, List<Address> addresses, ClassTypeInfo type) {
+        this.program = program;
+        this.vftables = new ArrayList<>(addresses.size());
+        this.type = type;
+        for (Address address : addresses) {
+            vftables.add(new VfTableModel(program, address, DEFAULT_OPTIONS));
+        }
     }
 
     @Override
@@ -40,8 +36,10 @@ public class WindowsVtableModel implements Vftable {
     }
 
     @Override
-    public boolean isValid() {
-        return getTypeInfo().isValid();
+    public void validate() throws InvalidDataTypeException {
+        for (VfTableModel vftable : vftables) {
+            vftable.validate();
+        }
     }
 
     @Override
@@ -86,17 +84,4 @@ public class WindowsVtableModel implements Vftable {
         }
         return false;
     }
-
-    @Override
-    public ClassTypeInfo getBaseClassTypeInfo(int i) {
-		if (i < parents.length) {
-            return parents[i];
-        }
-        return null;
-	}
-
-	@Override
-	public DataType getDataType() {
-		throw new UnsupportedOperationException();
-	}
 }

@@ -15,6 +15,7 @@ import ghidra.util.task.TaskMonitor;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypePath;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.TerminatedStringDataType;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
@@ -32,14 +33,14 @@ import static ghidra.app.util.demangler.DemanglerUtil.demangle;
 
 public class TypeInfoUtils {
 
-    private TypeInfoUtils() {}
+    private TypeInfoUtils() {
+    }
 
     private static Data createString(Program program, Address address) {
         try {
             DataType dt = new TerminatedStringDataType();
-            return createData(
-                program, address, dt, -1, false, ClearDataMode.CLEAR_ALL_CONFLICT_DATA);
-        } catch(CodeUnitInsertionException e) {
+            return createData(program, address, dt, -1, false, ClearDataMode.CLEAR_ALL_CONFLICT_DATA);
+        } catch (CodeUnitInsertionException e) {
             return null;
         }
     }
@@ -63,8 +64,10 @@ public class TypeInfoUtils {
         }
         if (data != null && data.hasStringValue()) {
             String result = (String) data.getValue();
-            /* Some anonymous namespaces typename strings start with *
-               Unfortunately the * causes issues with demangling so exclude it */
+            /*
+             * Some anonymous namespaces typename strings start with * Unfortunately the *
+             * causes issues with demangling so exclude it
+             */
             return result.startsWith("*") ? result.substring(1) : result;
         }
         return "";
@@ -76,12 +79,14 @@ public class TypeInfoUtils {
      * @param Program     the program to be searched.
      * @param String      the typename of the typeinfo to search for.
      * @param TaskMonitor the active task monitor.
-     * @return the TypeInfo with the corresponding typename or invalid if it doesn't exist.
+     * @return the TypeInfo with the corresponding typename or invalid if it doesn't
+     *         exist.
+     * @throws InvalidDataTypeException
      */
     public static TypeInfo findTypeInfo(Program program, String typename, TaskMonitor monitor)
         throws CancelledException {
-            return findTypeInfo(
-                program, program.getAddressFactory().getAddressSet(), typename, monitor);
+            return findTypeInfo(program, program.getAddressFactory().getAddressSet(),
+                                typename, monitor);
     }
 
     /**
@@ -91,7 +96,8 @@ public class TypeInfoUtils {
      * @param AddressSetView the address set to be searched.
      * @param String         the typename to search for.
      * @param TaskMonitor    the active task monitor.
-     * @return the TypeInfo with the corresponding typename or invalid if it doesn't exist.
+     * @return the TypeInfo with the corresponding typename or null if it doesn't
+     *         exist.
      */
     public static TypeInfo findTypeInfo(Program program, AddressSetView set, String typename,
         TaskMonitor monitor) throws CancelledException {
@@ -99,20 +105,27 @@ public class TypeInfoUtils {
                 program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
             List<Address> stringAddress = findTypeString(program, set, typename, monitor);
             if (stringAddress.isEmpty() || stringAddress.size() > 1) {
-                return TypeInfo.INVALID;
+                return null;
             }
             Set<Address> references = ProgramMemoryUtil.findDirectReferences(program,
                 pointerAlignment, stringAddress.get(0), monitor);
             if (references.isEmpty()) {
-                return TypeInfo.INVALID;
+                return null;
             }
             for (Address reference : references) {
                 Address typeinfoAddress = reference.subtract(program.getDefaultPointerSize());
                 TypeInfo typeinfo = TypeInfoFactory.getTypeInfo(program, typeinfoAddress);
-                if (typeinfo.isValid() && typeinfo.getTypeName().equals(typename)) {
-                    return typeinfo;
+                if (typeinfo == null) {
+                    continue;
                 }
-            } return TypeInfo.INVALID;
+                try {
+                    if (typeinfo.getTypeName().equals(typename)) {
+                        return typeinfo;
+                    }
+                } catch (InvalidDataTypeException e) {
+                    continue;
+                }
+            } return null;
     }
 
     private static List<Address> findTypeString(Program program, AddressSetView set,
@@ -145,7 +158,8 @@ public class TypeInfoUtils {
         if (baseVtableAddress == null || baseVtableAddress.getOffset() == 0) {
             return "";
         }
-        Address baseTypeInfoAddress = getAbsoluteAddress(program, baseVtableAddress.subtract(POINTER_SIZE));
+        Address baseTypeInfoAddress = getAbsoluteAddress(
+            program, baseVtableAddress.subtract(POINTER_SIZE));
         if (baseTypeInfoAddress == null) {
             return "";
         }
@@ -219,8 +233,9 @@ public class TypeInfoUtils {
      * 
      * @param TypeInfo
      * @return the TypeInfo represented datatype's DataTypePath.
+     * @throws InvalidDataTypeException
      */
-    public static DataTypePath getDataTypePath(TypeInfo type) {
+    public static DataTypePath getDataTypePath(TypeInfo type) throws InvalidDataTypeException {
         Namespace ns = type.getNamespace().getParentNamespace();
         String path;
         if (ns.isGlobal()) {

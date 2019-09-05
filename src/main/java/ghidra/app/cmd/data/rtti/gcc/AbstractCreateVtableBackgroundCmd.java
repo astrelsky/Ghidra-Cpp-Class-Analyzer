@@ -13,12 +13,13 @@ import ghidra.app.util.demangler.DemanglerOptions;
 import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.data.DataUtilities;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.util.exception.CancelledException;
 
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
 
-public abstract class AbstractCreateVtableBackgroundCommand extends BackgroundCommand {
+public abstract class AbstractCreateVtableBackgroundCmd extends BackgroundCommand {
 
     private VtableModel vtable;
     private TaskMonitor monitor;
@@ -26,7 +27,7 @@ public abstract class AbstractCreateVtableBackgroundCommand extends BackgroundCo
 
     private static final DemanglerOptions OPTIONS = new DemanglerOptions();
 
-    protected AbstractCreateVtableBackgroundCommand(VtableModel vtable, String name) {
+    protected AbstractCreateVtableBackgroundCmd(VtableModel vtable, String name) {
         super(name, true, true, false);
         this.vtable = vtable;
     }
@@ -65,7 +66,8 @@ public abstract class AbstractCreateVtableBackgroundCommand extends BackgroundCo
             }
             createData(vtable.getDataType());
             return createAssociatedData();
-        } catch (CodeUnitInsertionException e) {
+        } catch (CodeUnitInsertionException | InvalidDataTypeException e) {
+            Msg.error(this, e);
             return false;
         }
     }
@@ -81,7 +83,7 @@ public abstract class AbstractCreateVtableBackgroundCommand extends BackgroundCo
             program, vtable.getAddress(), dt, 0, false, ClearDataMode.CLEAR_ALL_CONFLICT_DATA);
     }
 
-    protected abstract String getMangledString();
+    protected abstract String getMangledString() throws InvalidDataTypeException;
     protected abstract String getSymbolName();
 
     private boolean createAssociatedData() {

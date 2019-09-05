@@ -12,6 +12,7 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.listing.Data;
@@ -38,14 +39,11 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
 
     private VtableModel vtable = null;
 
-    protected AbstractClassTypeInfoModel() {
-        super();
-    }
     protected AbstractClassTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 
-    private static String getUniqueTypeName(ClassTypeInfo type) {
+    private static String getUniqueTypeName(ClassTypeInfo type) throws InvalidDataTypeException {
         StringBuilder builder = new StringBuilder(type.getTypeName());
         for (ClassTypeInfo parent : type.getParentModels()) {
             builder.append(parent.getTypeName());
@@ -54,12 +52,12 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
     }
 
     @Override
-    public String getUniqueTypeName() {
+    public String getUniqueTypeName() throws InvalidDataTypeException {
         return getUniqueTypeName(this);
     }
 
     @Override
-    public VtableModel getVtable(TaskMonitor monitor) {
+    public VtableModel getVtable(TaskMonitor monitor) throws InvalidDataTypeException {
         if (vtable != null) {
             return vtable;
         }
@@ -68,8 +66,11 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
             Data data = program.getListing().getDataAt(symbol.getAddress());
             if (data != null && data.getDataType() instanceof VtableDataType) {
                 vtable = (VtableModel) data.getValue();
-                if (vtable.isValid()) {
+                try {
+                    vtable.validate();
                     return vtable;
+                } catch (InvalidDataTypeException e) {
+                    continue;
                 }
             }
         }
@@ -82,11 +83,8 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
     }
 
     @Override
-    public boolean isAbstract() {
-        if(!getVtable().isValid()) {
-            return false;
-        }
-        for (Function[] functionTable : vtable.getFunctionTables()) {
+    public boolean isAbstract() throws InvalidDataTypeException {
+        for (Function[] functionTable : getVtable().getFunctionTables()) {
             for (Function function : functionTable) {
                 if (function == null || function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
                     return true;
@@ -108,17 +106,18 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         } return (GhidraClass) namespace;
     }
 
-    protected void setSuperStructureCategoryPath(Structure struct) {
-        try {
-            struct.setCategoryPath(getClassDataType().getCategoryPath());
-            struct.setName(SUPER+struct.getName());
-        } catch (InvalidNameException | DuplicateNameException e) {
-            Msg.error(
-                this, "Failed to change placeholder struct "+getName()+"'s CategoryPath", e);
-        }
+    protected void setSuperStructureCategoryPath(Structure struct)
+        throws InvalidDataTypeException {
+            try {
+                struct.setCategoryPath(getClassDataType().getCategoryPath());
+                struct.setName(SUPER+struct.getName());
+            } catch (InvalidNameException | DuplicateNameException e) {
+                Msg.error(
+                    this, "Failed to change placeholder struct "+getName()+"'s CategoryPath", e);
+            }
     }
 
-    protected Structure getSuperClassDataType() {
+    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
         DataTypeManager dtm = program.getDataTypeManager();
         DataType struct = dtm.getDataType(getDataTypePath(this).getCategoryPath(), SUPER+getName());
         if (struct != null) {
@@ -146,21 +145,24 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
     }
 
-    protected void addVptr(Structure struct) {
+    protected void addVptr(Structure struct) throws InvalidDataTypeException {
         DataTypeComponent comp = struct.getComponentAt(0);
         if (comp == null || isUndefined(comp.getDataType())) {
             Vftable subVtable = getVtable();
-            if (subVtable != null && subVtable.isValid()) {
-                int pointerSize = program.getDefaultPointerSize();
-                DataTypeManager dtm = program.getDataTypeManager();
-                DataType vptr = dtm.getPointer(VoidDataType.dataType);
-                if (struct.getLength() <= 1) {
-                    struct.add(
-                        vptr, pointerSize, "_vptr", null);
-                } else {
-                    struct.replace(0,
-                        vptr, pointerSize, "_vptr", null);
-                }
+            try {
+                subVtable.validate();
+            } catch (InvalidDataTypeException e) {
+                return;
+            }
+            int pointerSize = program.getDefaultPointerSize();
+            DataTypeManager dtm = program.getDataTypeManager();
+            DataType vptr = dtm.getPointer(VoidDataType.dataType);
+            if (struct.getLength() <= 1) {
+                struct.add(
+                    vptr, pointerSize, "_vptr", null);
+            } else {
+                struct.replace(0,
+                    vptr, pointerSize, "_vptr", null);
             }
         }
     }
@@ -171,7 +173,7 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
     }
 
     @Override
-    public DataType getRepresentedDataType() {
+    public DataType getRepresentedDataType() throws InvalidDataTypeException {
         return getClassDataType(false);
     }
 }

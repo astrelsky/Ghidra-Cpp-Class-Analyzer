@@ -22,6 +22,8 @@ import ghidra.program.model.data.DataUtilities.ClearDataMode;
 
 public class CreateVttBackgroundCommand extends BackgroundCommand {
 
+    private static final String NAME = CreateVttBackgroundCommand.class.getSimpleName();
+
     private VttModel vtt;
     private ClassTypeInfo child;
     private TaskMonitor monitor;
@@ -32,7 +34,7 @@ public class CreateVttBackgroundCommand extends BackgroundCommand {
     private static final DemanglerOptions OPTIONS = new DemanglerOptions();
 
     public CreateVttBackgroundCommand(VttModel vtt, ClassTypeInfo child) {
-        super(child.getGhidraClass().getName(), true, true, false);
+        super(NAME, true, true, false);
         this.vtt = vtt;
         this.child = child;
     }
@@ -74,8 +76,8 @@ public class CreateVttBackgroundCommand extends BackgroundCommand {
     private boolean createAssociatedData() {
         SymbolTable table = program.getSymbolTable();
         for (VtableModel model : vtt.getConstructionVtableModels()) {
-            CreateConstructionVtableBackgroundCommand cmd =
-                new CreateConstructionVtableBackgroundCommand(model, child);
+            CreateConstructionVtableBackgroundCmd cmd =
+                new CreateConstructionVtableBackgroundCmd(model, child);
             if (!cmd.applyTo(program, monitor)) {
                 return false;
             }

@@ -8,6 +8,7 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.FunctionDefinitionDataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
@@ -67,7 +68,7 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
         return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, pointee);
     }
 
-    public String getFunctionSignature() {
+    public String getFunctionSignature() throws InvalidDataTypeException {
         FunctionDefinitionDataType dataType =
                 (FunctionDefinitionDataType) ((Pointer) getRepresentedDataType()).getDataType();
         DemangledFunctionReference method = getDemangledFunction(dataType.getPrototypeString());

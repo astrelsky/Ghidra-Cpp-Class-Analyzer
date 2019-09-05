@@ -3,15 +3,16 @@ package ghidra.app.cmd.data.rtti.gcc;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vftable;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
@@ -54,9 +55,14 @@ public class VttModel {
                     elementCount = 0;
                 }
                 validAddresses = new HashSet<>();
-                for (ClassTypeInfo base : typeinfo.getParentModels()) {
-                    validAddresses.add(base.getAddress());
-                } validAddresses.add(typeinfo.getAddress());
+                try {
+                    for (ClassTypeInfo base : typeinfo.getParentModels()) {
+                        validAddresses.add(base.getAddress());
+                    }
+                    validAddresses.add(typeinfo.getAddress());
+                } catch (InvalidDataTypeException e) {
+                    Msg.error(this, "Error fething base parent models.", e);
+                }
             }
         } else {
             elementCount = 0;
@@ -103,14 +109,15 @@ public class VttModel {
     /**
      * Gets the ClassTypeInfo at the specified ordinal.
      * @param ordinal
-     * @return the ClassTypeInfo at the specified ordinal.
+     * @return the ClassTypeInfo at the specified ordinal or null if none exists.
      */
     public ClassTypeInfo getTypeInfo(int ordinal) {
         Address pointee = getElementPointee(ordinal);
         if (pointee != null) {
             Address typeAddress = getAbsoluteAddress(program, pointee);
             return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
-        } return ClassTypeInfoModel.INVALID;
+        }
+        return null;
     }
 
     private Address getElementPointee(int ordinal) {
@@ -179,7 +186,13 @@ public class VttModel {
     private int getVTTableCount() {
         int tableSize = 0;
         Address currentAddress = address;
-        Set<ClassTypeInfo> validTypes = new HashSet<>(Arrays.asList(typeinfo.getParentModels()));
+        ClassTypeInfo[] parentModels;
+        try {
+            parentModels = typeinfo.getParentModels();
+        } catch (InvalidDataTypeException e) {
+            return 0;
+        }
+        Set<ClassTypeInfo> validTypes = new HashSet<>(Arrays.asList(parentModels));
         validTypes.add(typeinfo);
         while (true) {
             if (!GnuUtils.isValidPointer(program, currentAddress)) {
@@ -198,9 +211,6 @@ public class VttModel {
                 continue;
             }
             VtableModel cvtable = new VtableModel(program, getTIPointer(currentAddress), subCount);
-            if (!cvtable.isValid()) {
-                break;
-            }
             tableSize += subCount;
             currentAddress = address.add(tableSize * pointerSize);
             constructionModels.add(cvtable);

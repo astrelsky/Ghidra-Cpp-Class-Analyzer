@@ -34,22 +34,18 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
             return false;
         }
         this.program = (Program) obj;
-		Vftable vtable = typeinfo.getVtable();
-        if (vtable.isValid()) {
-            try {
-                setupFunctions(vtable);
-            } catch (Exception e) {
-                Msg.error(this, e);
-            }
+        try {
+            Vftable vtable = typeinfo.getVtable();
+            setupFunctions(vtable);
+            return true;
+        } catch (Exception e) {
+            Msg.error(this, e);
         }
         return true;
     }
     
     private void setupFunctions(Vftable vftable) throws Exception {
         ClassTypeInfo type = vftable.getTypeInfo();
-        if (!type.isValid()) {
-            return;
-        }
         Function[][] functionTables = vftable.getFunctionTables();
         for (Function[] functionTable : functionTables) {
             for (Function function : functionTable) {

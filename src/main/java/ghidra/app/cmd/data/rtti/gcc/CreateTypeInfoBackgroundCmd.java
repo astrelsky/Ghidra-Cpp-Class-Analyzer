@@ -11,6 +11,7 @@ import ghidra.program.model.symbol.Symbol;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.program.model.data.DataUtilities;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.util.exception.CancelledException;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.util.demangler.DemangledObject;
@@ -22,6 +23,8 @@ import static ghidra.program.model.data.DataUtilities.ClearDataMode.CLEAR_ALL_CO
 
 
 public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
+
+    private static final String NAME = CreateTypeInfoBackgroundCmd.class.getSimpleName();
 
     private TypeInfo typeInfo;
     private TaskMonitor monitor;
@@ -44,7 +47,7 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
      * @param address the address where the data should be created.
      */
     public CreateTypeInfoBackgroundCmd(TypeInfo typeInfo) {
-        super(typeInfo.getName(), true, true, false);
+        super(NAME, true, true, false);
         this.typeInfo = typeInfo;
     }
 
@@ -58,12 +61,13 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
             }
             program = (Program) obj;
             monitor = taskMonitor;
-            if (!typeInfo.isValid()) {
-                return false;
-            }
+            typeInfo.validate();
             return doApplyTo();
         } catch (CancelledException e) {
             setStatusMsg("User cancelled " + getName() + ".");
+            return false;
+        } catch (InvalidDataTypeException e) {
+            setStatusMsg(e.getMessage());
             return false;
         }
     }
@@ -72,8 +76,7 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
         return exception;
     }
 
-    private boolean doApplyTo() throws CancelledException {
-
+    private boolean doApplyTo() throws CancelledException, InvalidDataTypeException {
         try {
             monitor.checkCanceled();
             typename = typeInfo.getTypeName();

@@ -17,6 +17,7 @@ import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
@@ -62,7 +63,7 @@ public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
         this.fManager = program.getFunctionManager();
         try {
             return analyzeVtable(type.getVtable());
-        } catch (CancelledException e) {
+        } catch (CancelledException | InvalidDataTypeException e) {
             return false;
         }
     }
@@ -84,48 +85,52 @@ public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
         return functions;
     }
 
-    private void detectVirtualDestructors(Function destructor, Vftable vtable) {
-        Function[][] fTable = vtable.getFunctionTables();
-        if (fTable.length == 0) {
-            return;
-        }
-        for (Function[] functionTable : vtable.getFunctionTables()) {
-            if (functionTable.length == 0) {
-                continue;
+    private void detectVirtualDestructors(Function destructor, Vftable vtable)
+        throws InvalidDataTypeException {
+            Function[][] fTable = vtable.getFunctionTables();
+            if (fTable.length == 0) {
+                return;
             }
-            Set<Function> destructors = getThunks(destructor);
-            Function vDestructor = VftableAnalysisUtils.recurseThunkFunctions(
-                program, functionTable[0].getThunkedFunction(true));
-            Function calledFunction = getFirstCalledFunction(vDestructor);
-            if (calledFunction == null) {
-                continue;
-            }
-            if (destructors.contains(calledFunction)) {
-                try {
-                    ClassTypeInfoUtils.getClassFunction(program, type, vDestructor.getEntryPoint());
-                    vDestructor.setName(VECTOR_DESTRUCTOR, SourceType.IMPORTED);
+            for (Function[] functionTable : vtable.getFunctionTables()) {
+                if (functionTable.length == 0) {
                     continue;
-                } catch (Exception e) {
-                    Msg.error(this, "Failed to set "+VECTOR_DESTRUCTOR+" function.", e);
+                }
+                Set<Function> destructors = getThunks(destructor);
+                Function vDestructor = VftableAnalysisUtils.recurseThunkFunctions(
+                    program, functionTable[0].getThunkedFunction(true));
+                Function calledFunction = getFirstCalledFunction(vDestructor);
+                if (calledFunction == null) {
+                    continue;
+                }
+                if (destructors.contains(calledFunction)) {
+                    try {
+                        ClassTypeInfoUtils.getClassFunction(
+                            program, type, vDestructor.getEntryPoint());
+                        vDestructor.setName(VECTOR_DESTRUCTOR, SourceType.IMPORTED);
+                        continue;
+                    } catch (Exception e) {
+                        Msg.error(this, "Failed to set "+VECTOR_DESTRUCTOR+" function.", e);
+                    }
+                }
+                Function vBaseDestructor = calledFunction;
+                calledFunction = getFirstCalledFunction(calledFunction);
+                if (calledFunction == null) {
+                    continue;
+                }
+                if (destructors.contains(calledFunction)) {
+                    try {
+                        ClassTypeInfoUtils.getClassFunction(
+                            program, type, vBaseDestructor.getEntryPoint());
+                        ClassTypeInfoUtils.getClassFunction(
+                            program, type, vDestructor.getEntryPoint());
+                        vBaseDestructor.setName(VBASE_DESTRUCTOR, SourceType.IMPORTED);
+                        vDestructor.setName(VECTOR_DESTRUCTOR, SourceType.IMPORTED);
+                        continue;
+                    } catch (Exception e) {
+                        Msg.error(this, "Failed to set "+VBASE_DESTRUCTOR+" function.", e);
+                    }
                 }
             }
-            Function vBaseDestructor = calledFunction;
-            calledFunction = getFirstCalledFunction(calledFunction);
-            if (calledFunction == null) {
-                continue;
-            }
-            if (destructors.contains(calledFunction)) {
-                try {
-                    ClassTypeInfoUtils.getClassFunction(program, type, vBaseDestructor.getEntryPoint());
-                    ClassTypeInfoUtils.getClassFunction(program, type, vDestructor.getEntryPoint());
-                    vBaseDestructor.setName(VBASE_DESTRUCTOR, SourceType.IMPORTED);
-                    vDestructor.setName(VECTOR_DESTRUCTOR, SourceType.IMPORTED);
-                    continue;
-                } catch (Exception e) {
-                    Msg.error(this, "Failed to set "+VBASE_DESTRUCTOR+" function.", e);
-                }
-            }
-        }
     }
 
     private Function getFirstCalledFunction(Function function) {
@@ -153,52 +158,45 @@ public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
         return null;
     }
 
-    private boolean analyzeVtable(Vftable vtable) throws CancelledException {
-        if (vtable == null || !vtable.isValid()) {
-            Msg.info(this, type.getName()+" vtable invalid or null");
-            return false;
-        }
-        Address[] tableAddresses = vtable.getTableAddresses();
-        if (tableAddresses.length == 0) {
-            // no virtual functions, nothing to analyze.
-            return true;
-        }
-        for (Address tableAddress : tableAddresses) {
-            monitor.checkCanceled();
-            Data data = listing.getDataContaining(tableAddress);
-            if (data == null) {
-                continue;
+    private boolean analyzeVtable(Vftable vtable) throws CancelledException,
+        InvalidDataTypeException {
+            Address[] tableAddresses = vtable.getTableAddresses();
+            if (tableAddresses.length == 0) {
+                // no virtual functions, nothing to analyze.
+                return true;
             }
-            ClassTypeInfo typeinfo = vtable.getTypeInfo();
-            
-            List<Address> references = Arrays.asList(XReferenceUtil.getXRefList(data, -1));
-            if (references.isEmpty()) {
-                continue;
-            }
-            Set<Function> functions = new LinkedHashSet<>(references.size());
-            Collections.reverse(references);
-            for (Address fromAddress : references) {
+            for (Address tableAddress : tableAddresses) {
                 monitor.checkCanceled();
-                if(!fManager.isInFunction(fromAddress)) {
+                Data data = listing.getDataContaining(tableAddress);
+                if (data == null) {
                     continue;
                 }
-                Function function = fManager.getFunctionContaining(fromAddress);
-                createConstructor(typeinfo, function.getEntryPoint());
-                functions.add(function);
+                ClassTypeInfo typeinfo = vtable.getTypeInfo();
+                
+                List<Address> references = Arrays.asList(XReferenceUtil.getXRefList(data, -1));
+                if (references.isEmpty()) {
+                    continue;
+                }
+                Set<Function> functions = new LinkedHashSet<>(references.size());
+                Collections.reverse(references);
+                for (Address fromAddress : references) {
+                    monitor.checkCanceled();
+                    if(!fManager.isInFunction(fromAddress)) {
+                        continue;
+                    }
+                    Function function = fManager.getFunctionContaining(fromAddress);
+                    createConstructor(typeinfo, function.getEntryPoint());
+                    functions.add(function);
+                }
+                Function destructor = functions.iterator().next();
+                setDestructor(typeinfo, destructor);
+                detectVirtualDestructors(destructor, vtable);
             }
-            Function destructor = functions.iterator().next();
-            setDestructor(typeinfo, destructor);
-            detectVirtualDestructors(destructor, vtable);
-        }
-        return true;
+            return true;
     }
 
     private void createConstructor(ClassTypeInfo typeinfo, Address address) {
         Function function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
-        if (function == null) {
-            Msg.info(this, "Null "+type.getName()+" Constructor at: "+address);
-            return;
-        }
         setFunction(typeinfo, function, false);
     }
 

@@ -1,12 +1,11 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
-import java.util.Set;
-
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vftable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
+import ghidra.app.cmd.function.CreateThunkFunctionCmd;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Function;
@@ -40,8 +39,8 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
         }
         this.program = (Program) obj;
         this.monitor = monitor;
-		Vftable vtable = typeinfo.getVtable();
-        if (vtable.isValid()) {
+        try {
+            Vftable vtable = typeinfo.getVtable();
             VttModel vtt = null;
             if (vtable instanceof VtableModel) {
                 vtt = VtableUtils.getVttModel(program, (VtableModel) vtable);
@@ -55,20 +54,15 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
                     }
                 }
             }
-            try {
-                setupFunctions(vtable);
-            } catch (Exception e) {
-                Msg.error(this, e);
-            }
+            setupFunctions(vtable);
+        } catch (Exception e) {
+            Msg.error(this, e);
         }
         return true;
     }
     
     private void setupFunctions(Vftable vftable) throws Exception {
         ClassTypeInfo type = vftable.getTypeInfo();
-        if (!type.isValid()) {
-            return;
-        }
         Function[][] functionTables = vftable.getFunctionTables();
         // Also if the function has a reference to this::vtable, then it owns the function
         for (int i = 0; i < functionTables.length; i++) {
@@ -86,32 +80,17 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 
     private void setupThunkFunctions(ClassTypeInfo type, Vftable vftable,
         Function[] functionTable, int ordinal) throws Exception {
-        ClassTypeInfo base = vftable.getBaseClassTypeInfo(ordinal);
         for (Function function : functionTable) {
             if (isProcessedFunction(function)) {
                 continue;
             }
-            // TODO replace with commented block after resolution of 714
-            Set<Function> calledFunctions = function.getCalledFunctions(monitor);
-            if (calledFunctions.size() == 1) {
-                Function calledFunction = calledFunctions.iterator().next();
-                if (base.getGhidraClass().equals(calledFunction.getParentNamespace())) {
-                    function.setParentNamespace(type.getGhidraClass());
-                    function.setThunkedFunction(calledFunction);
-                    continue;
-                }
-            }
-            getClassFunction(program, base, function.getEntryPoint());
-            /*
-            if (CreateThunkFunctionCmd.isThunk(program, function);) {
-                function.setParentNamespace(type.getGhidraClass());
-                Address thunkedAddress = CreateThunkFunctionCmd.getThunkedAddr(
-                    program, function.getEntryPoint(), false);
-                function.setThunkedFunction(fManager.getFunctionAt(thunkedAddress));
+            if (CreateThunkFunctionCmd.isThunk(program, function)) {
+                CreateThunkFunctionCmd cmd =
+                    new CreateThunkFunctionCmd(function.getEntryPoint(), false);
+                cmd.applyTo(program, monitor);
             } else {
-                getClassFunction(program, base, function.getEntryPoint());
+                getClassFunction(program, type, function.getEntryPoint());
             }
-            */
         }
     }
 }

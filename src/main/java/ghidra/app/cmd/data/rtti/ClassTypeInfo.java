@@ -1,8 +1,8 @@
 package ghidra.app.cmd.data.rtti;
 
 import ghidra.util.task.TaskMonitor;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.util.exception.CancelledException;
@@ -14,49 +14,59 @@ import ghidra.util.task.DummyCancellableTaskMonitor;
  * All derived models are based on dwarf information from libstdc++.a
  */
 public interface ClassTypeInfo extends TypeInfo {
-
-    public static final ClassTypeInfo INVALID = ClassTypeInfoModel.INVALID;
-
     
-    default DataType getRepresentedDataType() {
+    default DataType getRepresentedDataType() throws InvalidDataTypeException {
         return getClassDataType();
     }
 
     /**
      * Gets the corresponding Ghidra Class for this TypeInfo and
      * creates it if none exists.
+     * 
      * @return The class representation of this TypeInfo instance
+     * @throws InvalidDataTypeException
      */
-    GhidraClass getGhidraClass();
+    GhidraClass getGhidraClass() throws InvalidDataTypeException;
 
+    /**
+     * Checks if this ClassTypeInfo is a subclass of another type.
+     * 
+     * @return true if this is a subclass.
+     */
     boolean hasParent();
 
     /**
 	 * Retrieves the Models of this ClassTypeInfo classes base classes.
-	 * 
+     * 
+     * @return the parent models.
+     * @throws InvalidDataTypeException
      */ 
-    ClassTypeInfo[] getParentModels();
+    ClassTypeInfo[] getParentModels() throws InvalidDataTypeException;
 
     /**
      * Determines if the represented class is an abstract base.
      * @return true if abstract;
+     * @throws InvalidDataTypeException
      */
-    boolean isAbstract();
+    boolean isAbstract() throws InvalidDataTypeException;
 
     /**
      * Gets the TypeInfo's Vtable Model
      * 
      * @param TaskMonitor the taskmonitor to be used while searching for the vtable
      * @return The TypeInfo's Vtable Model or null if none exists
+     * @throws CancelledException 
+     * @throws InvalidDataTypeException
      */
-    Vftable getVtable(TaskMonitor monitor) throws CancelledException;
+    Vftable getVtable(TaskMonitor monitor) throws CancelledException, InvalidDataTypeException;
 
     /**
      * Gets the TypeInfo's Vtable Model
      * 
      * @return The TypeInfo's Vtable Model or null if none exists
+     * @throws InvalidDataTypeException
      */
-    default Vftable getVtable() {
+    default Vftable getVtable() throws InvalidDataTypeException {
         try {
             return getVtable(new DummyCancellableTaskMonitor());
         }
@@ -70,7 +80,7 @@ public interface ClassTypeInfo extends TypeInfo {
      * 
      * @return the structure datatype for this class.
      */
-    default Structure getClassDataType() {
+    default Structure getClassDataType() throws InvalidDataTypeException {
         return getClassDataType(false);
     }
 
@@ -80,7 +90,7 @@ public interface ClassTypeInfo extends TypeInfo {
      * @param repopulate true to re-insert the correct inherited components.
      * @return the structure datatype for this class.
      */
-    Structure getClassDataType(boolean repopulate);
+    Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException;
 
     /**
      * Gets a unique typename for this ClassTypeInfo instance.
@@ -88,6 +98,6 @@ public interface ClassTypeInfo extends TypeInfo {
      * 
      * @return a unique typename string.
      */
-    String getUniqueTypeName();
+    String getUniqueTypeName() throws InvalidDataTypeException;
     
 }

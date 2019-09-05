@@ -52,20 +52,25 @@ public class ClassTypeInfoUtils {
      * @return The TypeInfo's Vtable Model or null if none exists
      */
     public static Vftable findVtable(Program program, Address address, TaskMonitor monitor)
-        throws CancelledException {
+        throws CancelledException, InvalidDataTypeException {
             SymbolTable table = program.getSymbolTable();
             Listing listing = program.getListing();
             TypeInfo typeinfo = TypeInfoFactory.getTypeInfo(program, address);
+            typeinfo.validate();
             if (!(typeinfo instanceof ClassTypeInfo)) {
-                return VtableModel.INVALID;
+                throw new InvalidDataTypeException(
+                    "Invalid ClassTypeInfo at "+address.toString());
             }
             ClassTypeInfo type = (ClassTypeInfo) typeinfo;
             for (Symbol symbol : table.getChildren(typeinfo.getNamespace().getSymbol())) {
                 if (symbol.getName().equals(VtableModel.SYMBOL_NAME)) {
                     VtableModel vtable = new VtableModel(program, symbol.getAddress());
-                    if (vtable.isValid()) {
+                    try {
+                        vtable.validate();
                         return vtable;
-                    } break;
+                    } catch (InvalidDataTypeException e) {
+                        break;
+                    }
                 }
             }
             Set<Address> references = Collections.emptySet();
@@ -94,7 +99,7 @@ public class ClassTypeInfoUtils {
                 }
             }
             VtableModel vtable = new VtableModel(program, reference, typeinfo);
-            if (vtable.isValid()) {
+            try {
                 Function[][] functionTables = vtable.getFunctionTables();
                 if (functionTables.length > 0) {
                     if (functionTables[0][0] == null) {
@@ -110,41 +115,49 @@ public class ClassTypeInfoUtils {
                         continue;
                     }
                 }
-                return vtable;
+            } catch (InvalidDataTypeException e) {
+                continue;
             }
+            return vtable;
         }
         return VtableModel.INVALID;
     }
 
     /**
-     * Gets the placeholder struct for a ClassTypeInfo in a specified DataTypeManager.
+     * Gets the placeholder struct for a ClassTypeInfo in a specified
+     * DataTypeManager.
      * 
      * @param type
      * @param dtm
-     * @return the placeholder struct for a ClassTypeInfo in a specified DataTypeManager.
+     * @return the placeholder struct for a ClassTypeInfo in a specified
+     *         DataTypeManager.
+     * @throws InvalidDataTypeException
      */
-    public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm) {
-        CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
-        DataType struct = dtm.getDataType(path, type.getName());
-        if (struct != null) {
-            return (Structure) struct;
-        }
-        struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
-        if (!struct.getDataTypePath().isAncestor(DWARF)) {
-            struct = new StructureDataType(path, type.getName(), 0, dtm);
-            dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
-            try {
-                struct.setDescription(PLACEHOLDER_DESCRIPTION);
-                struct.setCategoryPath(path);
-            } catch (DuplicateNameException e) {
-                Msg.error(
-                    THIS, "Failed to change placeholder struct "+type.getName()+"'s CategoryPath", e);
+    public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm)
+        throws InvalidDataTypeException {
+            CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
+            DataType struct = dtm.getDataType(path, type.getName());
+            if (struct != null) {
+                return (Structure) struct;
             }
-        }
-        if (!struct.equals(VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm))) {
-            Msg.info(THIS, "Variable Utils returned wrong class structure!");
-        }
-        return (Structure) struct;
+            struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
+            if (!struct.getDataTypePath().isAncestor(DWARF)) {
+                struct = new StructureDataType(path, type.getName(), 0, dtm);
+                dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
+                try {
+                    struct.setDescription(PLACEHOLDER_DESCRIPTION);
+                    struct.setCategoryPath(path);
+                } catch (DuplicateNameException e) {
+                    Msg.error(
+                        THIS, "Failed to change placeholder struct "
+                              +type.getName()+"'s CategoryPath", e);
+                }
+            }
+            if (!struct.equals(VariableUtilities.findOrCreateClassStruct(
+                    type.getGhidraClass(), dtm))) {
+                        Msg.info(THIS, "Variable Utils returned wrong class structure!");
+            }
+            return (Structure) struct;
     }
 
     /**
@@ -166,13 +179,15 @@ public class ClassTypeInfoUtils {
      * 
      * @param type
      * @return the most derived parent of the ClassTypeInfo.
+     * @throws InvalidDataTypeException
      */
-    public static ClassTypeInfo getPrimaryParent(ClassTypeInfo type) {
-        if (type.hasParent()) {
-            if (type instanceof VmiClassTypeInfoModel) {
-                return ((VmiClassTypeInfoModel) type).getParentAtOffset(0, false);
-            } return type.getParentModels()[0];
-        } return null;
+    public static ClassTypeInfo getPrimaryParent(ClassTypeInfo type)
+        throws InvalidDataTypeException {
+            if (type.hasParent()) {
+                if (type instanceof VmiClassTypeInfoModel) {
+                    return ((VmiClassTypeInfoModel) type).getParentAtOffset(0, false);
+                } return type.getParentModels()[0];
+            } return null;
     }
 
     // TODO remove after resolution of issue #874 and #873
@@ -238,33 +253,36 @@ public class ClassTypeInfoUtils {
 
     /**
      * Sorts a list of classes in order of most derived.
+     * 
      * @param program
      * @param classes
+     * @throws InvalidDataTypeException if the list contains an invalid ClassTypeInfo
      */
-    public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes) {
-        Set<ClassTypeInfo> classSet = new LinkedHashSet<>(classes);
-        List<ClassTypeInfo> sortedClasses = new ArrayList<>(classes.size());
-        Iterator<ClassTypeInfo> classIterator = classSet.iterator();
-        while (classIterator.hasNext()) {
-            ClassTypeInfo type = classIterator.next();
-            ArrayDeque<ClassTypeInfo> stack = new ArrayDeque<>();
-            stack.push(type);
-            while(!stack.isEmpty()) {
-                ClassTypeInfo classType = stack.pop();
-                if (classType.hasParent() && classSet.contains(classType)) {
-                    ClassTypeInfo parent = classType.getParentModels()[0];
-                    if (classSet.contains(parent)) {
-                        stack.push(classType);
-                        stack.push(parent);
-                        continue;
+    public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes)
+        throws InvalidDataTypeException {
+            Set<ClassTypeInfo> classSet = new LinkedHashSet<>(classes);
+            List<ClassTypeInfo> sortedClasses = new ArrayList<>(classes.size());
+            Iterator<ClassTypeInfo> classIterator = classSet.iterator();
+            while (classIterator.hasNext()) {
+                ClassTypeInfo type = classIterator.next();
+                ArrayDeque<ClassTypeInfo> stack = new ArrayDeque<>();
+                stack.push(type);
+                while(!stack.isEmpty()) {
+                    ClassTypeInfo classType = stack.pop();
+                    if (classType.hasParent() && classSet.contains(classType)) {
+                        ClassTypeInfo parent = classType.getParentModels()[0];
+                        if (classSet.contains(parent)) {
+                            stack.push(classType);
+                            stack.push(parent);
+                            continue;
+                        }
                     }
-                }
-                sortedClasses.add(classType);
-                classSet.remove(classType);
-            } classIterator = classSet.iterator();
-        }
-        classes.clear();
-        classes.addAll(sortedClasses);
+                    sortedClasses.add(classType);
+                    classSet.remove(classType);
+                } classIterator = classSet.iterator();
+            }
+            classes.clear();
+            classes.addAll(sortedClasses);
     }
 
     public static void inheritClass(Structure struct, Structure parent, int offset) {

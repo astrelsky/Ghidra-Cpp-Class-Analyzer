@@ -25,6 +25,7 @@ import ghidra.util.ConsoleErrorDisplay;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vftable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
@@ -34,18 +35,15 @@ import ghidra.app.cmd.data.rtti.gcc.VttModel;
 
 public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
-    private static final String DESCRIPTION =
-        "This analyzer analyzes RTTI metadata to recreate classes and their functions";
+    private static final String DESCRIPTION = "This analyzer analyzes RTTI metadata to recreate classes and their functions";
 
     private static final String OPTION_VTABLE_ANALYSIS_NAME = "Locate Constructors";
     private static final boolean OPTION_DEFAULT_VTABLE_ANALYSIS = true;
-    private static final String OPTION_VTABLE_ANALYSIS_DESCRIPTION =
-        "Turn on to search for Constructors/Destructors.";
+    private static final String OPTION_VTABLE_ANALYSIS_DESCRIPTION = "Turn on to search for Constructors/Destructors.";
 
     private static final String OPTION_FILLER_ANALYSIS_NAME = "Fill Class Fields";
     private static final boolean OPTION_DEFAULT_FILLER_ANALYSIS = true;
-    private static final String OPTION_FILLER_ANALYSIS_DESCRIPTION =
-        "Turn on to fill out the found class structures.";
+    private static final String OPTION_FILLER_ANALYSIS_DESCRIPTION = "Turn on to fill out the found class structures.";
 
     private boolean constructorAnalysisOption;
     private boolean fillClassFieldsOption;
@@ -69,32 +67,33 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     }
 
     protected abstract boolean hasVtt();
+
     protected abstract List<ClassTypeInfo> getClassTypeInfoList(Program currentProgram);
 
     @Override
     @SuppressWarnings("hiding")
     public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
-        throws CancelledException {
-            this.program = program;
-            this.monitor = monitor;
-            this.analysisManager = AutoAnalysisManager.getAnalysisManager(program);
-            
-            dummy = new CancelOnlyWrappingTaskMonitor(monitor);
-            classes = getClassTypeInfoList(program);
-            setupVftables();
+            throws CancelledException {
+        this.program = program;
+        this.monitor = monitor;
+        this.analysisManager = AutoAnalysisManager.getAnalysisManager(program);
 
-            try {
-                analyzeVftables();
-                if (fillClassFieldsOption) {
-                    fillStructures();
-                }
-                return true;
-            } catch (CancelledException e) {
-                throw e;
-            } catch (Exception e) {
-                log.appendException(e);
-                return false;
+        dummy = new CancelOnlyWrappingTaskMonitor(monitor);
+        classes = getClassTypeInfoList(program);
+
+        try {
+            setupVftables();
+            analyzeVftables();
+            if (fillClassFieldsOption) {
+                fillStructures();
             }
+            return true;
+        } catch (CancelledException e) {
+            throw e;
+        } catch (Exception e) {
+            log.appendException(e);
+            return false;
+        }
     }
 
     @Override
@@ -105,26 +104,28 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         super.analysisEnded(program);
     }
 
-    private void setupVftables() throws CancelledException {
+    private void setupVftables() throws CancelledException, InvalidDataTypeException {
         vftables = new ArrayList<>(classes.size());
         monitor.initialize(classes.size());
         monitor.setMessage("Locating vftables...");
         for (ClassTypeInfo type : classes) {
             monitor.checkCanceled();
             Vftable vftable = type.getVtable();
-            if (vftable.isValid()) {
+            try {
+                vftable.validate();
                 vftables.add(vftable);
-            }
+            } catch (InvalidDataTypeException e) {}
             monitor.incrementProgress(1);
         }
     }
 
-    private void repairInheritance() throws CancelledException {
+    private void repairInheritance() throws CancelledException, InvalidDataTypeException {
         monitor.initialize(classes.size());
         monitor.setMessage("Fixing Class Inheritance...");
         for (ClassTypeInfo type : classes) {
             monitor.checkCanceled();
             if (type.getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
+                // this works for both vs and gcc
                 continue;
             }
             type.getClassDataType(true);
@@ -132,7 +133,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         }
     }
 
-    private void fillStructures() throws CancelledException {
+    private void fillStructures() throws CancelledException, InvalidDataTypeException {
         SymbolTable table = program.getSymbolTable();
         PluginTool tool = analysisManager.getAnalysisTool();
         repairInheritance();
@@ -200,9 +201,12 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         for (Vftable vtable : vftables) {
             monitor.checkCanceled();
             ClassTypeInfo type = vtable.getTypeInfo();
-            if (type.isValid()) {
-                namespaces.add(type);
+            try {
+                type.validate();
+            } catch (InvalidDataTypeException e) {
+                continue;
             }
+            namespaces.add(type);
             monitor.incrementProgress(1);
         }
         ClassTypeInfoUtils.sortByMostDerived(program, namespaces);

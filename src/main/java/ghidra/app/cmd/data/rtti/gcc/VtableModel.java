@@ -4,7 +4,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import ghidra.program.model.data.Array;
-import ghidra.program.model.data.BadDataType;
 import ghidra.program.model.data.DataType;
 import ghidra.app.cmd.data.rtti.gcc.vtable.VtableDataType;
 import ghidra.app.cmd.data.rtti.gcc.vtable.VtablePrefixDataType;
@@ -14,6 +13,7 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
@@ -75,6 +75,7 @@ public class VtableModel implements Vftable, Vbtable {
      */
     public VtableModel(Program program, Address address) {
         this.program = program;
+        this.address = address;
         boolean isTypeInfoPointer = TypeInfoUtils.isTypeInfoPointer(program, address);
         DataTypeManager dtm = program.getDataTypeManager();
         DataType ptrdiff_t = GnuUtils.getPtrDiff_t(dtm);
@@ -97,19 +98,24 @@ public class VtableModel implements Vftable, Vbtable {
     }
 
     @Override
-    public ClassTypeInfo getTypeInfo() {
-        if (isValid) {
-            if (type == null) {
-               type = VtableUtils.getTypeInfo(program, address);
-            }
-            return type;
-        } return ClassTypeInfo.INVALID;
+    public ClassTypeInfo getTypeInfo() throws InvalidDataTypeException {
+        validate();
+        if (type == null) {
+            type = VtableUtils.getTypeInfo(program, address);
+        }
+        return type;
     }
 
     @Override
     
-    public boolean isValid() {
-        return isValid;
+    public void validate() throws InvalidDataTypeException {
+        if (!isValid) {
+            if (address != null) {
+                throw new InvalidDataTypeException(
+                    "Vtable at "+address.toString()+" is not valid.");
+            } throw new InvalidDataTypeException(
+                "Invalid Vtable.");
+        }
     }
 
     @Override
@@ -123,7 +129,6 @@ public class VtableModel implements Vftable, Vbtable {
     @Override
     
     public Address getAddress() {
-        //return isValid ? address : Address.NO_ADDRESS;
         return address;
     }
 
@@ -131,17 +136,13 @@ public class VtableModel implements Vftable, Vbtable {
         buf.setPosition(address);
     }
 
-    @Override
-        public DataType getDataType() {
-        return isValid ? dataType : BadDataType.dataType;
+    public DataType getDataType() throws InvalidDataTypeException {
+        validate();
+        return dataType;
     }
 
     @Override
-    
-    public Address[] getTableAddresses() {
-        if (!isValid) {
-            return new Address[0];
-        }
+    public Address[] getTableAddresses() throws InvalidDataTypeException {
         resetBuffer();
         if (VtablePrefixDataType.dataType.getNumComponents(buf) <= tableOrdinal) {
             return new Address[0];
@@ -186,10 +187,8 @@ public class VtableModel implements Vftable, Vbtable {
 
     @Override
     
-    public Function[][] getFunctionTables() {
-        if (!isValid) {
-            return new Function[0][];
-        }
+    public Function[][] getFunctionTables() throws InvalidDataTypeException {
+        validate();
         int pointerSize = program.getDefaultPointerSize();
         Address[] tableAddresses = getTableAddresses();
         if (tableAddresses.length == 0) {
@@ -220,7 +219,7 @@ public class VtableModel implements Vftable, Vbtable {
 
     @Override
     
-    public boolean containsFunction(Function function) {
+    public boolean containsFunction(Function function) throws InvalidDataTypeException {
         if (functions.isEmpty()) {
             getFunctionTables();
         } return functions.contains(function);
@@ -240,8 +239,9 @@ public class VtableModel implements Vftable, Vbtable {
 
     @Override
     
-    public long getOffset(int ordinal) {
-        if (!isValid() || ordinal >= getElementCount()) {
+    public long getOffset(int ordinal) throws InvalidDataTypeException {
+        validate();
+        if (ordinal >= getElementCount()) {
             return Long.MAX_VALUE;
         }
         resetBuffer();
@@ -249,31 +249,16 @@ public class VtableModel implements Vftable, Vbtable {
     }
 
     @Override
-    public ClassTypeInfo getBaseClassTypeInfo(int i) {
-        if (isValid()) {
-            type = getTypeInfo();
-            if (type.hasParent()) {
-                ClassTypeInfo[] bases = type.getParentModels();
-                if (i < bases.length) {
-                    return bases[i];
-                }
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public long[] getOffsetArray() {
+    public long[] getOffsetArray() throws InvalidDataTypeException {
         if (offsets == null) {
             offsets = doGetOffsetArray();
         }
         return offsets;
     }
 
-    private long[] doGetOffsetArray() {
-        if (!isValid()) {
-            return new long[0];
-        } resetBuffer();
+    private long[] doGetOffsetArray() throws InvalidDataTypeException {
+        validate();
+        resetBuffer();
         DataTypeComponent comp = dataType.getComponents(buf)[0];
         buf.setPosition(address.add(comp.getOffset()));
         comp = VtablePrefixDataType.dataType.getComponent(0, buf);
@@ -293,11 +278,11 @@ public class VtableModel implements Vftable, Vbtable {
      * Gets the number of vtable_prefix's in this vtable.
      * 
      * @return the number of vtable_prefix's in this vtable.
+     * @throws InvalidDataTypeException 
      */
-    public int getElementCount() {
-        if (!isValid()) {
-            return 0;
-        } resetBuffer();
+    public int getElementCount() throws InvalidDataTypeException {
+        validate();
+        resetBuffer();
         return dataType.getNumComponents(buf);
     }
 }

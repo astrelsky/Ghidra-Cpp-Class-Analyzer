@@ -11,6 +11,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.app.cmd.data.rtti.TypeInfo;
@@ -63,9 +64,10 @@ public class TypeInfoFactory {
     /**
      * Get the TypeInfo in the buffer.
      * @param buf
-     * @return the TypeInfo at the buffers address
+     * @return the TypeInfo at the buffers address.
+     * @throws InvalidDataTypeException 
      */
-    public static TypeInfo getTypeInfo(MemBuffer buf) {
+    public static TypeInfo getTypeInfo(MemBuffer buf) throws InvalidDataTypeException {
         return getTypeInfo(buf.getMemory().getProgram(), buf.getAddress());
     }
 
@@ -74,18 +76,19 @@ public class TypeInfoFactory {
      * @param program
      * @param address
      * @return the TypeInfo at the specified address in the specified program
+     * or null if none exists.
      */
     public static TypeInfo getTypeInfo(Program program, Address address) {
-        String baseTypeName = TypeInfoUtils.getIDString(program, address);
-        if (!COPY_MAP.containsKey(baseTypeName)) {
-            return TypeInfo.INVALID;
-        } try {
-            Constructor<?> cloneContainer = getConstructor(COPY_MAP.get(baseTypeName));
-            return (TypeInfo) cloneContainer.newInstance(program, address);
-        } catch (Exception e) {
-            Msg.error(THIS, "Unknown Exception", e);
-            return TypeInfo.INVALID;
-        }
+            String baseTypeName = TypeInfoUtils.getIDString(program, address);
+            if (!COPY_MAP.containsKey(baseTypeName)) {
+                Msg.error(THIS, "Invalid TypeInfo at "+address.toString());
+            } try {
+                Constructor<?> cloneContainer = getConstructor(COPY_MAP.get(baseTypeName));
+                return (TypeInfo) cloneContainer.newInstance(program, address);
+            } catch (Exception e) {
+                Msg.error(THIS, "Unknown Exception", e);
+                return null;
+            }
     }
 
     /**

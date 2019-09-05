@@ -16,7 +16,7 @@ public class TypeInfoTest extends AbstractGenericTest {
         for (TypeInfo type : builder.getTypeInfoList()) {
             if (!(type instanceof FundamentalTypeInfoModel)) {
                 // Invalid dynamic relocations prevent fundamentals from being valid
-                assert type.isValid();
+                type.validate();
                 assert type.getDataType() != null;
             }
         }

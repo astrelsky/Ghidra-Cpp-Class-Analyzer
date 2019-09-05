@@ -4,6 +4,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.mem.DumbMemBufferImpl;
@@ -110,7 +111,7 @@ final class BaseClassTypeInfoModel {
         return (AbstractClassTypeInfoModel) getTypeInfo(program, getClassAddress());
     }
 
-    protected String getName() {
+    protected String getName() throws InvalidDataTypeException {
         return getClassModel().getName();
     }
 

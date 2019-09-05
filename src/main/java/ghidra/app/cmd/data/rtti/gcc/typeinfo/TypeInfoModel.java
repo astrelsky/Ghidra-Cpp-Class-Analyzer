@@ -1,6 +1,5 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
-import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
@@ -23,25 +22,13 @@ public class TypeInfoModel extends AbstractTypeInfoModel {
 
     public static final String ID_STRING = "St9type_info";
 
-    private DataType typeInfoDataType;
-
-    @SuppressWarnings("hiding")
-    public static final TypeInfo INVALID = new TypeInfoModel();
-
-    private TypeInfoModel() {
-        super();
-    }
-
     public TypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 
     @Override
     public DataType getDataType() {
-        if (typeInfoDataType == null) {
-            typeInfoDataType = getDataType(program.getDataTypeManager());
-        }
-        return isValid() ? typeInfoDataType : null;
+        return getDataType(program.getDataTypeManager());
     }
 
     /**

@@ -17,6 +17,7 @@ import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
@@ -32,7 +33,6 @@ import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 public abstract class AbstractTypeInfoModel implements TypeInfo {
 
     protected static final int BASE_ORDINAL = 0;
-    protected boolean isValid;
 
     protected Program program;
     protected Address address;
@@ -48,24 +48,20 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
     private static final Pattern TYPE_PATTERN = Pattern.compile(".*_\\((.*)\\)");
     private static final Pattern FUNCTION_PATTERN = Pattern.compile("(.*)\\S*?\\((.*)\\)");
 
-    protected AbstractTypeInfoModel() {
-        this.isValid = false;
-    }
-
     protected AbstractTypeInfoModel(Program program, Address address) {
-    	this.isValid = TypeInfoUtils.getIDString(program, address).equals(getIdentifier());
-    	if (isValid) {
-	    	this.program = program;
-	        this.address = address;
-	        this.buf = new MemoryBufferImpl(program.getMemory(), address);
-	        this.typeName = TypeInfoUtils.getTypeName(program, address);
-	        this.namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
-    	}
+        this.program = program;
+        this.address = address;
+        this.buf = new MemoryBufferImpl(program.getMemory(), address);
+        this.typeName = TypeInfoUtils.getTypeName(program, address);
+        this.namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
     }
 
     @Override
-    public boolean isValid() {
-        return isValid;
+    public void validate() throws InvalidDataTypeException {
+        if (!TypeInfoUtils.getIDString(program, address).equals(getIdentifier())) {
+            throw new InvalidDataTypeException(
+                "Invalid "+getIdentifier()+" instance at "+address.toString());
+        }
     }
 
     /**
@@ -75,8 +71,6 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
     public final boolean equals(Object object) {
         if (!(object instanceof TypeInfo)) {
             return false;
-        } if (!isValid && !((TypeInfo) object).isValid()) {
-            return true;
         }
         return ((TypeInfo) object).getAddress().equals(address);
     }
@@ -90,12 +84,12 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
     }
 
     @Override
-    public Namespace getNamespace() {
-        return isValid ? namespace : program.getGlobalNamespace();
+    public Namespace getNamespace() throws InvalidDataTypeException {
+        return namespace;
     }
 
     protected MemBuffer getBuffer() {
-        return isValid ? buf : null;
+        return buf;
     }
 
     protected static DataType alignDataType(StructureDataType struct, DataTypeManager dtm) {
@@ -106,8 +100,8 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
     }
 
     @Override
-    public final String getName() {
-        return isValid ? namespace.getName() : "";
+    public final String getName() throws InvalidDataTypeException {
+        return namespace.getName();
     }
 
     protected Structure getDataType(String dtName, String description) {
@@ -127,21 +121,22 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
 
     @Override
     public Address getAddress() {
-        return isValid ? address : Address.NO_ADDRESS;
+        return address;
     }
 
     @Override
-    public String getTypeName() {
-        return isValid() ? typeName : "";
+    public String getTypeName() throws InvalidDataTypeException {
+        validate();
+        return typeName;
     }
 
     @Override
-    public DataType getRepresentedDataType() {
-        if(isValid()) {
-            if (dataType == null) {
-                dataType = parseDataType(typeName);
-            }
-        } return dataType;
+    public DataType getRepresentedDataType() throws InvalidDataTypeException {
+        validate();
+        if (dataType == null) {
+            dataType = parseDataType(typeName);
+        }
+        return dataType;
     }
 
     private static DemangledDataType getDemangledType(String demangled) {

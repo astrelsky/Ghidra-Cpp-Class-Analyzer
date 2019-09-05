@@ -5,6 +5,7 @@ import java.util.stream.IntStream;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -24,7 +25,7 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
     }
 
     @Override
-    protected Structure getSuperClassDataType() {
+    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
         DataTypeManager dtm = program.getDataTypeManager();
         Structure struct = super.getSuperClassDataType();
         if (!ClassTypeInfoUtils.isPlaceholder(struct)) {
@@ -53,10 +54,9 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
     }
 
     @Override
-    public Structure getClassDataType(boolean repopulate) {
-        if (!isValid) {
-            return null;
-        } if (getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
+    public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
+        validate();
+        if (getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
             return (Structure) getDataType();
         }
         DataTypeManager dtm = program.getDataTypeManager();
@@ -88,15 +88,16 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
 
     @Override
     public boolean hasParent() {
-        return isValid;
+        return true;
     }
 
     @Override
-    public ClassTypeInfo[] getParentModels() {
-        return  isValid ? new ClassTypeInfo[]{
+    public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
+        validate();
+        return new ClassTypeInfo[]{
             (ClassTypeInfo) TypeInfoFactory.getTypeInfo(
                 program, getBaseTypeAddress(program, address))
-            } : new ClassTypeInfo[0];
+            };
     }
 
 }

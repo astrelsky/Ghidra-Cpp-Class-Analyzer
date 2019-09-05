@@ -25,6 +25,7 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.GenericCallingConvention;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -32,7 +33,7 @@ import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vftable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.CreateTypeInfoBackgroundCmd;
-import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCommand;
+import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.CreateVttBackgroundCommand;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
@@ -178,42 +179,39 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
         return false;
     }
 
-    private Function getPureVirtualFunction() throws CancelledException {
-        for (ClassTypeInfo type : classes) {
-            if (type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING)) {
-                Vftable vtable = type.getVtable(dummy);
-                if (vtable != null && vtable.isValid()) {
+    private Function getPureVirtualFunction() throws CancelledException,
+        InvalidDataTypeException {
+            for (ClassTypeInfo type : classes) {
+                if (type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING)) {
+                    Vftable vtable = type.getVtable(dummy);
                     Function[][] functionTables = vtable.getFunctionTables();
                     if (checkTableAddresses(functionTables)) {
                         return functionTables[0][2];
                     }
                 }
             }
-        }
-        return null;
+            return null;
     }
 
-    private void findAndCreatePureVirtualFunction() throws CancelledException {
-        monitor.setMessage("Locating "+PURE_VIRTUAL_FUNCTION_NAME);
-        Function pureVirtual = getPureVirtualFunction();
-        try {
-            pureVirtual.setName(PURE_VIRTUAL_FUNCTION_NAME, SourceType.IMPORTED);
-            pureVirtual.setNoReturn(true);
-            pureVirtual.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
-            pureVirtual.setCallingConvention(
-                GenericCallingConvention.stdcall.getDeclarationName());
-        } catch (Exception e) {
-            return;
-        }
+    private void findAndCreatePureVirtualFunction() throws CancelledException,
+        InvalidDataTypeException {
+            monitor.setMessage("Locating "+PURE_VIRTUAL_FUNCTION_NAME);
+            Function pureVirtual = getPureVirtualFunction();
+            try {
+                pureVirtual.setName(PURE_VIRTUAL_FUNCTION_NAME, SourceType.IMPORTED);
+                pureVirtual.setNoReturn(true);
+                pureVirtual.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
+                pureVirtual.setCallingConvention(
+                    GenericCallingConvention.stdcall.getDeclarationName());
+            } catch (Exception e) {
+                return;
+            }
     }
 
     private void createVtable(VtableModel vtable) throws Exception {
-        if (vtable != null && vtable.isValid()) {
-            CreateVtableBackgroundCommand vtableCmd =
-                new CreateVtableBackgroundCommand(vtable);
-            vtableCmd.applyTo(program, dummy);
-            locateVTT(vtable);
-        }
+        CreateVtableBackgroundCmd vtableCmd = new CreateVtableBackgroundCmd(vtable);
+        vtableCmd.applyTo(program, dummy);
+        locateVTT(vtable);
         monitor.incrementProgress(1);
     }
 
@@ -241,7 +239,18 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
         monitor.setMessage("Finding vtables");
         for (ClassTypeInfo type : classes) {
             monitor.checkCanceled();
-            createVtable((VtableModel) type.getVtable());
+            VtableModel vtable = (VtableModel) type.getVtable();
+            if (vtable == null) {
+                monitor.incrementProgress(0);
+                continue;
+            }
+            try {
+                vtable.validate();
+            } catch (InvalidDataTypeException e) {
+                monitor.incrementProgress(0);
+                continue;
+            }
+            createVtable(vtable);
         }
     }
 
@@ -250,8 +259,9 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
             ClassTypeInfo typeinfo = (ClassTypeInfo) TypeInfoUtils.findTypeInfo(
                 program, typeString, dummy);
             Vftable vtable = typeinfo.getVtable(dummy);
-            return GnuUtils.getDirectDataReferences(program, vtable.getTableAddresses()[0], dummy);
-        } catch (NullPointerException e) {
+            return GnuUtils.getDirectDataReferences(
+                program, vtable.getTableAddresses()[0], dummy);
+        } catch (NullPointerException | InvalidDataTypeException e) {
             return Collections.emptySet();
         }
     }
