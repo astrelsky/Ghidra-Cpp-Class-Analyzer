@@ -4,16 +4,16 @@ Ghidra C++ Class and Run Time Type Information Analyzer
 Features
 ---------
 
-*GCC RTTI models and analysis.
-*Vtable analysis and class namespace setting.
-*Constructor/Destructor analysis.
-*Reconstruction of class inheritance models for virtual multiple inheritance.
+* GCC RTTI models and analysis.
+* Vtable analysis and class namespace setting.
+* Constructor/Destructor analysis.
+* Reconstruction of class inheritance models for virtual multiple inheritance.
 
 Supported Compilers
 -------------------
 
-*GCC  
-*Visual Studio
+* GCC  
+* Visual Studio
 
 Information
 -----------
@@ -29,7 +29,8 @@ Issues and minor oversights are to be expected.
 Compatibility
 -------------
 
-It is compatible with current builds of 9.1. 9.0.4 compatibility is currently unknown.
+It is compatible with current builds of 9.1.
+9.0.4 compatibility is currently unknown.
 
 License
 ---------
