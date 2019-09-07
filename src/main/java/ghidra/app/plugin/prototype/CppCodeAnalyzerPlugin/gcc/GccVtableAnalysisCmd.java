@@ -8,6 +8,7 @@ import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
@@ -49,19 +50,19 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
                 for (Vtable parentVtable : vtt.getConstructionVtableModels()) {
                     try {
                         setupFunctions(parentVtable);
-                    } catch (Exception e) {
+                    } catch (InvalidDataTypeException e) {
                         Msg.error(this, e);
                     }
                 }
             }
             setupFunctions(vtable);
-        } catch (Exception e) {
+        } catch (InvalidDataTypeException e) {
             Msg.error(this, e);
         }
         return true;
     }
     
-    private void setupFunctions(Vtable vftable) throws Exception {
+    private void setupFunctions(Vtable vftable) throws InvalidDataTypeException {
         ClassTypeInfo type = vftable.getTypeInfo();
         Function[][] functionTables = vftable.getFunctionTables();
         // Also if the function has a reference to this::vtable, then it owns the function
@@ -79,7 +80,7 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
     }
 
     private void setupThunkFunctions(ClassTypeInfo type, Vtable vftable,
-        Function[] functionTable, int ordinal) throws Exception {
+        Function[] functionTable, int ordinal) {
         for (Function function : functionTable) {
             if (isProcessedFunction(function)) {
                 continue;

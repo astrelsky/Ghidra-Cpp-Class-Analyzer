@@ -3,6 +3,7 @@
 import ghidra.app.script.GhidraScript;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
@@ -18,7 +19,6 @@ import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.mem.MemoryBufferImpl;
-import ghidra.program.model.data.Dynamic;
 import ghidra.program.model.data.InvalidDataTypeException;
 
 import javax.lang.model.element.Modifier;
@@ -357,15 +357,6 @@ public class TestBuilder extends GhidraScript {
         return null;
     }
 
-    private int getVtableLength(VtableModel vtable) throws InvalidDataTypeException {
-        DataType dt = vtable.getDataType();
-        if (dt instanceof Dynamic) {
-            MemoryBufferImpl buf = new MemoryBufferImpl(currentProgram.getMemory(), vtable.getAddress());
-            Dynamic dynamicDt = (Dynamic) dt;
-            return dynamicDt.getLength(buf, 0);
-        } return dt.getLength();
-    }
-
     private void populateMaps() throws Exception {
         int pointerSize = currentProgram.getDefaultPointerSize();
         SymbolTable table = currentProgram.getSymbolTable();
@@ -395,15 +386,13 @@ public class TestBuilder extends GhidraScript {
                     printerr(type.getName()+"'s vtable is invalid");
                     continue;
                 }
-                int vtableLength = getVtableLength(vtable);
-                data = DataUtilities.createData(
-                    currentProgram, vtable.getAddress(), vtable.getDataType(),
-                    vtableLength, false, CLEAR_ALL_CONFLICT_DATA);
-                if(data == null) {
-                    printerr(vtable.getAddress().toString());
-                    return;
-                }
-                vtableMap.put(vtable, data.getBytes());
+                CreateVtableBackgroundCmd cmd = new CreateVtableBackgroundCmd(vtable);
+                cmd.applyTo(currentProgram);
+                MemoryBufferImpl buf = new MemoryBufferImpl(
+                    currentProgram.getMemory(), vtable.getAddress());
+                byte[] bytes = new byte[vtable.getLength()];
+                buf.getBytes(bytes, 0);
+                vtableMap.put(vtable, bytes);
                 for (Function[] functionTable : vtable.getFunctionTables()) {
                     for (Function function : functionTable) {
                         if (function != null) {

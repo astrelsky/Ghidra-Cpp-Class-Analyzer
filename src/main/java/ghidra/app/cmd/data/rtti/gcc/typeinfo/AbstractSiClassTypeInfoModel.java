@@ -1,9 +1,8 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
-import java.util.stream.IntStream;
+import java.util.Set;
 
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
@@ -36,20 +35,14 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
         if (vtable == null) {
             return struct;
         }
-        long[] offsets = vtable.getOffsetArray();
+        long[] offsets = vtable.getBaseOffsetArray();
         if (offsets.length ==1) {
             // finished
             return struct;
         }
         Structure superStruct = (Structure) struct.copy(dtm);
         setSuperStructureCategoryPath(superStruct);
-        superStruct.deleteAtOffset((int) offsets[1]);
-        DataTypeComponent[] comps = superStruct.getComponents();
-        if (comps.length > 0) {
-            int ordinal = comps[comps.length-1].getOrdinal();
-            int[] ordinals = IntStream.rangeClosed(ordinal+1, superStruct.getNumComponents() - 1).toArray();
-            superStruct.delete(ordinals);
-        }
+        deleteVirtualComponents(struct);
         return resolveStruct(struct);
     }
 
@@ -65,19 +58,9 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
             return struct;
         }
         struct.setDescription("");
-        VtableModel vtable = (VtableModel) getVtable();
-        if (vtable == null) {
-            return struct;
-        }
-        long[] offsets = vtable.getOffsetArray();
         AbstractClassTypeInfoModel parent = (AbstractClassTypeInfoModel) getParentModels()[0];
-        if (offsets.length == 1) {
-            // no virtual base
-            replaceComponent(struct, parent.getSuperClassDataType(), SUPER+parent.getName(), 0);
-            return struct;
-        }
         replaceComponent(
-            struct, parent.getSuperClassDataType(), SUPER+parent.getName(), (int) offsets[1]);
+            struct, parent.getClassDataType(), SUPER+parent.getName(), 0);
         addVptr(struct);
         return resolveStruct(struct);
     }
@@ -98,6 +81,12 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
             (ClassTypeInfo) TypeInfoFactory.getTypeInfo(
                 program, getBaseTypeAddress(program, address))
             };
+    }
+
+    @Override
+    public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
+        validate();
+        return getParentModels()[0].getVirtualParents();
     }
 
 }

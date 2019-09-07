@@ -30,8 +30,7 @@ Issues and minor oversights are to be expected.
 Compatibility
 -------------
 
-It is compatible with current builds of 9.1.  
-9.0.4 compatibility is currently unknown.
+It is compatible with current builds of 9.1 as well as 9.0.4
 
 License
 ---------

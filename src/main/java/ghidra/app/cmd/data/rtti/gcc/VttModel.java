@@ -33,7 +33,7 @@ public class VttModel {
     private DataType dataType;
     private ClassTypeInfo typeinfo;
     private int pointerSize;
-    private List<VtableModel> constructionModels = new ArrayList<VtableModel>();
+    private List<VtableModel> constructionModels;
     Set<Address> validAddresses;
 
     private VttModel() {
@@ -92,7 +92,8 @@ public class VttModel {
      * @return true if valid.
      */
     public boolean isValid() {
-        return getElementCount() != 0;
+        int count = getElementCount();
+        return count > 0;
     }
 
     /**
@@ -128,15 +129,27 @@ public class VttModel {
         return getAbsoluteAddress(program, currentAddress).subtract(pointerSize);
     }
 
+    private static boolean vtableContainsAddress(VtableModel vtable, Address a) {
+        Address startAddress = vtable.getAddress();
+        AddressSet set = new AddressSet(startAddress, startAddress.add(vtable.getLength()));
+        return set.contains(a);
+    }
+
     private VtableModel getVtableContaining(Address a) {
         for (VtableModel vtable : constructionModels) {
-            Address startAddress = vtable.getAddress();
-            AddressSet set = new AddressSet(startAddress, startAddress.add(vtable.getLength()));
-            if (set.contains(a)) {
+            if (vtableContainsAddress(vtable, a)) {
                 return vtable;
             }
         }
-        return new VtableModel(program, a);
+        try {
+            VtableModel vtable = (VtableModel) typeinfo.getVtable();
+            if (vtableContainsAddress(vtable, a)) {
+                return vtable;
+            }
+        } catch (InvalidDataTypeException e) {
+            Msg.error(this, e);
+        }
+        return null;
     }
 
     /**
@@ -194,14 +207,17 @@ public class VttModel {
         }
         Set<ClassTypeInfo> validTypes = new HashSet<>(Arrays.asList(parentModels));
         validTypes.add(typeinfo);
+        constructionModels = new ArrayList<>();
         while (true) {
             if (!GnuUtils.isValidPointer(program, currentAddress)) {
                 break;
             }
             Address tiAddress = getTIAddress(currentAddress);
+            ClassTypeInfo currentType =
+                (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, tiAddress);
             if (tiAddress == null) {
                 break;
-            } if (!validTypes.contains((TypeInfoFactory.getTypeInfo(program, tiAddress)))) {
+            } if (!validTypes.contains((currentType))) {
                 break;
             }
             int subCount = getSubTableCount(currentAddress);
@@ -210,7 +226,8 @@ public class VttModel {
                 currentAddress = address.add(tableSize * pointerSize);
                 continue;
             }
-            VtableModel cvtable = new VtableModel(program, getTIPointer(currentAddress), subCount);
+            VtableModel cvtable = new VtableModel(
+                program, getTIPointer(currentAddress), currentType, subCount);
             tableSize += subCount;
             currentAddress = address.add(tableSize * pointerSize);
             constructionModels.add(cvtable);

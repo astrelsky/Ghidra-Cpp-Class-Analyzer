@@ -1,5 +1,6 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -184,12 +185,14 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
         Vtable vtable = vtt.getVtableModel(0);
         Data data = program.getListing().getDataAt(address);
         if (data != null) {
+            for (Address reference : XReferenceUtil.getOffcutXRefList(data)) {
+                createConstructor(vtable.getTypeInfo(), reference, true);
+            }
             for (Address reference : XReferenceUtil.getXRefList(data)) {
                 createConstructor(vtable.getTypeInfo(), reference, true);
             }
             detectVirtualDestructors(data, vtable);
         }
-        analyzeVtable(vtable);
         for (int i = 0; i < vtt.getElementCount(); i++) {
             ClassTypeInfo baseType = vtt.getTypeInfo(i);
             if (baseType.equals(type)) {
@@ -233,16 +236,14 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
 
     private void createSubConstructors(ClassTypeInfo typeinfo, Function constructor,
         boolean destructor) throws InvalidDataTypeException {
-            ClassTypeInfo[] parents = typeinfo.getParentModels();
-            Set<Function> calledFunctions = constructor.getCalledFunctions(monitor);
-            if (parents.length == calledFunctions.size()) {
-                Function[] functions =
-                    calledFunctions.toArray(new Function[calledFunctions.size()]);
-                for (int i = 0; i < parents.length; i++) {
-                    ClassTypeInfoUtils.getClassFunction(
-                        program, parents[i], functions[i].getEntryPoint());
-                    setFunction(parents[i], functions[i], destructor);
-                }
+            List<ClassTypeInfo> parents = new ArrayList<>(typeinfo.getVirtualParents());
+            parents.addAll(Arrays.asList(typeinfo.getParentModels()));
+            List<Function> functions = new ArrayList<>(constructor.getCalledFunctions(monitor));
+            functions.sort((a, b) -> (a.getEntryPoint().compareTo(b.getEntryPoint())));
+            for (int i = 0; i < parents.size(); i++) {
+                ClassTypeInfoUtils.getClassFunction(
+                    program, parents.get(i), functions.get(i).getEntryPoint());
+                setFunction(parents.get(i), functions.get(i), destructor);
             }
     }
 

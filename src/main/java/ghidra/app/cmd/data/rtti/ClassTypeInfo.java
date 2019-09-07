@@ -1,6 +1,9 @@
 package ghidra.app.cmd.data.rtti;
 
 import ghidra.util.task.TaskMonitor;
+
+import java.util.Set;
+
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
@@ -42,6 +45,14 @@ public interface ClassTypeInfo extends TypeInfo {
      * @throws InvalidDataTypeException
      */ 
     ClassTypeInfo[] getParentModels() throws InvalidDataTypeException;
+
+    /**
+     * Retrieves an ordered set of all virtually inherited base classes.
+     * 
+     * @return the set of virtual bases.
+     * @throws InvalidDataTypeException
+     */
+    public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException;
 
     /**
      * Determines if the represented class is an abstract base.

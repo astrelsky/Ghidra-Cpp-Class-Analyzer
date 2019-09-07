@@ -2,12 +2,16 @@ package ghidra.app.cmd.data.rtti.gcc;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
+import ghidra.program.model.address.AddressRange;
+import ghidra.program.model.address.AddressRangeImpl;
+import ghidra.program.model.data.Array;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.DefaultDataType;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Data;
+import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
@@ -18,9 +22,9 @@ import java.util.List;
 import java.util.Set;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
+import static ghidra.program.model.data.Undefined.isUndefinedArray;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
 public class VtableUtils {
@@ -38,13 +42,14 @@ public class VtableUtils {
     }
 
     /**
-     * Gets the number of ptrdiff_t's in the vtable_prefix in the buffer.
+     * Gets the number of ptrdiff_t's in the vtable_prefix at the address.
      * 
-     * @param buf
-     * @return the number of ptrdiff_t's in the vtable_prefix in the buffer.
+     * @param Program
+     * @param Address
+     * @return the number of ptrdiff_t's in the vtable_prefix at the address.
      */
-    public static int getNumPtrDiffs(MemBuffer buf) {
-        return getNumPtrDiffs(buf, MAX_PTR_DIFFS);
+    public static int getNumPtrDiffs(Program program, Address address) {
+        return getNumPtrDiffs(program, address, MAX_PTR_DIFFS);
     }
 
     /* This is not pretty. The rules I have found are as follows.
@@ -62,101 +67,104 @@ public class VtableUtils {
      * @param maxLength
      * @return the number of ptrdiff_t's in the array or 0 if invalid.
      */
-    public static int getNumPtrDiffs(MemBuffer buffer, int maxLength) {
-        MemoryBufferImpl buf = new MemoryBufferImpl(buffer.getMemory(), buffer.getAddress());
-        Program program = buf.getMemory().getProgram();
-        DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
-        if (isInTypeInfo(buf)) {
-            return 0;
-        }
-        int length = ptrdiff_t.getLength();
-        int direction = 1;
-        int count = 0;
-        long value = 0;
-        List<Long> values = new ArrayList<>(maxLength);
-        IntToLongFunction getValue = length == 8 ? buf::getLong : buf::getInt;
-        try {
-            if (GnuUtils.isValidPointer(program, buf.getAddress())) {
-                if (TypeInfoUtils.isTypeInfoPointer(buf)) {
-                    direction = -1;
-                    buf.advance(direction * length);
-                } else {
-                    return 0;
-                }
+    public static int getNumPtrDiffs(Program program, Address address, int maxLength) {
+        Listing listing = program.getListing();
+        Data before = listing.getDefinedDataBefore(address);
+        Data after = listing.getDefinedDataAfter(address);
+        Data containing = listing.getDefinedDataContaining(address);
+        if (isValidData(containing)) {
+            AddressRangeImpl set;
+            if (before.equals(containing)) {
+                set = new AddressRangeImpl(before.getAddress(), after.getAddress());
+            } else {
+                set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
             }
-            // this block should catch 90% of vtables in libstdc++.
-            for (int i = 0; i < 2; i++) {
-                if (isInTypeInfo(buf)) {
-                    return count;
+            if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
+                if (isPtrDiffArray(before)) {
+                    return before.getNumComponents();
                 }
-                value = getValue.applyAsLong(0);
-                if (value < 0 && direction < 0) {
-                    return count;
+                if (isVptrArray(after)) {
+                    after = listing.getDefinedDataAfter(after.getMaxAddress());
                 }
-                if (value > 0 && direction < 0) {
-                    if (values.contains(value)) {
-                        return 0;
-                    } values.add(value);
-                }
-                buf.advance(direction * length);
-                count++;
-                long tmp = getValue.applyAsLong(0);
-                if (GnuUtils.isValidPointer(buf) && !(tmp == 0)) {
-                    if (direction > 0) {
-                        if (TypeInfoUtils.isTypeInfoPointer(buf)) {
-                            return count;
-                        } if (isInTypeInfo(buf)) {
-                            return count;
-                        } return 0;
-                    }
-                    return count;
-                }
+                int ptrDiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
+                set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
+                return getNumPtrDiffs(program, address.subtract(ptrDiffSize), set, true);
             }
-        } catch (MemoryAccessException | AddressOverflowException e) {
-            if (direction < 0) {
-                return count;
-            } return 0;
+            return getNumPtrDiffs(program, address, set, false);
         }
-        if (direction > 0 && TypeInfoUtils.isTypeInfoPointer(buf)) {
-            return count;
-        }
-        while (count < maxLength) {
-            try {
-                if (isInTypeInfo(buf)) {
-                    return count;
-                } if (GnuUtils.isValidPointer(buf) && !(getValue.applyAsLong(0) == 0)) {
-                    if ((direction < 0) ^ TypeInfoUtils.isTypeInfoPointer(buf)) {
-                        break;
-                    } else if (direction < 0) {
-                        break;
-                    } return 0;
-                }
-                value = getValue.applyAsLong(0);
-                if (value < 0 && direction < 0) {
-                    return count;
-                }
-                if (value > 0 && direction < 0) {
-                    if (values.contains(value)) {
-                        return 0;
-                    } values.add(value);
-                }
-                count++;
-                buf.advance(direction * length);
-            } catch (MemoryAccessException | AddressOverflowException e) {
-                if (direction < 0) {
-                    return count;
-                } return 0;
-            }
-        }
-        return count;
+        return 0;
     }
 
-    private static boolean isInTypeInfo(MemBuffer buf) {
-        Program program = buf.getMemory().getProgram();
-        Data data = program.getListing().getDataContaining(buf.getAddress());
-        if (data != null && data.getMnemonicString().equals(TypeInfo.SYMBOL_NAME)) {
+    private static boolean isPtrDiffArray(Data data) {
+        if (data != null && data.isArray()) {
+            DataType ptrDiff = GnuUtils.getPtrDiff_t(data.getDataType().getDataTypeManager());
+            return ((Array) data.getDataType()).getDataType().equals(ptrDiff);
+        }
+        return false;
+    }
+
+    private static boolean isVptrArray(Data data) {
+        if (data != null && data.isArray()) {
+            DataType vptr = GnuUtils.getVptr(data.getDataType().getDataTypeManager());
+            return ((Array) data.getDataType()).getDataType().equals(vptr);
+        }
+        return false;
+    }
+
+    private static int getNumPtrDiffs(Program program, Address address,
+        AddressRange range, boolean reverse) {
+            MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), address);
+            DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
+            int length = ptrdiff_t.getLength();
+            int direction = reverse? -1 : 1;
+            int count = 0;
+            long value = 0;
+            List<Long> values = new ArrayList<>();
+            IntToLongFunction getValue = length == 8 ? buf::getLong : buf::getInt;
+            while (range.contains(buf.getAddress())) {
+                try {
+                    if (GnuUtils.isValidPointer(buf) && !(getValue.applyAsLong(0) == 0)) {
+                        if ((direction < 0) ^ TypeInfoUtils.isTypeInfoPointer(buf)) {
+                            break;
+                        } else if (direction < 0) {
+                            break;
+                        } return 0;
+                    }
+                    value = getValue.applyAsLong(0);
+                    if (value < 0 && direction < 0) {
+                        return count;
+                    }
+                    if (value > 0 && direction < 0) {
+                        if (values.contains(value)) {
+                            return 0;
+                        } values.add(value);
+                    }
+                    count++;
+                    buf.advance(direction * length);
+                } catch (MemoryAccessException | AddressOverflowException e) {
+                    if (direction < 0) {
+                        return count;
+                    } return 0;
+                }
+            }
+            return count;
+    }
+
+    private static boolean isValidData(Data data) {
+        if (data == null) {
             return true;
-        } return false;
+        }
+        if (data.isPointer()) {
+            return TypeInfoUtils.isTypeInfoPointer(data);
+        }
+        if (!data.isArray()) {
+            return data.getDataType() instanceof DefaultDataType;
+        }
+        if (isUndefinedArray(data.getDataType())) {
+            return true;
+        }
+        DataType ptrDiff = GnuUtils.getPtrDiff_t(data.getDataType().getDataTypeManager());
+        return ((Array) data.getDataType()).getDataType().equals(ptrDiff);
     }
 
     /**
@@ -169,8 +177,7 @@ public class VtableUtils {
     public static ClassTypeInfo getTypeInfo(Program program, Address address) {
         DataTypeManager dtm = program.getDataTypeManager();
         int ptrDiffSize = GnuUtils.getPtrDiffSize(dtm);
-        MemBuffer buf = new MemoryBufferImpl(program.getMemory(), address);
-        int numPtrDiffs = getNumPtrDiffs(buf);
+        int numPtrDiffs = getNumPtrDiffs(program, address);
         Address currentAddress = address.add(ptrDiffSize * numPtrDiffs);
         if (TypeInfoUtils.isTypeInfoPointer(program, currentAddress)) {
             return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, getAbsoluteAddress(program, currentAddress));

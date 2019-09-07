@@ -32,7 +32,6 @@ public class CreateConstructionVtableBackgroundCmd extends AbstractCreateVtableB
 
     @Override
     protected String getMangledString() throws InvalidDataTypeException {
-        // parent-in-child
-        return PREFIX+parent.getTypeName()+SEPARATOR+child.getTypeName();
+        return PREFIX+child.getTypeName()+SEPARATOR+parent.getTypeName();
     }
 }

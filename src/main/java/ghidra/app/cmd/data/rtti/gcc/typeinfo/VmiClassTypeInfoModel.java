@@ -1,7 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import java.util.*;
-import java.util.stream.IntStream;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.ArrayDataType;
@@ -128,18 +127,35 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         validate();
         List<ClassTypeInfo> parents = new ArrayList<>();
         for (int i = 0; i < bases.length; i++) {
-            if (!bases[i].isVirtual()) {
-                parents.add(bases[i].getClassModel());
-            }
+            parents.add(bases[i].getClassModel());
         }
-        parents.addAll(getVirtualParents());
         return parents.toArray(new ClassTypeInfo[parents.size()]);
     }
 
-    private Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
+    @Override
+    public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
         Set<ClassTypeInfo> result = new LinkedHashSet<>();
-        getVirtualBases().values().forEach(result::addAll);
+        for (BaseClassTypeInfoModel base : bases) {
+            ClassTypeInfo parent = base.getClassModel();
+            result.addAll(parent.getVirtualParents());
+            if (base.isVirtual()) {
+                result.add(parent);
+            }
+        }
         return result;
+    }
+
+    private Set<ClassTypeInfo> getInheritableVirtualParents()
+        throws InvalidDataTypeException {
+            Set<ClassTypeInfo> result = new LinkedHashSet<>();
+            for (BaseClassTypeInfoModel base : bases) {
+                ClassTypeInfo parent = base.getClassModel();
+                if (base.isVirtual()) {
+                    result.add(parent);
+                }
+                result.addAll(parent.getVirtualParents());
+            }
+            return result;
     }
 
     public BaseClassTypeInfoModel getBase(int ordinal) {
@@ -184,33 +200,6 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             return null;
     }
 
-    private Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> getVirtualBases()
-        throws InvalidDataTypeException {
-            Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> baseMap =
-                new LinkedHashMap<>();
-            for (BaseClassTypeInfoModel base : bases) {
-                AbstractClassTypeInfoModel parent = base.getClassModel();
-                Set<AbstractClassTypeInfoModel> subSet = new LinkedHashSet<>();
-                baseMap.put(parent, subSet);
-                if (base.isVirtual()) {
-                    baseMap.put(parent, Collections.singleton(parent));
-                }
-                if (parent.hasParent()) {
-                    if (isVmi(parent)) {
-                        VmiClassTypeInfoModel vmi = toVmi(parent);
-                        for (ClassTypeInfo grandParent : vmi.getVirtualBases().keySet()) {
-                            subSet.add(toSuper(grandParent));
-                        }
-                    } else {
-                        // __si_class_type_info is virtual iff it's parent is virtual
-                        if (base.isVirtual()) {
-                            subSet.add(toSuper(parent.getParentModels()[0]));
-                        }
-                    }
-                }
-            } return baseMap;
-    }
-
     private static void shrinkStruct(DataType dt, int length) {
         if (length > 0  && dt.getLength() > length) {
             if (dt instanceof Structure) {
@@ -222,68 +211,67 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
     }
 
-    private void addBase(Structure struct, BaseClassTypeInfoModel base, int maxLength)
-        throws InvalidDataTypeException {
-            AbstractClassTypeInfoModel parent = base.getClassModel();
-            Structure parentStruct = parent.getSuperClassDataType();
-            shrinkStruct(parentStruct, maxLength);
-            replaceComponent(struct, parentStruct, SUPER+base.getName(), base.getOffset());
-    }
-
-    private void addVirtualBase(Structure struct, AbstractClassTypeInfoModel base,
+    private void addBase(Structure struct, ClassTypeInfo parent,
         int offset, int maxLength) throws InvalidDataTypeException {
+            AbstractClassTypeInfoModel base = (AbstractClassTypeInfoModel) parent;
             Structure parentStruct = base.getSuperClassDataType();
-            shrinkStruct(parentStruct, maxLength);
+            if (maxLength > 0) {
+                shrinkStruct(parentStruct, maxLength);
+            }
             replaceComponent(struct, parentStruct, SUPER+base.getName(), offset);
     }
 
-    private boolean isVmi(ClassTypeInfo type) {
-        return type instanceof VmiClassTypeInfoModel;
-    }
-
-    private VmiClassTypeInfoModel toVmi(ClassTypeInfo type) {
-        return (VmiClassTypeInfoModel) type;
-    }
-
-    private AbstractClassTypeInfoModel toSuper(ClassTypeInfo type) {
-        return (AbstractClassTypeInfoModel) type;
+    private List<Long> getOffsets() {
+        List<Long> result = new ArrayList<>();
+        for (BaseClassTypeInfoModel base : bases) {
+            if(!base.isVirtual()) {
+                result.add((long) base.getOffset());
+            }
+        }
+        try {
+            VtableModel vtable = (VtableModel) getVtable();
+            long[] offsets = vtable.getBaseOffsetArray();
+            Arrays.sort(offsets);
+            for (int i = 1; i < offsets.length; i++) {
+                result.add(offsets[i]);
+            }
+        } catch (InvalidDataTypeException e) {}
+        return result;
     }
 
     private void addBases(Structure struct) throws InvalidDataTypeException {
-        Set<AbstractClassTypeInfoModel> subBases = new HashSet<>();
-        VtableModel vtable = (VtableModel) getVtable();
-        long[] offsets = vtable.getOffsetArray();
-        Arrays.sort(offsets);
         int i = 0;
-        Map<AbstractClassTypeInfoModel, Set<AbstractClassTypeInfoModel>> vBases =
-            getVirtualBases();
-        for (int j = 0; j < bases.length; j++) {
-            BaseClassTypeInfoModel base = bases[j];
-            AbstractClassTypeInfoModel parent = base.getClassModel();
-            if (base.isVirtual()) {
-                if (!subBases.contains(parent)) {
-                    try {
-                        int maxLength = ++i+1 == offsets.length ? -1 : (int) offsets[i];
-                        addVirtualBase(struct, parent, (int) offsets[i], maxLength);
-                        subBases.add(parent);
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        Msg.error(this, e);
-                    }
+        List<Long> offsets = getOffsets();
+        for (BaseClassTypeInfoModel base : bases) {
+            if (!base.isVirtual()) {
+                AbstractClassTypeInfoModel parent = base.getClassModel();
+                if (i+1 >= offsets.size()) {
+                    addBase(struct, parent, offsets.get(i++).intValue(), -1);   
+                } else {
+                    addBase(
+                        struct, parent, offsets.get(i++).intValue(), offsets.get(i).intValue());
                 }
+            }
+        }
+        for (ClassTypeInfo parent : getInheritableVirtualParents()) {
+            if (i+1 >= offsets.size()) {
+                addBase(struct, parent, offsets.get(i++).intValue(), -1);   
             } else {
-                int maxLength = j+1 == bases.length ? -1 : bases[j+1].getOffset();
-                addBase(struct, base, maxLength);
+                addBase(
+                    struct, parent, offsets.get(i++).intValue(), offsets.get(i).intValue());
             }
-            if (vBases.containsKey(parent)) {
-                for (AbstractClassTypeInfoModel grandparent : vBases.get(parent)) {
-                    if (!subBases.contains(grandparent)) {
-                        int maxLength = ++i+1 == offsets.length ? -1 : (int) offsets[i];
-                        addVirtualBase(struct, grandparent, (int) offsets[i], maxLength);
-                        subBases.add(grandparent);
-                    }
-                }
-                vBases.remove(parent);
+        }
+    }
+
+
+    private void addNonVirtualBases(Structure struct) throws InvalidDataTypeException {
+        for (BaseClassTypeInfoModel base : bases) {
+            if (base.getOffset() < 0) {
+                throw new InvalidDataTypeException(base.getName()+" in "+getName()
+                    +" is virtual but there is no vtable");
             }
+            Structure parentStruct = base.getClassModel().getClassDataType();
+            replaceComponent(struct, parentStruct, SUPER+base.getName(), base.getOffset());
         }
     }
 
@@ -300,8 +288,12 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
         stashComponents(struct);
         struct.setDescription("");
-        addBases(struct);
-        addVptr(struct);
+        try {
+            addBases(struct);
+            addVptr(struct);
+        } catch (InvalidDataTypeException e) {
+            addNonVirtualBases(struct);
+        }
         if (repopulate && super.getSuperClassDataType() != null) {
             getSuperClassDataType(repopulate, struct);
         }
@@ -312,10 +304,23 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     private void fixComponents(Structure struct) {
         for (DataTypeComponent comp : dtComps.keySet()) {
             if (comp.getOffset() != dtComps.get(comp)) {
-                struct.replaceAtOffset(
-                    dtComps.get(comp), comp.getDataType(),
+                int offset = dtComps.get(comp);
+                DataTypeComponent replaced = struct.getComponentAt(offset);
+                if (replaced != null && replaced.getOffset() == offset) {
+                    struct.replaceAtOffset(
+                        offset, comp.getDataType(),
+                        comp.getLength(), comp.getFieldName(), comp.getComment());
+                } else {
+                    int length = replaced.getLength();
+                    if (replaced.getEndOffset() > offset) {
+                        shrinkStruct(replaced.getDataType(),
+                                     length - (replaced.getEndOffset() - offset) - 1);
+                    } else if (replaced.getEndOffset() == offset) {
+                        shrinkStruct(replaced.getDataType(), replaced.getLength()-1); 
+                    }
+                    struct.replaceAtOffset(offset, comp.getDataType(),
                     comp.getLength(), comp.getFieldName(), comp.getComment());
-                struct.clearComponent(comp.getOrdinal());
+                }
             }
         }
     }
@@ -339,30 +344,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
                 struct.replaceWith(getClassDataType());
             }
             setSuperStructureCategoryPath(struct);
-            Set<String> parents = new HashSet<>();
-            for (Map.Entry<AbstractClassTypeInfoModel,Set<AbstractClassTypeInfoModel>> parent :
-                getVirtualBases().entrySet()) {
-                    parents.add(SUPER+parent.getKey().getName());
-                    for (ClassTypeInfo grandparent : parent.getValue()) {
-                        parents.add(SUPER+grandparent.getName());
-                }
-            }
-            DataTypeComponent[] comps = struct.getComponents();
-            for (DataTypeComponent comp : comps) {
-                if (parents.contains(comp.getFieldName())) {
-                    int ordinal = comp.getOrdinal();
-                    int[] ordinals = IntStream.rangeClosed(ordinal, comps.length - 1).toArray();
-                    struct.delete(ordinals);
-                    break;
-                }
-            }
-            comps = struct.getDefinedComponents();
-            if (comps.length > 0) {
-                int ordinal = comps[comps.length-1].getOrdinal();
-                int[] ordinals = IntStream.rangeClosed(
-                    ordinal+1, struct.getNumComponents() - 1).toArray();
-                struct.delete(ordinals);
-            }
+            deleteVirtualComponents(struct);
             addVptr(struct);
             fixComponents(struct);
             return resolveStruct(struct);

@@ -86,39 +86,56 @@ public class ClassTypeInfoUtils {
             return getValidVtable(program, references, monitor, type);
     }
 
+    private static boolean invalidData(Data data) {
+        if (data == null) {
+            return false;
+        }
+        if (data.getDataType() instanceof Pointer) {
+            return false;
+        }
+        if (data.getDataType() instanceof DefaultDataType) {
+            return false;
+        }
+        return true;
+    }
+
     private static Vtable getValidVtable(Program program, Set<Address> references,
         TaskMonitor monitor, ClassTypeInfo typeinfo) throws CancelledException {
         Listing listing = program.getListing();
         for (Address reference : references) {
             monitor.checkCanceled();
             Data data = listing.getDataContaining(reference);
-            if (data != null) {
-                Symbol symbol = data.getPrimarySymbol();
-                if (symbol != null && !symbol.getName().equals(VtableModel.SYMBOL_NAME)) {
-                    continue;
-                }
+            if (invalidData(data)) {
+                continue;
             }
             VtableModel vtable = new VtableModel(program, reference, typeinfo);
             try {
                 Function[][] functionTables = vtable.getFunctionTables();
                 if (functionTables.length > 0) {
-                    if (functionTables[0][0] == null) {
-                        for (Function function : functionTables[0]) {
-                            if (function == null) {
-                                continue;
+                    if (functionTables[0].length > 0) {
+                        if (functionTables[0][0] == null) {
+                            for (Function function : functionTables[0]) {
+                                if (function == null) {
+                                    continue;
+                                }
+                                if (PURE_VIRTUAL_FUNCTION_NAME.equals(function.getName())) {
+                                    return vtable;
+                                }
                             }
-                            if (PURE_VIRTUAL_FUNCTION_NAME.equals(function.getName())) {
-                                return vtable;
-                            }
+                            // construction vtable
+                            continue;
                         }
-                        // construction vtable
-                        continue;
                     }
                 }
             } catch (InvalidDataTypeException e) {
                 continue;
             }
             return vtable;
+        }
+        try {
+            Msg.info(THIS, "Unable to find vtable for "+typeinfo.getNamespace().getName(true));
+        } catch (InvalidDataTypeException e) {
+            Msg.error(THIS, e);
         }
         return VtableModel.NO_VTABLE;
     }

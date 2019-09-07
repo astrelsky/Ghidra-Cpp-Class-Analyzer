@@ -1,12 +1,16 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.IntStream;
+
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.AbstractTypeInfoModel;
-import ghidra.app.cmd.data.rtti.gcc.vtable.VtableDataType;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
@@ -15,7 +19,6 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.VoidDataType;
-import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
@@ -63,16 +66,13 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         }
         SymbolTable table = program.getSymbolTable();
         for (Symbol symbol : table.getSymbols(VtableModel.SYMBOL_NAME, getGhidraClass())) {
-            Data data = program.getListing().getDataAt(symbol.getAddress());
-            if (data != null && data.getDataType() instanceof VtableDataType) {
-                vtable = (VtableModel) data.getValue();
+                vtable = new VtableModel(program, symbol.getAddress(), this);
                 try {
                     vtable.validate();
                     return vtable;
                 } catch (InvalidDataTypeException e) {
                     continue;
                 }
-            }
         }
         try {
             vtable = (VtableModel) ClassTypeInfoUtils.findVtable(program, address, monitor);
@@ -168,7 +168,16 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         }
     }
 
+    private static void trimStructure(Structure struct) {
+        DataTypeComponent[] comps = struct.getDefinedComponents();
+        int endOffset =  comps[comps.length-1].getEndOffset()+1;
+        while (struct.getLength() > endOffset) {
+            struct.deleteAtOffset(endOffset);
+        }
+    }
+
     protected static Structure resolveStruct(Structure struct) {
+        trimStructure(struct);
         DataTypeManager dtm = struct.getDataTypeManager();
         return (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
     }
@@ -176,5 +185,31 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
     @Override
     public DataType getRepresentedDataType() throws InvalidDataTypeException {
         return getClassDataType(false);
+    }
+
+    @Override
+    public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
+        return Collections.emptySet();
+    }
+
+    protected void deleteVirtualComponents(Structure struct) throws InvalidDataTypeException {
+        Set<Structure> parents = new HashSet<>();
+        for (ClassTypeInfo parent : getVirtualParents()) {
+            Structure parentStruct =
+                ((AbstractClassTypeInfoModel) parent).getSuperClassDataType();
+            parents.add(parentStruct);
+            parents.add(parent.getClassDataType());
+        }
+        DataTypeComponent[] comps = struct.getDefinedComponents();
+        for (DataTypeComponent comp : comps) {
+            DataType dt = comp.getDataType();
+            if (parents.contains(dt)) {
+                int ordinal = comp.getOrdinal();
+                int numComponents = struct.getNumComponents() - 1;
+                int[] ordinals = IntStream.rangeClosed(ordinal, numComponents).toArray();
+                struct.delete(ordinals);
+                break;
+            }
+        }
     }
 }

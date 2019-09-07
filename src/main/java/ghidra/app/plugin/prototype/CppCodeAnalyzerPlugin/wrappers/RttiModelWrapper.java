@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -353,6 +354,15 @@ public class RttiModelWrapper implements ClassTypeInfo {
             buffer.append(name);
         }
         return buffer.toString();
+    }
+
+    @Override
+    public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
+        Set<ClassTypeInfo> result = new LinkedHashSet<>();
+        for (Rtti1Model model : getVirtualModels()) {
+            result.add(new RttiModelWrapper(model));
+        }
+        return result;
     }
 
     

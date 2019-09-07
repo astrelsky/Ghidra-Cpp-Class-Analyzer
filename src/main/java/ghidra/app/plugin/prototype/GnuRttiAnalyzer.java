@@ -234,6 +234,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
         findAndCreatePureVirtualFunction();
         monitor.setMessage("Sorting Classes...");
         ClassTypeInfoUtils.sortByMostDerived(program, classes);
+        Collections.reverse(classes);
         monitor.initialize(classes.size());
         monitor.setMessage("Finding vtables");
         for (ClassTypeInfo type : classes) {
