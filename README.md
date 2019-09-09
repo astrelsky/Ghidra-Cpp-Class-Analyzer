@@ -14,7 +14,7 @@ Supported Compilers
 
 * GCC  
 * Clang  
-* Visual Studio
+* Visual Studio (Control Flow Guard (CFG) not supported)
 
 Information
 -----------

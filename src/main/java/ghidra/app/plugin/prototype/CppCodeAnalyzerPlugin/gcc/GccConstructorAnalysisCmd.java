@@ -1,6 +1,5 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -10,12 +9,11 @@ import java.util.Set;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.AddParameterCommand;
 import ghidra.app.util.XReferenceUtil;
-import ghidra.framework.cmd.BackgroundCommand;
-import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
@@ -23,35 +21,25 @@ import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
-import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Parameter;
 import ghidra.program.model.listing.ParameterImpl;
-import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.Memory;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
-import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
-import ghidra.util.task.TaskMonitor;
 
-public class GccConstructorAnalysisCmd extends BackgroundCommand {
+public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
     private static final String NAME = GccConstructorAnalysisCmd.class.getSimpleName();
     private static final String VTT_PARAM_NAME = "vttParam";
 
     private VttModel vtt = null;
-    private ClassTypeInfo type = null;
-    private Program program;
-    private TaskMonitor monitor;
-    private FunctionManager fManager;
-    private Listing listing;
-    private ReferenceManager manager;
 
-    private GccConstructorAnalysisCmd() {
-        super(NAME, false, true, false);
+    GccConstructorAnalysisCmd() {
+        super(NAME);
     }
 
     public GccConstructorAnalysisCmd(VttModel vtt) {
@@ -70,22 +58,17 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
     }
 
     @Override
-    public boolean applyTo(DomainObject obj, TaskMonitor taskMonitor) {
-        if (!(obj instanceof Program)) {
-            String message = "Can only apply a constructor to a program.";
-            Msg.error(this, message);
-            return false;
-        }
-        this.program = (Program) obj;
-        this.monitor = taskMonitor;
-        this.listing = program.getListing();
-        this.fManager = program.getFunctionManager();
-        this.manager = program.getReferenceManager();
+    public void setTypeInfo(ClassTypeInfo typeinfo) {
+        this.type = typeinfo;
+        this.vtt = null;
+    }
+
+    public void setVtt(VttModel vtt) {
+        this.vtt = vtt;
         try {
-            return vtt != null ? createFromVttModel() : analyzeVtable(type.getVtable());
-        } catch (Exception e) {
+            this.type = vtt.getVtableModel(0).getTypeInfo();
+        } catch (InvalidDataTypeException e) {
             Msg.error(this, e);
-            return false;
         }
     }
 
@@ -100,36 +83,29 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
         return instr.getFlows()[0];
     }
 
-    private boolean isProcessed(Address address) {
-        Function function = fManager.getFunctionContaining(address);
-        return VftableAnalysisUtils.isProcessedFunction(function);
+    private boolean isInherited(ClassTypeInfo typeinfo, Namespace ns) throws InvalidDataTypeException {
+        for (ClassTypeInfo parent : typeinfo.getParentModels()) {
+            if (ns.equals(parent.getGhidraClass())) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private boolean isInherited(ClassTypeInfo typeinfo, Namespace ns)
-        throws InvalidDataTypeException {
-            for (ClassTypeInfo parent : typeinfo.getParentModels()) {
-                if (ns.equals(parent.getGhidraClass())) {
-                    return true;
-                }
-            }
-            return false;
-    }
-
-    private void detectVirtualDestructors(Data data, Vtable vtable)
-        throws InvalidDataTypeException {
-            Function[][] fTable = vtable.getFunctionTables();
-            if (fTable[0][0] == null) {
-                return;
-            } else if (fTable[0][0].getName().equals(vtable.getTypeInfo().getName())) {
-                createVirtualDestructors(vtable.getTypeInfo());
-                return;
-            }
-            List<Address> addresses = Arrays.asList(XReferenceUtil.getOffcutXRefList(data));
-            Set<Function> functions = new HashSet<>(addresses.size());
-            addresses.forEach((a) -> functions.add(fManager.getFunctionContaining(a)));
-            if (functions.contains(fTable[0][0])) {
-                createVirtualDestructors(vtable.getTypeInfo());
-            }
+    private void detectVirtualDestructors(Data data, Vtable vtable) throws InvalidDataTypeException {
+        Function[][] fTable = vtable.getFunctionTables();
+        if (fTable.length == 0 || fTable[0].length == 0 || fTable[0][0] == null) {
+            return;
+        } else if (fTable[0][0].getName().equals(vtable.getTypeInfo().getName())) {
+            createVirtualDestructors(vtable.getTypeInfo());
+            return;
+        }
+        List<Address> addresses = Arrays.asList(XReferenceUtil.getXRefList(data));
+        Set<Function> functions = new HashSet<>(addresses.size());
+        addresses.forEach((a) -> functions.add(fManager.getFunctionContaining(a)));
+        if (functions.contains(fTable[0][0])) {
+            createVirtualDestructors(vtable.getTypeInfo());
+        }
     }
 
     private boolean analyzeVtable(Vtable vtable) throws InvalidDataTypeException {
@@ -151,7 +127,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
                 return false;
             }
             Address fromAddress = reference.getFromAddress();
-            if(!fManager.isInFunction(fromAddress)) {
+            if (!fManager.isInFunction(fromAddress)) {
                 continue;
             }
             if (isProcessed(fromAddress)) {
@@ -160,7 +136,8 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
                     Namespace ns = function.getParentNamespace();
                     if (!(ns.equals(typeinfo.getGhidraClass()) || isInherited(typeinfo, ns))) {
                         return true;
-                    } continue;
+                    }
+                    continue;
                 }
             } else {
                 try {
@@ -181,37 +158,43 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
     }
 
     private boolean createFromVttModel() throws Exception {
+        Memory mem = program.getMemory();
         Address address = vtt.getAddress();
         Vtable vtable = vtt.getVtableModel(0);
         Data data = program.getListing().getDataAt(address);
+        analyzeVtable(vtable);
         if (data != null) {
             for (Address reference : XReferenceUtil.getOffcutXRefList(data)) {
-                createConstructor(vtable.getTypeInfo(), reference, true);
+                if (mem.getBlock(reference).isExecute() && !isConstructor(type, reference)) {
+                    createConstructor(vtable.getTypeInfo(), reference, true);
+                }
             }
             for (Address reference : XReferenceUtil.getXRefList(data)) {
-                createConstructor(vtable.getTypeInfo(), reference, true);
+                if (mem.getBlock(reference).isExecute() && !isConstructor(type, reference)) {
+                    createConstructor(vtable.getTypeInfo(), reference, true);
+                }
             }
             detectVirtualDestructors(data, vtable);
         }
         for (int i = 0; i < vtt.getElementCount(); i++) {
             ClassTypeInfo baseType = vtt.getTypeInfo(i);
-            if (baseType.equals(type)) {
-                continue;
-            }
-            for (Reference reference : manager.getReferencesTo(address)) {
-                if (reference.getReferenceType().equals(RefType.PARAM)) {
-                    Address fromAddress = reference.getFromAddress();
-                    Function caller = fManager.getFunctionContaining(fromAddress);
-                    if (caller == null || !caller.getParentNamespace().equals(type.getGhidraClass())) {
-                        continue;
-                    }
-                    Address calleeAddress = getCalledFunctionAddress(fromAddress);
-                    if (!calleeAddress.equals(Address.NO_ADDRESS)) {
-                        Function callee = ClassTypeInfoUtils.getClassFunction(
-                            program, baseType, calleeAddress);
-                        setFunction(
-                            baseType, callee, VftableAnalysisUtils.isDestructor(caller));
-                        setVttParam(callee);
+            if (!baseType.equals(type)) {
+                for (Reference reference : manager.getReferencesTo(address)) {
+                    if (reference.getReferenceType().equals(RefType.PARAM)) {
+                        Address fromAddress = reference.getFromAddress();
+                        Function caller = fManager.getFunctionContaining(fromAddress);
+                        if (caller == null || !caller.getParentNamespace().equals(
+                            type.getGhidraClass())) {
+                                continue;
+                        }
+                        Address calleeAddress = getCalledFunctionAddress(fromAddress);
+                        if (!calleeAddress.equals(Address.NO_ADDRESS)) {
+                            Function callee = ClassTypeInfoUtils.getClassFunction(
+                                program, baseType, calleeAddress);
+                            setFunction(
+                                baseType, callee, VftableAnalysisUtils.isDestructor(caller));
+                            setVttParam(callee);
+                        }
                     }
                 }
             }
@@ -222,29 +205,8 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
 
     private void createConstructor(ClassTypeInfo typeinfo, Address address, boolean vttParam)
         throws Exception {
-            Function function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
-            if (function == null) {
-                Msg.info(this, "Null "+type.getName()+" Constructor at: "+address);
-                return;
-            }
-            setFunction(typeinfo, function, false);
-            if (vttParam) {
-                setVttParam(function);
-            }
+            Function function = createConstructor(typeinfo, address);
             createSubConstructors(typeinfo, function, false);
-    }
-
-    private void createSubConstructors(ClassTypeInfo typeinfo, Function constructor,
-        boolean destructor) throws InvalidDataTypeException {
-            List<ClassTypeInfo> parents = new ArrayList<>(typeinfo.getVirtualParents());
-            parents.addAll(Arrays.asList(typeinfo.getParentModels()));
-            List<Function> functions = new ArrayList<>(constructor.getCalledFunctions(monitor));
-            functions.sort((a, b) -> (a.getEntryPoint().compareTo(b.getEntryPoint())));
-            for (int i = 0; i < parents.size(); i++) {
-                ClassTypeInfoUtils.getClassFunction(
-                    program, parents.get(i), functions.get(i).getEntryPoint());
-                setFunction(parents.get(i), functions.get(i), destructor);
-            }
     }
 
     private void setVttParam(Function function) {
@@ -253,8 +215,7 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
         try {
             if (function.getParameterCount() == 1) {
                 ParameterImpl param = new ParameterImpl(VTT_PARAM_NAME, vpp, program);
-                AddParameterCommand cmd = new AddParameterCommand(
-                    function, param, 1, SourceType.ANALYSIS);
+                AddParameterCommand cmd = new AddParameterCommand(function, param, 1, SourceType.ANALYSIS);
                 cmd.applyTo(program);
             } else {
                 Parameter param = function.getParameter(1);
@@ -266,42 +227,33 @@ public class GccConstructorAnalysisCmd extends BackgroundCommand {
         }
     }
 
-    private void setFunction(ClassTypeInfo typeinfo, Function function, boolean destructor) {
-        try {
-            String name = destructor ? "~"+typeinfo.getName() : typeinfo.getName();
-            function.setName(name, SourceType.IMPORTED);
-            function.setParentNamespace(typeinfo.getGhidraClass());
-            VftableAnalysisUtils.setConstructorDestructorTag(program, function, destructor);
-        } catch (Exception e) {
-            Msg.error(this, e);
-        }
-    }
-
-    private void createVirtualDestructors(ClassTypeInfo typeinfo)
-        throws InvalidDataTypeException {
-            Vtable vtable = typeinfo.getVtable();
-            Function[][] functionTables = vtable.getFunctionTables();
-            for (int i = 0; i < functionTables.length; i++) {
-                for (int j = 0; j < functionTables[i].length && j < 2; j++) {
-                    Address address = functionTables[i][j].getEntryPoint();
-                    if (i == 0) {
-                        Function function =
-                            ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
-                        setFunction(typeinfo, function, true);
-                        if (j == 0) {
-                            // Only do this for the [in-charge] destructor
-                            createSubConstructors(typeinfo, function, true);
-                        }
-                    } else {
-                        functionTables[i][j].setThunkedFunction(functionTables[0][j]);
-                        try {
-                            functionTables[i][j].setParentNamespace(typeinfo.getGhidraClass());
-                        } catch (Exception e) {
-                            Msg.error(this, "Failed to set function namespace at "
-                                            +functionTables[i][j].getEntryPoint(), e);
-                        }
+    private void createVirtualDestructors(ClassTypeInfo typeinfo) throws InvalidDataTypeException {
+        Vtable vtable = typeinfo.getVtable();
+        Function[][] functionTables = vtable.getFunctionTables();
+        for (int i = 0; i < functionTables.length; i++) {
+            for (int j = 0; j < functionTables[i].length && j < 2; j++) {
+                Address address = functionTables[i][j].getEntryPoint();
+                if (i == 0) {
+                    Function function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
+                    if (VftableAnalysisUtils.isDestructor(function)) {
+                        return;
+                    }
+                    setFunction(typeinfo, function, true);
+                } else {
+                    functionTables[i][j].setThunkedFunction(functionTables[0][j]);
+                    try {
+                        functionTables[i][j].setParentNamespace(typeinfo.getGhidraClass());
+                    } catch (Exception e) {
+                        Msg.error(this, "Failed to set function namespace at " + functionTables[i][j].getEntryPoint(),
+                                e);
                     }
                 }
             }
+        }
+    }
+
+    @Override
+    protected boolean analyze() throws Exception {
+        return vtt != null ? createFromVttModel() : analyzeVtable(type.getVtable());
     }
 }

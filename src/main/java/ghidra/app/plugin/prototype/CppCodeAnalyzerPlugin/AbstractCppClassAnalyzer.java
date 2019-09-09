@@ -4,7 +4,6 @@ import java.util.*;
 
 import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
-import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.options.Options;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.app.services.AnalyzerType;
@@ -29,9 +28,6 @@ import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.cmd.data.rtti.gcc.VtableModel;
-import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
-import ghidra.app.cmd.data.rtti.gcc.VttModel;
 
 public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
@@ -48,13 +44,17 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     private boolean constructorAnalysisOption;
     private boolean fillClassFieldsOption;
 
-    private Program program;
+    protected Program program;
     private TaskMonitor monitor;
     private CancelOnlyWrappingTaskMonitor dummy;
     private AutoAnalysisManager analysisManager;
 
     private List<ClassTypeInfo> classes;
     private ArrayList<Vtable> vftables;
+
+    protected AbstractConstructorAnalysisCmd constructorAnalyzer;
+
+    protected MessageLog log;
 
     /**
      * Constructs an AbstractCppClassAnalyzer.
@@ -68,7 +68,9 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
     protected abstract boolean hasVtt();
 
-    protected abstract List<ClassTypeInfo> getClassTypeInfoList(Program currentProgram);
+    protected abstract List<ClassTypeInfo> getClassTypeInfoList();
+
+    protected abstract AbstractConstructorAnalysisCmd getConstructorAnalyzer();
 
     @Override
     @SuppressWarnings("hiding")
@@ -76,10 +78,12 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
             throws CancelledException {
         this.program = program;
         this.monitor = monitor;
+        this.log = log;
         this.analysisManager = AutoAnalysisManager.getAnalysisManager(program);
+        this.constructorAnalyzer = getConstructorAnalyzer();
 
         dummy = new CancelOnlyWrappingTaskMonitor(monitor);
-        classes = getClassTypeInfoList(program);
+        classes = getClassTypeInfoList();
 
         try {
             setupVftables();
@@ -194,7 +198,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
     
 
-    private void analyzeVftables() throws Exception {
+    protected void analyzeVftables() throws Exception {
         List<ClassTypeInfo> namespaces = new ArrayList<>(vftables.size());
         monitor.initialize(vftables.size());
         monitor.setMessage("Setting up namespaces");
@@ -214,8 +218,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         monitor.setMessage("Analyzing Vftables");
         for (ClassTypeInfo type : namespaces) {
             monitor.checkCanceled();
-            BackgroundCommand cmd = getVftableAnalyzer(type);
-            cmd.applyTo(program);
+            analyzeVftable(type);
             monitor.incrementProgress(1);
         }
         Collections.reverse(namespaces);
@@ -224,24 +227,19 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         }
     }
 
-    protected abstract BackgroundCommand getVftableAnalyzer(ClassTypeInfo type);
-    protected abstract BackgroundCommand getConstructorAnalyzer(Object o);
+    protected abstract boolean analyzeVftable(ClassTypeInfo type);
+    protected abstract boolean analyzeConstructor(ClassTypeInfo type);
 
-    private void analyzeConstructors(List<ClassTypeInfo> namespaces) throws Exception {
+    protected boolean shouldAnalyzeConstructors() {
+        return constructorAnalysisOption;
+    }
+
+    protected void analyzeConstructors(List<ClassTypeInfo> namespaces) throws Exception {
         monitor.initialize(namespaces.size());
         monitor.setMessage("Creating Constructors");
         for (ClassTypeInfo type : namespaces) {
             monitor.checkCanceled();
-            Vtable vtable = type.getVtable();
-            BackgroundCommand cmd;
-            if (hasVtt()) {
-                VttModel vtt = VtableUtils.getVttModel(program, (VtableModel) vtable);
-                cmd = vtt.isValid() ? 
-                    getConstructorAnalyzer(vtt) : getConstructorAnalyzer(type);
-            } else {
-                cmd = getConstructorAnalyzer(type);
-            }
-            cmd.applyTo(program, dummy);
+            analyzeConstructor(type);
             monitor.incrementProgress(1);
         }
     }

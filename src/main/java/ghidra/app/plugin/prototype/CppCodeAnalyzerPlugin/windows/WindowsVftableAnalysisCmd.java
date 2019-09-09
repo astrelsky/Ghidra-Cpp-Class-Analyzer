@@ -21,8 +21,16 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
     private ClassTypeInfo typeinfo;
     private Program program;
 
-    public WindowsVftableAnalysisCmd(ClassTypeInfo type) {
+    protected WindowsVftableAnalysisCmd() {
         super(NAME, false, true, false);
+    }
+
+    public WindowsVftableAnalysisCmd(ClassTypeInfo type) {
+        this();
+        this.typeinfo = type;
+    }
+
+    public void setTypeInfo(ClassTypeInfo type) {
         this.typeinfo = type;
     }
 
@@ -52,7 +60,9 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
                 if (!isProcessedFunction(function)) {
                     Function thunkedFunction =
                         VftableAnalysisUtils.recurseThunkFunctions(program, function);
-                    getClassFunction(program, type, thunkedFunction.getEntryPoint());
+                    if (!isProcessedFunction(thunkedFunction)) {
+                        getClassFunction(program, type, thunkedFunction.getEntryPoint());
+                    }
                 }
             }
         }

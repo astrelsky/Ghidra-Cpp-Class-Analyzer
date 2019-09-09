@@ -359,8 +359,14 @@ public class RttiModelWrapper implements ClassTypeInfo {
     @Override
     public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
         Set<ClassTypeInfo> result = new LinkedHashSet<>();
-        for (Rtti1Model model : getVirtualModels()) {
-            result.add(new RttiModelWrapper(model));
+        int baseCount = hierarchyDescriptor.getRtti1Count();
+        for (int i = 1; i < baseCount; i++) {
+            Rtti1Model model = baseArray.getRtti1Model(i);
+            ClassTypeInfo parent = new RttiModelWrapper(model);
+            result.addAll(parent.getVirtualParents());
+            if (isVirtual(model)) {
+                result.add(new RttiModelWrapper(model));
+            }
         }
         return result;
     }

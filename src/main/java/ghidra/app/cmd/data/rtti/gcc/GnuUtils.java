@@ -17,17 +17,12 @@ import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.CategoryPath;
-import ghidra.program.model.data.CompositeDataTypeImpl;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.DynamicDataType;
 import ghidra.program.model.data.FunctionDefinitionDataType;
 import ghidra.program.model.data.IntegerDataType;
 import ghidra.program.model.data.LongLongDataType;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.lang.Processor;
-import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.DataTypeComponentImpl;
-import ghidra.program.model.data.ReadOnlyDataTypeComponent;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.DummyCancellableTaskMonitor;
@@ -51,61 +46,6 @@ public final class GnuUtils {
     private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
 
     private GnuUtils() {
-    }
-
-    /**
-     * Create a new DataTypeComponent for a CompositeDataType or DynamicDataType.
-     * 
-     * @param DataType          The new components DataType.
-     * @param DynamicDataType   The DataType this component will be added to.
-     * @param DataTypeComponent The previously added datatype component.
-     * @param String            The field name for the component.
-     * @param String            The comment for the component.
-     * @return the new ReadOnlyDataTypeComponent.
-     */
-    public static DataTypeComponent getComponent(DataType dataType, DataType child, DataTypeComponent previous,
-            String name, String comment) {
-        return getComponent(dataType, child, previous, name, comment, 0);
-    }
-
-    protected static DataTypeComponent getComponent(DataType dataType, DataType child,
-        DataTypeComponent previous, String name, String comment, int offset) {
-            if (previous == null)
-                return getComponent(dataType, child, name, comment);
-            if (child instanceof DynamicDataType) {
-                return new ReadOnlyDataTypeComponent(
-                    dataType, (DynamicDataType) child, dataType.getLength(),
-                    previous.getOrdinal() + 1, previous.getEndOffset() + 1 + offset,
-                    name, comment);
-            } else if (child instanceof CompositeDataTypeImpl) {
-                return new DataTypeComponentImpl(
-                    dataType, (CompositeDataTypeImpl) child, dataType.getLength(),
-                    previous.getOrdinal() + 1, previous.getEndOffset() + 1 + offset,
-                    name, comment);
-            }
-            return null;
-    }
-
-    /**
-     * Create a new DataTypeComponent for a CompositeDataType or DynamicDataType.
-     * 
-     * @param DataType        The new components DataType.
-     * @param DynamicDataType The DataType this component will be added to.
-     * @param String          The field name for the component.
-     * @param String          The comment for the component.
-     * @return the new ReadOnlyDataTypeComponent.
-     */
-    public static DataTypeComponent getComponent(DataType dataType, DataType child,
-        String name, String comment) {
-            if (child instanceof DynamicDataType) {
-                return new ReadOnlyDataTypeComponent(
-                    dataType, (DynamicDataType) child, dataType.getLength(), 0, 0, name,comment);
-            } else if (child instanceof CompositeDataTypeImpl) {
-                return new DataTypeComponentImpl(
-                    dataType, (CompositeDataTypeImpl) child, dataType.getLength(), 0, 0,
-                    name, comment);
-            }
-            return null;
     }
 
     /**

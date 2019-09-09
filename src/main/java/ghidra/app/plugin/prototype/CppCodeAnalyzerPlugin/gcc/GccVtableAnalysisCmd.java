@@ -25,8 +25,16 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
     private Program program;
     private TaskMonitor monitor;
 
-    public GccVtableAnalysisCmd(ClassTypeInfo type) {
+    protected GccVtableAnalysisCmd() {
         super(NAME, false, true, false);
+    }
+
+    public GccVtableAnalysisCmd(ClassTypeInfo type) {
+        this();
+        this.typeinfo = type;
+    }
+
+    public void setTypeInfo(ClassTypeInfo type) {
         this.typeinfo = type;
     }
 

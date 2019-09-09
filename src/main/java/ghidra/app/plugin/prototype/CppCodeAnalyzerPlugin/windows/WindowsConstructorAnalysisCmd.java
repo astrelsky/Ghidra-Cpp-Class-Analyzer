@@ -1,86 +1,123 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.function.CreateFunctionCmd;
+import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.app.util.XReferenceUtil;
-import ghidra.framework.cmd.BackgroundCommand;
-import ghidra.framework.model.DomainObject;
+import ghidra.app.util.bin.format.pdb.PdbProgramAttributes;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
-import ghidra.program.model.listing.Listing;
-import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
-import ghidra.util.exception.CancelledException;
-import ghidra.util.task.TaskMonitor;
 
-public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
+public class WindowsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
     private static final String NAME = WindowsConstructorAnalysisCmd.class.getSimpleName();
     private static final String VECTOR_DESTRUCTOR = "vector_deleting_destructor";
     private static final String VBASE_DESTRUCTOR = "vbase_destructor";
 
-    private ClassTypeInfo type = null;
-    private Program program;
-    private TaskMonitor monitor;
-    private FunctionManager fManager;
-    private Listing listing;
-
-    private WindowsConstructorAnalysisCmd() {
-        super(NAME, false, true, false);
+    WindowsConstructorAnalysisCmd() {
+        super(NAME);
     }
 
     public WindowsConstructorAnalysisCmd(ClassTypeInfo typeinfo) {
-        this();
-        this.type = typeinfo;
+        super(NAME, typeinfo);
     }
 
-    @Override
-    public boolean applyTo(DomainObject obj, TaskMonitor taskMonitor) {
-        if (!(obj instanceof Program)) {
-            String message = "Can only apply a constructor to a program.";
-            Msg.error(this, message);
-            return false;
-        }
-        this.program = (Program) obj;
-        this.monitor = taskMonitor;
-        this.listing = program.getListing();
-        this.fManager = program.getFunctionManager();
-        try {
-            return analyzeVtable(type.getVtable());
-        } catch (CancelledException | InvalidDataTypeException e) {
-            return false;
-        }
+    private boolean isDebugable() {
+        PdbProgramAttributes pdb = new PdbProgramAttributes(program);
+        return pdb.getPdbFile() != null;
     }
 
-    private void setDestructor(ClassTypeInfo typeinfo, Function function) {
-        setFunction(typeinfo, function, true);
-        if (function.isThunk()) {
-            setFunction(typeinfo, function.getThunkedFunction(false), true);
+    private Address getFunctionStart(Address address) {
+        Instruction inst = listing.getInstructionAt(address);
+        while (inst.getFallFrom() != null) {
+            inst = inst.getPrevious();
         }
+        return inst.getAddress();
+    }
+
+    private boolean analyzeVtable(Vtable vtable) throws Exception,
+        InvalidDataTypeException {
+            Address[] tableAddresses = vtable.getTableAddresses();
+            if (tableAddresses.length == 0) {
+                // no virtual functions, nothing to analyze.
+                return true;
+            }
+            Address tableAddress = tableAddresses[0];
+            monitor.checkCanceled();
+            Data data = listing.getDataContaining(tableAddress);
+            if (data == null) {
+                return false;
+            }
+            ClassTypeInfo typeinfo = vtable.getTypeInfo();
+            
+            List<Address> references = Arrays.asList(XReferenceUtil.getXRefList(data, -1));
+            if (references.isEmpty()) {
+                return false;
+            }
+            Set<Function> functions = new LinkedHashSet<>(references.size());
+            if (!isDebugable()) {
+                Function function = fManager.getFunctionContaining(references.get(0));
+                if (function == null) {
+                    data = listing.getDataAt(references.get(0));
+                    if (data != null && data.isPointer()) {
+                        references =
+                            Arrays.asList(XReferenceUtil.getXRefList(data, -1));
+                        Collections.reverse(references);
+                        Address start = getFunctionStart(references.get(0));
+                        CreateFunctionCmd cmd = new CreateFunctionCmd(start, true);
+                        if (cmd.applyTo(program)) {
+                            function = cmd.getFunction();
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+                createConstructor(typeinfo, function.getEntryPoint());
+                setDestructor(typeinfo, function);
+                return true;
+            }
+            Collections.reverse(references);
+            for (Address fromAddress : references) {
+                monitor.checkCanceled();
+                if(!fManager.isInFunction(fromAddress)) {
+                    continue;
+                }
+                Function function = fManager.getFunctionContaining(fromAddress);
+                createConstructor(typeinfo, function.getEntryPoint());
+                functions.add(function);
+            }
+            if (functions.size() < 2) {
+                return false;
+            }
+            Iterator<Function> iter =functions.iterator();
+            Function destructor = iter.next();
+            setDestructor(typeinfo, destructor);
+            detectVirtualDestructors(destructor, vtable);
+            createSubConstructors(typeinfo, iter.next(), false);
+            return true;
     }
 
     private Set<Function> getThunks(Function function) {
-        FunctionManager manager = program.getFunctionManager();
         Set<Function> functions = new HashSet<>();
         functions.add(function);
-        for (Address address : function.getFunctionThunkAddresses()) {
-            functions.add(manager.getFunctionContaining(address));
+        Address[] addresses = function.getFunctionThunkAddresses();
+        if (addresses == null) {
+            return functions;
+        }
+        for (Address address : addresses) {
+            Function thunkFunction = fManager.getFunctionContaining(address);
+            functions.add(thunkFunction);
         }
         return functions;
     }
@@ -97,7 +134,7 @@ public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
                 }
                 Set<Function> destructors = getThunks(destructor);
                 Function vDestructor = VftableAnalysisUtils.recurseThunkFunctions(
-                    program, functionTable[0].getThunkedFunction(true));
+                    program, functionTable[0]);
                 Function calledFunction = getFirstCalledFunction(vDestructor);
                 if (calledFunction == null) {
                     continue;
@@ -158,57 +195,9 @@ public class WindowsConstructorAnalysisCmd extends BackgroundCommand {
         return null;
     }
 
-    private boolean analyzeVtable(Vtable vtable) throws CancelledException,
-        InvalidDataTypeException {
-            Address[] tableAddresses = vtable.getTableAddresses();
-            if (tableAddresses.length == 0) {
-                // no virtual functions, nothing to analyze.
-                return true;
-            }
-            for (Address tableAddress : tableAddresses) {
-                monitor.checkCanceled();
-                Data data = listing.getDataContaining(tableAddress);
-                if (data == null) {
-                    continue;
-                }
-                ClassTypeInfo typeinfo = vtable.getTypeInfo();
-                
-                List<Address> references = Arrays.asList(XReferenceUtil.getXRefList(data, -1));
-                if (references.isEmpty()) {
-                    continue;
-                }
-                Set<Function> functions = new LinkedHashSet<>(references.size());
-                Collections.reverse(references);
-                for (Address fromAddress : references) {
-                    monitor.checkCanceled();
-                    if(!fManager.isInFunction(fromAddress)) {
-                        continue;
-                    }
-                    Function function = fManager.getFunctionContaining(fromAddress);
-                    createConstructor(typeinfo, function.getEntryPoint());
-                    functions.add(function);
-                }
-                Function destructor = functions.iterator().next();
-                setDestructor(typeinfo, destructor);
-                detectVirtualDestructors(destructor, vtable);
-            }
-            return true;
-    }
-
-    private void createConstructor(ClassTypeInfo typeinfo, Address address) {
-        Function function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
-        setFunction(typeinfo, function, false);
-    }
-
-    private void setFunction(ClassTypeInfo typeinfo, Function function, boolean destructor) {
-        try {
-            String name = destructor ? "~"+typeinfo.getName() : typeinfo.getName();
-            function.setName(name, SourceType.IMPORTED);
-            function.setParentNamespace(typeinfo.getGhidraClass());
-            VftableAnalysisUtils.setConstructorDestructorTag(program, function, destructor);
-        } catch (Exception e) {
-            Msg.error(this, e);
-        }
+    @Override
+    protected boolean analyze() throws Exception {
+        return analyzeVtable(type.getVtable());
     }
 
 }
