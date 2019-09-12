@@ -213,11 +213,12 @@ public class VttModel {
                 break;
             }
             Address tiAddress = getTIAddress(currentAddress);
+            if (tiAddress == null || tiAddress.equals(Address.NO_ADDRESS)) {
+                break;
+            }
             ClassTypeInfo currentType =
                 (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, tiAddress);
-            if (tiAddress == null) {
-                break;
-            } if (!validTypes.contains((currentType))) {
+            if (!validTypes.contains((currentType))) {
                 break;
             }
             int subCount = getSubTableCount(currentAddress);

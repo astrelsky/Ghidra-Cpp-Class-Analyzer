@@ -17,8 +17,12 @@ import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
+import ghidra.program.model.mem.DumbMemBufferImpl;
+import ghidra.program.model.mem.MemBuffer;
+import ghidra.program.model.mem.Memory;
 import ghidra.program.model.pcode.FunctionPrototype;
 import ghidra.program.model.pcode.HighParam;
+import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
@@ -102,8 +106,17 @@ public class ClassTypeInfoUtils {
     private static Vtable getValidVtable(Program program, Set<Address> references,
         TaskMonitor monitor, ClassTypeInfo typeinfo) throws CancelledException {
         Listing listing = program.getListing();
+        Memory mem = program.getMemory();
+        DataType ptrDiff = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
+        Scalar zero = new Scalar(ptrDiff.getLength(), 0);
         for (Address reference : references) {
             monitor.checkCanceled();
+            MemBuffer buf = new DumbMemBufferImpl(mem, reference.subtract(ptrDiff.getLength()));
+            Object value = ptrDiff.getValue(
+                buf, ptrDiff.getDefaultSettings(), ptrDiff.getLength());
+            if(!zero.equals(value)) {
+                continue;
+            }
             Data data = listing.getDataContaining(reference);
             if (invalidData(data)) {
                 continue;
@@ -133,7 +146,7 @@ public class ClassTypeInfoUtils {
             return vtable;
         }
         try {
-            Msg.info(THIS, "Unable to find vtable for "+typeinfo.getNamespace().getName(true));
+            Msg.debug(THIS, "Unable to find vtable for "+typeinfo.getNamespace().getName(true));
         } catch (InvalidDataTypeException e) {
             Msg.error(THIS, e);
         }
@@ -331,6 +344,31 @@ public class ClassTypeInfoUtils {
                 size++;
             }
             struct.deleteAtOffset(offset);
+        }
+    }
+
+    public static DataType getVptrDataType(Program program, ClassTypeInfo type) {
+        try {
+            Vtable vtable = type.getVtable();
+            CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
+            path = new CategoryPath(path, type.getName());
+            DataTypeManager dtm = program.getDataTypeManager();
+            Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);
+            if (dtm.contains(struct)) {
+                return dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
+            }
+            Function[][] functionTable = vtable.getFunctionTables();
+            int pointerSize = program.getDefaultPointerSize();
+            if (functionTable.length > 0 && functionTable[0].length > 0) {
+                for (Function function : functionTable[0]) {
+                    DataType dt = new FunctionDefinitionDataType(function, false);
+                    dt.setCategoryPath(path);
+                    struct.add(dtm.getPointer(dt), pointerSize, dt.getName(), null);
+                }
+            }
+            return dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
+        } catch (InvalidDataTypeException | DuplicateNameException e) {
+            return null;
         }
     }
 

@@ -81,7 +81,8 @@ public class TypeInfoFactory {
     public static TypeInfo getTypeInfo(Program program, Address address) {
             String baseTypeName = TypeInfoUtils.getIDString(program, address);
             if (!COPY_MAP.containsKey(baseTypeName)) {
-                Msg.error(THIS, "Invalid TypeInfo at "+address.toString());
+                // invalid typeinfo
+                return null;
             } try {
                 Constructor<?> cloneContainer = getConstructor(COPY_MAP.get(baseTypeName));
                 return (TypeInfo) cloneContainer.newInstance(program, address);

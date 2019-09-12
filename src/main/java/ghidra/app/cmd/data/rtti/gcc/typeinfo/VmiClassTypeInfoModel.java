@@ -245,6 +245,10 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         for (BaseClassTypeInfoModel base : bases) {
             if (!base.isVirtual()) {
                 AbstractClassTypeInfoModel parent = base.getClassModel();
+                if (i > 0 && offsets.get(i) == 0) {
+                    // super class is just a namespace
+                    continue;
+                }
                 if (i+1 >= offsets.size()) {
                     addBase(struct, parent, offsets.get(i++).intValue(), -1);   
                 } else {
@@ -254,6 +258,10 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             }
         }
         for (ClassTypeInfo parent : getInheritableVirtualParents()) {
+            if (i > 0 && offsets.get(i) == 0) {
+                // super class is just a namespace
+                continue;
+            }
             if (i+1 >= offsets.size()) {
                 addBase(struct, parent, offsets.get(i++).intValue(), -1);   
             } else {

@@ -81,7 +81,7 @@ public class VtableModel implements Vtable {
                 Address typeAddress = getAbsoluteAddress(program, address);
                 this.type = (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
             }
-            int length = VtableUtils.getNumPtrDiffs(program, address);
+            int length = arrayCount > 0 ? 2 : VtableUtils.getNumPtrDiffs(program, address);
             DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
             this.address = address.subtract(length * ptrdiff_t.getLength());
         } else if (this.type == null) {
@@ -317,8 +317,8 @@ public class VtableModel implements Vtable {
                 dataTypes.add(new PointerDataType(null, pointerSize, dtm));
                 Address tableAddress = prefixAddress.add(getPrefixSize());
                 int tableSize = VtableUtils.getFunctionTableLength(program, tableAddress);
+                DataType vptr = GnuUtils.getVptr(dtm);
                 if (tableSize > 0) {
-                    DataType vptr = GnuUtils.getVptr(dtm);
                     ArrayDataType table = new ArrayDataType(
                         vptr, tableSize, program.getDefaultPointerSize(), dtm);
                     dataTypes.add(table);

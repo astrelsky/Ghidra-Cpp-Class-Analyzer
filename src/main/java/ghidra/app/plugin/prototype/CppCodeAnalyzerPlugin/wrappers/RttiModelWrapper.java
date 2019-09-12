@@ -28,6 +28,7 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
+import ghidra.program.model.data.Undefined;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
@@ -313,6 +314,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
             struct.insertAtOffset(comp.getOrdinal(), comp.getDataType(), comp.getLength(),
                                   comp.getFieldName(), comp.getComment());
         }
+        addVptr(struct);
         return resolve(struct);
     }
 
@@ -343,6 +345,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
             Structure parentStruct = parent.getSuperClassDataType();
             inheritClass(struct, parentStruct, getOffset(model));
         }
+        addVptr(struct);
         return resolve(struct);
     }
 
@@ -371,5 +374,21 @@ public class RttiModelWrapper implements ClassTypeInfo {
         return result;
     }
 
+    protected void addVptr(Structure struct) {
+        DataTypeComponent comp = struct.getComponentAt(0);
+        if (comp == null || Undefined.isUndefined(comp.getDataType())) {
+            DataType vptr = ClassTypeInfoUtils.getVptrDataType(type.getProgram(), this);
+            vptr = type.getProgram().getDataTypeManager().getPointer(vptr);
+            if (vptr != null) {
+                if (struct.getLength() <= 1) {
+                    struct.add(
+                        vptr, type.getProgram().getDefaultPointerSize(), "_vptr", null);
+                } else {
+                    struct.replace(0,
+                        vptr, type.getProgram().getDefaultPointerSize(), "_vptr", null);
+                }
+            }
+        }
+    }
     
 }

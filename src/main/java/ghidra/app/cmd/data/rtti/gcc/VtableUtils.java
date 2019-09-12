@@ -9,12 +9,14 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DefaultDataType;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Undefined;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
+import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -24,7 +26,6 @@ import java.util.Set;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
-import static ghidra.program.model.data.Undefined.isUndefinedArray;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
 public class VtableUtils {
@@ -157,10 +158,13 @@ public class VtableUtils {
         if (data.isPointer()) {
             return TypeInfoUtils.isTypeInfoPointer(data);
         }
+        if (Undefined.isUndefined(data.getDataType())) {
+            return true;
+        }
         if (!data.isArray()) {
             return data.getDataType() instanceof DefaultDataType;
         }
-        if (isUndefinedArray(data.getDataType())) {
+        if (Undefined.isUndefinedArray(data.getDataType())) {
             return true;
         }
         DataType ptrDiff = GnuUtils.getPtrDiff_t(data.getDataType().getDataTypeManager());
@@ -234,11 +238,8 @@ public class VtableUtils {
      */
     public static VttModel getVttModel(Program program, VtableModel vtable)
         throws InvalidDataTypeException {
-            // The VTT is usually at the end of the vtable.
-            Address nextDataAddress = vtable.getAddress().add(vtable.getLength());
-            VttModel vtt = new VttModel(program, nextDataAddress);
-            if (vtt.isValid()) {
-                return vtt;
+            if (vtable.getTypeInfo().getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
+                return VttModel.INVALID;
             }
             Address[] tableAddresses = vtable.getTableAddresses();
             if (tableAddresses.length == 0) {
@@ -251,14 +252,14 @@ public class VtableUtils {
             // VTT typically follows the vtable
             Address address = vtable.getAddress().add(vtable.getLength());
             if (references.contains(address)) {
-                vtt = new VttModel(program, address);
+                VttModel vtt = new VttModel(program, address);
                 if (vtt.isValid()) {
                     return vtt;
                 }
             }
             Iterator<Address> refIterator = references.iterator();
             while (refIterator.hasNext()) {
-                vtt = new VttModel(program, refIterator.next());
+                VttModel vtt = new VttModel(program, refIterator.next());
                 if (vtt.isValid()) {
                     return vtt;
                 }

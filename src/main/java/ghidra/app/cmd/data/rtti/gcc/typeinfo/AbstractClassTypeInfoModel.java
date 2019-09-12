@@ -8,7 +8,6 @@ import java.util.stream.IntStream;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.AbstractTypeInfoModel;
 import ghidra.program.model.address.Address;
@@ -18,7 +17,6 @@ import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
@@ -146,24 +144,19 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
     }
 
-    protected void addVptr(Structure struct) throws InvalidDataTypeException {
+    protected void addVptr(Structure struct) {
         DataTypeComponent comp = struct.getComponentAt(0);
         if (comp == null || isUndefined(comp.getDataType())) {
-            Vtable subVtable = getVtable();
-            try {
-                subVtable.validate();
-            } catch (InvalidDataTypeException e) {
-                return;
-            }
-            int pointerSize = program.getDefaultPointerSize();
-            DataTypeManager dtm = program.getDataTypeManager();
-            DataType vptr = dtm.getPointer(VoidDataType.dataType);
-            if (struct.getLength() <= 1) {
-                struct.add(
-                    vptr, pointerSize, "_vptr", null);
-            } else {
-                struct.replace(0,
-                    vptr, pointerSize, "_vptr", null);
+            DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, this);
+            program.getDataTypeManager().getPointer(vptr);
+            if (vptr != null) {
+                if (struct.getLength() <= 1) {
+                    struct.add(
+                        vptr, program.getDefaultPointerSize(), "_vptr", null);
+                } else {
+                    struct.replace(0,
+                        vptr, program.getDefaultPointerSize(), "_vptr", null);
+                }
             }
         }
     }
