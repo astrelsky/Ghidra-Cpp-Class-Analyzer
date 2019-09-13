@@ -9,7 +9,6 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -21,29 +20,6 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
 
     protected AbstractSiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
-    }
-
-    @Override
-    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
-        DataTypeManager dtm = program.getDataTypeManager();
-        Structure struct = super.getSuperClassDataType();
-        if (!ClassTypeInfoUtils.isPlaceholder(struct)) {
-            return struct;
-        }
-        struct = getClassDataType();
-        VtableModel vtable = (VtableModel) getVtable();
-        if (vtable == null) {
-            return struct;
-        }
-        long[] offsets = vtable.getBaseOffsetArray();
-        if (offsets.length ==1) {
-            // finished
-            return struct;
-        }
-        Structure superStruct = (Structure) struct.copy(dtm);
-        setSuperStructureCategoryPath(superStruct);
-        deleteVirtualComponents(struct);
-        return resolveStruct(struct);
     }
 
     @Override
@@ -60,7 +36,7 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
         struct.setDescription("");
         AbstractClassTypeInfoModel parent = (AbstractClassTypeInfoModel) getParentModels()[0];
         replaceComponent(
-            struct, parent.getClassDataType(), SUPER+parent.getName(), 0);
+            struct, parent.getSuperClassDataType(), SUPER+parent.getName(), 0);
         addVptr(struct);
         return resolveStruct(struct);
     }

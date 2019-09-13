@@ -18,7 +18,6 @@ import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.FunctionDefinitionDataType;
 import ghidra.program.model.data.IntegerDataType;
 import ghidra.program.model.data.LongLongDataType;
 import ghidra.program.model.data.TypedefDataType;
@@ -37,7 +36,6 @@ public final class GnuUtils {
     private static final String PTRDIFF = "ptrdiff_t";
     private static final String PPC = "PowerPC";
     private static final String CXXABI = "__cxxabiv1";
-    private static final String VPTR = "_vptr";
 
     public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
     public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
@@ -69,31 +67,6 @@ public final class GnuUtils {
         DataType dataType = isLLP64(dtm) ? LongLongDataType.dataType.clone(dtm)
             : IntegerDataType.dataType.clone(dtm);
         return new TypedefDataType(CategoryPath.ROOT, PTRDIFF, dataType, dtm);
-    }
-
-    private static DataType createVptr() {
-        FunctionDefinitionDataType dataType = new FunctionDefinitionDataType(CXXABI_PATH, VPTR);
-        // According to results from virtual classes with DWARF information
-        dataType.setReturnType(IntegerDataType.dataType);
-        dataType.setVarArgs(true);
-        return dataType;
-    }
-
-    /**
-     * Gets a generic _vptr DataType.
-     * 
-     * @param DataTypeManager the programs datatype manager.
-     * @return A generic _vptr DataType.
-     */
-    public static DataType getVptr(DataTypeManager dtm) {
-        // TODO figure out how to actually make it work correctly
-        //return dtm.getPointer(VoidDataType.dataType);
-        
-        DataType _vptr = createVptr();
-        if (dtm.contains(_vptr)) {
-            return dtm.getPointer(dtm.resolve(_vptr, KEEP_HANDLER));
-        }
-        return dtm.getPointer(_vptr);
     }
 
     /**

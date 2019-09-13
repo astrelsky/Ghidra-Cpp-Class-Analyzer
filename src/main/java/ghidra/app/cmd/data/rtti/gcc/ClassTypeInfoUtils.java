@@ -4,26 +4,19 @@ import java.util.*;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
-import ghidra.app.decompiler.DecompInterface;
-import ghidra.app.decompiler.DecompileResults;
-import ghidra.app.decompiler.flatapi.FlatDecompilerAPI;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
-import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.Memory;
-import ghidra.program.model.pcode.FunctionPrototype;
-import ghidra.program.model.pcode.HighParam;
 import ghidra.program.model.scalar.Scalar;
-import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.Msg;
@@ -31,7 +24,6 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.task.TaskMonitor;
 
-import static ghidra.program.model.symbol.SourceType.ANALYSIS;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
 public class ClassTypeInfoUtils {
@@ -220,31 +212,6 @@ public class ClassTypeInfoUtils {
             } return null;
     }
 
-    // TODO remove after resolution of issue #874 and #873
-    private static void fixClassFunctionSignature(Program program, Function function, Namespace ns) {
-        try {
-            function.setParentNamespace(ns);
-            FlatDecompilerAPI decompiler = new FlatDecompilerAPI(new FlatProgramAPI(program));
-            decompiler.initialize();
-            DecompInterface dInterface = decompiler.getDecompiler();
-            DecompileResults results = dInterface.decompileFunction(function, 0, null);
-            FunctionPrototype prototype = results.getHighFunction().getFunctionPrototype();
-            List<Parameter> params = new ArrayList<>();
-            Parameter returnParam = new ReturnParameterImpl(prototype.getReturnType(), program);
-            // skip the this param
-            for (int i = 1; i < prototype.getNumParams(); i++) {
-                HighParam param = prototype.getParam(i);
-                params.add(new ParameterImpl(param.getName(), param.getDataType(), program));
-            }
-            function.updateFunction(GenericCallingConvention.thiscall.getDeclarationName(),
-                                    returnParam, params, Function.FunctionUpdateType.DYNAMIC_STORAGE_ALL_PARAMS,
-                                    true, ANALYSIS);
-            decompiler.dispose();
-        } catch (Exception e) {
-            Msg.error(THIS, e);
-        }
-    }
-
     /**
      * Gets the function for the ClassTypeInfo at the specified address.
      * 
@@ -273,7 +240,8 @@ public class ClassTypeInfoUtils {
             cmd.applyTo(program);
         }
         try {
-            fixClassFunctionSignature(program, function, type.getGhidraClass());
+            function.setParentNamespace(type.getGhidraClass());
+            function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
             return function;
         } catch (Exception e) {
             Msg.error(THIS, "Failed to retrieve class function at "+address, e);
@@ -354,19 +322,30 @@ public class ClassTypeInfoUtils {
             path = new CategoryPath(path, type.getName());
             DataTypeManager dtm = program.getDataTypeManager();
             Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);
-            if (dtm.contains(struct)) {
-                return dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
+            if (dtm.getDataType(struct.getDataTypePath()) != null) {
+                return dtm.getPointer(dtm.getDataType(struct.getDataTypePath()));
             }
             Function[][] functionTable = vtable.getFunctionTables();
             int pointerSize = program.getDefaultPointerSize();
             if (functionTable.length > 0 && functionTable[0].length > 0) {
                 for (Function function : functionTable[0]) {
-                    DataType dt = new FunctionDefinitionDataType(function, false);
-                    dt.setCategoryPath(path);
-                    struct.add(dtm.getPointer(dt), pointerSize, dt.getName(), null);
+                    if (function != null) {
+                        DataType dt = new FunctionDefinitionDataType(function, false);
+                        dt.setCategoryPath(path);
+                        if (dtm.contains(dt)) {
+                            dt = dtm.getDataType(dt.getDataTypePath());
+                        } else {
+                            dt = dtm.resolve(dt, DataTypeConflictHandler.KEEP_HANDLER);
+                        }
+                        struct.add(dtm.getPointer(dt), pointerSize, dt.getName(), null);
+                    } else {
+                        DataType dt = new PointerDataType(null, pointerSize, dtm);
+                        struct.add(dt);
+                    }
                 }
             }
-            return dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
+            struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
+            return dtm.getPointer(struct, program.getDefaultPointerSize());
         } catch (InvalidDataTypeException | DuplicateNameException e) {
             return null;
         }

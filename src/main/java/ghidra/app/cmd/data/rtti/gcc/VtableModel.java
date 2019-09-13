@@ -317,10 +317,9 @@ public class VtableModel implements Vtable {
                 dataTypes.add(new PointerDataType(null, pointerSize, dtm));
                 Address tableAddress = prefixAddress.add(getPrefixSize());
                 int tableSize = VtableUtils.getFunctionTableLength(program, tableAddress);
-                DataType vptr = GnuUtils.getVptr(dtm);
                 if (tableSize > 0) {
                     ArrayDataType table = new ArrayDataType(
-                        vptr, tableSize, program.getDefaultPointerSize(), dtm);
+                        PointerDataType.dataType, tableSize, program.getDefaultPointerSize(), dtm);
                     dataTypes.add(table);
                 }
             }

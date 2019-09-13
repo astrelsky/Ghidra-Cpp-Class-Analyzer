@@ -10,20 +10,31 @@ import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
+import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileResults;
+import ghidra.app.decompiler.flatapi.FlatDecompilerAPI;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.plugin.core.decompile.actions.FillOutStructureCmd;
 import ghidra.app.services.AbstractAnalyzer;
+import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.symbol.SymbolType;
 import ghidra.program.util.FunctionParameterFieldLocation;
 import ghidra.program.model.listing.*;
+import ghidra.program.model.pcode.FunctionPrototype;
+import ghidra.program.model.pcode.HighFunction;
+import ghidra.program.model.pcode.HighParam;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.util.ConsoleErrorDisplay;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.DuplicateNameException;
+import ghidra.util.exception.InvalidInputException;
 import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -88,6 +99,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         try {
             setupVftables();
             analyzeVftables();
+            fixClassFunctionSignatures();
             if (fillClassFieldsOption) {
                 fillStructures();
             }
@@ -106,6 +118,67 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         classes = null;
         vftables = null;
         super.analysisEnded(program);
+    }
+
+    // TODO remove after resolution of issue #874 and #873
+    private void fixClassFunctionSignatures() {
+        FlatDecompilerAPI decompiler = new FlatDecompilerAPI(new FlatProgramAPI(program));
+        try {
+            decompiler.initialize();
+        } catch (Exception e) {
+            Msg.error(this, "fixClassFunctionSignature", e);
+            return;
+        }
+        DecompInterface dInterface = decompiler.getDecompiler();
+        SymbolTable table = program.getSymbolTable();
+        FunctionManager manager = program.getFunctionManager();
+        monitor.setMessage("Decompiling Class Functions...");
+        monitor.initialize(classes.size());
+        for (ClassTypeInfo type : classes) {
+            if (monitor.isCancelled()) {
+                decompiler.dispose();
+                return;
+            }
+            GhidraClass gc;
+            try {
+                gc = type.getGhidraClass();
+            } catch (InvalidDataTypeException e) {
+                monitor.incrementProgress(1);
+                continue;
+            }
+            for (Symbol symbol : table.getChildren(gc.getSymbol())) {
+                if (monitor.isCancelled()) {
+                    decompiler.dispose();
+                    return;
+                }
+                if(!symbol.getSymbolType().equals(SymbolType.FUNCTION)) {
+                    continue;
+                }
+                Function function = manager.getFunctionAt(symbol.getAddress());
+                DecompileResults results = dInterface.decompileFunction(function, 0, null);
+                HighFunction hFunction = results.getHighFunction();
+                if (hFunction == null) {
+                    return;
+                }
+                FunctionPrototype prototype = hFunction.getFunctionPrototype();
+                List<Parameter> params = new ArrayList<>(5);
+                try {
+                    Parameter returnParam = new ReturnParameterImpl(prototype.getReturnType(), program);
+                    // skip the this param
+                    for (int i = 1; i < prototype.getNumParams(); i++) {
+                        HighParam param = prototype.getParam(i);
+                        params.add(new ParameterImpl(param.getName(), param.getDataType(), program));
+                    }
+                    function.updateFunction(GenericCallingConvention.thiscall.getDeclarationName(),
+                                            returnParam, params, Function.FunctionUpdateType.DYNAMIC_STORAGE_ALL_PARAMS,
+                                            true, SourceType.ANALYSIS);
+                } catch (DuplicateNameException | InvalidInputException e) {
+                    Msg.error(this, "fixClassFunctionSignatures: "+function.getEntryPoint().toString(), e);
+                }
+            }
+            monitor.incrementProgress(1);
+        }
+        decompiler.dispose();
     }
 
     private void setupVftables() throws CancelledException, InvalidDataTypeException {
@@ -164,8 +237,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                     FunctionParameterFieldLocation location = new FunctionParameterFieldLocation(
                         program, symbol.getAddress(), symbol.getAddress(),
                         0, function.getSignature().toString(), thisParam);
-                    FillOutStructureCmd cmd = new FillOutStructureCmd(program, location, tool);
                     try {
+                        FillOutStructureCmd cmd = new FillOutStructureCmd(program, location, tool);
                         cmd.applyTo(program, dummy);
                     } catch (Exception e) {
                         Msg.error(this, "Failed to populate class structure.", e);

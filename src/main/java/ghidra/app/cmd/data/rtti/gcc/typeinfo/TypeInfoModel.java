@@ -6,9 +6,8 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.data.StructureDataType;
+import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.listing.Program;
-
-import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getVptr;
 
 /**
  * Model for the type_info class.
@@ -42,7 +41,7 @@ public class TypeInfoModel extends AbstractTypeInfoModel {
             return existingDt;
         }
         StructureDataType struct = new StructureDataType(STD_PATH, STRUCTURE_NAME, 0, dtm);
-        struct.add(dtm.getPointer(getVptr(dtm)), "_vptr", null);
+        struct.add(dtm.getPointer(VoidDataType.dataType), "_vptr", null);
         struct.add(PointerDataType.getPointer(StringDataType.dataType, dtm), "__name", null);
         struct.setDescription(DESCRIPTION);
         return alignDataType(struct, dtm);

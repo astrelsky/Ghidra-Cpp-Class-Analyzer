@@ -9,6 +9,7 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DefaultDataType;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.Undefined;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Listing;
@@ -106,8 +107,7 @@ public class VtableUtils {
 
     private static boolean isVptrArray(Data data) {
         if (data != null && data.isArray()) {
-            DataType vptr = GnuUtils.getVptr(data.getDataType().getDataTypeManager());
-            return ((Array) data.getDataType()).getDataType().equals(vptr);
+            return ((Array) data.getDataType()).getDataType().equals(PointerDataType.dataType);
         }
         return false;
     }

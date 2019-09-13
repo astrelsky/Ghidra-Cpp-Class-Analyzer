@@ -18,7 +18,6 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
@@ -193,7 +192,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
                                 program, baseType, calleeAddress);
                             setFunction(
                                 baseType, callee, VftableAnalysisUtils.isDestructor(caller));
-                            setVttParam(callee);
+                            setVttParam(callee, baseType);
                         }
                     }
                 }
@@ -209,9 +208,9 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
             createSubConstructors(typeinfo, function, false);
     }
 
-    private void setVttParam(Function function) {
+    private void setVttParam(Function function, ClassTypeInfo typeinfo) {
         DataTypeManager dtm = program.getDataTypeManager();
-        DataType vpp = dtm.getPointer(dtm.getPointer(VoidDataType.dataType));
+        DataType vpp = dtm.getPointer(ClassTypeInfoUtils.getVptrDataType(program, typeinfo));
         try {
             if (function.getParameterCount() == 1) {
                 ParameterImpl param = new ParameterImpl(VTT_PARAM_NAME, vpp, program);
@@ -254,6 +253,11 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
     @Override
     protected boolean analyze() throws Exception {
-        return vtt != null ? createFromVttModel() : analyzeVtable(type.getVtable());
+        try {
+            return vtt != null ? createFromVttModel() : analyzeVtable(type.getVtable());
+        } catch (InvalidDataTypeException e) {
+            Msg.error(this, "analyze: "+type.getTypeName(), e);
+            return false;
+        }
     }
 }

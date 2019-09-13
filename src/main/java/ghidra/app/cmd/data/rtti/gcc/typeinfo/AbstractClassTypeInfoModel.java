@@ -16,6 +16,7 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
@@ -30,7 +31,6 @@ import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
 import static ghidra.program.model.data.Undefined.isUndefined;
-import static ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils.getDataTypePath;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
 /**
@@ -38,6 +38,7 @@ import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
  */
 public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel implements ClassTypeInfo {
 
+    private static final String VPTR = "_vptr";
     private VtableModel vtable = null;
 
     protected AbstractClassTypeInfoModel(Program program, Address address) {
@@ -82,13 +83,16 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
 
     @Override
     public boolean isAbstract() throws InvalidDataTypeException {
-        for (Function[] functionTable : getVtable().getFunctionTables()) {
-            for (Function function : functionTable) {
-                if (function == null || function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
-                    return true;
+        validate();
+        try {
+            for (Function[] functionTable : getVtable().getFunctionTables()) {
+                for (Function function : functionTable) {
+                    if (function == null || function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
+                        return true;
+                    }
                 }
             }
-        }
+        } catch (InvalidDataTypeException e) {}
         return false;
     }
 
@@ -118,17 +122,27 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
 
     protected Structure getSuperClassDataType() throws InvalidDataTypeException {
         DataTypeManager dtm = program.getDataTypeManager();
-        DataType struct = dtm.getDataType(getDataTypePath(this).getCategoryPath(), SUPER+getName());
-        if (struct != null) {
-            return (Structure) struct;
-        } return null;
+        Structure struct = getClassDataType();
+        try {
+            long[] offsets = ((VtableModel) getVtable()).getBaseOffsetArray();
+            if (offsets.length == 1) {
+                // finished
+                return struct;
+            }
+            Structure superStruct = (Structure) struct.copy(dtm);
+            setSuperStructureCategoryPath(superStruct);
+            deleteVirtualComponents(superStruct);
+            return resolveStruct(superStruct);
+        } catch (InvalidDataTypeException e) {
+            return struct;
+        }
     }
 
     private void clearComponent(Structure struct, int length, int offset) {
+        if (offset >= struct.getLength()) {
+            return;
+        }
         for (int size = 0; size < length;) {
-            if (offset >= struct.getLength()) {
-                break;
-            }
             DataTypeComponent comp = struct.getComponentAt(offset);
             if (comp!= null) {
                 size += comp.getLength();
@@ -139,25 +153,39 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         }
     }
 
-    protected void replaceComponent(Structure struct, Structure parent, String name, int offset) {
+    protected void replaceComponent(Structure struct, DataType parent, String name, int offset) {
         clearComponent(struct, parent.getLength(), offset);
         struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
     }
 
     protected void addVptr(Structure struct) {
+        try {
+            getVtable().validate();
+        } catch (InvalidDataTypeException e) {
+            return;
+        }
+        DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, this);
         DataTypeComponent comp = struct.getComponentAt(0);
         if (comp == null || isUndefined(comp.getDataType())) {
-            DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, this);
-            program.getDataTypeManager().getPointer(vptr);
             if (vptr != null) {
-                if (struct.getLength() <= 1) {
-                    struct.add(
-                        vptr, program.getDefaultPointerSize(), "_vptr", null);
-                } else {
-                    struct.replace(0,
-                        vptr, program.getDefaultPointerSize(), "_vptr", null);
-                }
+                clearComponent(struct, program.getDefaultPointerSize(), 0);
+                struct.insertAtOffset(0, vptr, program.getDefaultPointerSize(), VPTR, null);
             }
+        } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
+            clearComponent(struct, program.getDefaultPointerSize(), 0);
+            struct.insertAtOffset(0, vptr, program.getDefaultPointerSize(), VPTR, null);
+        }
+    }
+
+    protected void removeVptr(Structure struct) {
+        try {
+            getVtable().validate();
+            DataTypeComponent comp = struct.getComponentAt(0);
+            if (comp.getFieldName().equals(VPTR) && comp.getDataType() instanceof Pointer) {
+                struct.deleteAtOffset(0);
+            }
+        } catch (InvalidDataTypeException e) {
+            return;
         }
     }
 

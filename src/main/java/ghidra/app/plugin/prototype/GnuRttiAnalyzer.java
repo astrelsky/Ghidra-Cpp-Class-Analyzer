@@ -164,7 +164,6 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
     private void addDataTypes() {
         DataTypeManager dtm = program.getDataTypeManager();
         dtm.resolve(VmiClassTypeInfoModel.getDataType(dtm), REPLACE_HANDLER);
-        dtm.resolve(GnuUtils.getVptr(dtm), REPLACE_HANDLER);
     }
 
     private boolean checkTableAddresses(Function[][] functionTables) {
