@@ -1,4 +1,4 @@
-#@category GnuRtti
+#@category VtableDatabase
 import json
 from ghidra.app.cmd.data.rtti.gcc import VtableModel
 from ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory import getTypeInfo, isTypeInfo
