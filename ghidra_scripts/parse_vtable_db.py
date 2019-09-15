@@ -1,6 +1,11 @@
 #@category VtableDatabase
 import json
+from ghidra.util.task.TaskMonitor import DUMMY
+from ghidra.program.model.data import FunctionDefinition
+from ghidra.program.model.data import InvalidDataTypeException
 from ghidra.app.cmd.data.rtti.gcc import VtableModel
+from ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils import getDataTypePath
+from ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils import getVptrDataType
 from ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory import getTypeInfo, isTypeInfo
 from ghidra.app.cmd.data.rtti.TypeInfo import SYMBOL_NAME
 from ghidra.app.util.demangler.DemanglerUtil import demangle
@@ -55,8 +60,9 @@ def validate_typeinfo(symbol):
 @monitored
 def validate_vtable(ti):
     try:
-        return ti.getVtable().isValid()
-    except AttributeError:
+        ti.getVtable().validate()
+        return True
+    except InvalidDataTypeException:
         return False
 
 def fixupFunctionSignature(function):
@@ -81,7 +87,7 @@ def apply_function_definition(mangled, function):
     demangled = demangle(mangled)
     if demangled:
         removeFunction(function)
-        demangled.applyTo(currentProgram, address, options, monitor)
+        demangled.applyTo(currentProgram, address, options, DUMMY)
         function = getFunctionAt(address)
         fixupFunctionSignature(function)
 
@@ -100,6 +106,7 @@ def apply_db_definitions(vtables, db):
                         count += 1
         monitor.incrementProgress(1)
     return count
+
 
 if __name__ == '__main__':
     decompiler = FlatDecompilerAPI(FlatProgramAPI(currentProgram))

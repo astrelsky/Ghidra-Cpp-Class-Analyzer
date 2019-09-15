@@ -48,8 +48,9 @@ def validate_typeinfo(symbol):
 @monitored
 def validate_vtable(ti):
     try:
-        return ti.getVtable().isValid()
-    except AttributeError:
+        ti.getVtable().validate()
+        return True
+    except InvalidDataTypeException:
         return False
 
 def populate_database(symbol_table, vtables):

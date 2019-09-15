@@ -27,6 +27,17 @@ functional. All packages, class names subject to change.
 The Visual Studio class analysis was hastily thrown together in two days.
 Issues and minor oversights are to be expected.
 
+Vtable Database
+---------------
+
+A cheap and lazy "database" has been implemented for virtual function tables.
+It is mainly a proof of concept but it is functional.
+The provided json db file is just a collection of mangled strings for the
+functions found in the vtables in libstdc++. To use simply add the ghidra_scripts
+folder into Ghidra's scripts path, run the GccRtti analyzer and then run
+parse_vtable_db.py. For best result run the parser before running the
+C++ Class Analyzer.
+
 Compatibility
 -------------
 
