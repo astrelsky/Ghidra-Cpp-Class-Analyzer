@@ -1,4 +1,4 @@
-//@category GnuRtti
+//@category CppClassAnalyzer
 
 import ghidra.app.script.GhidraScript;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
