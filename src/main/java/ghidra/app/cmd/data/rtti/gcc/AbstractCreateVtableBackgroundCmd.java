@@ -8,6 +8,8 @@ import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataTypeConflictHandler;
+import ghidra.program.model.data.DataTypeManager;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Program;
 import ghidra.app.util.demangler.DemangledObject;
@@ -64,10 +66,13 @@ public abstract class AbstractCreateVtableBackgroundCmd extends BackgroundComman
 
     private void createData(List<DataType> dataTypes) throws CodeUnitInsertionException {
         Listing listing = program.getListing();
+        DataTypeManager dtm = program.getDataTypeManager();
         Address currentAddress = vtable.getAddress();
         for (DataType dt : dataTypes) {
+            dt = dtm.resolve(dt, DataTypeConflictHandler.KEEP_HANDLER);
             Data data = listing.getDataContaining(currentAddress);
             if (data != null && data.getDataType().equals(dt)) {
+                currentAddress = currentAddress.add(data.getLength());
                 continue;
             }
             DataUtilities.createData(

@@ -177,7 +177,8 @@ public class ClassTypeInfoUtils {
             }
             if (!struct.equals(VariableUtilities.findOrCreateClassStruct(
                     type.getGhidraClass(), dtm))) {
-                        Msg.info(THIS, "Variable Utils returned wrong class structure!");
+                        Msg.error(THIS, "Variable Utils returned wrong class structure! "
+                                        + type.getName());
             }
             return (Structure) struct;
     }
@@ -337,7 +338,7 @@ public class ClassTypeInfoUtils {
                         } else {
                             dt = dtm.resolve(dt, DataTypeConflictHandler.KEEP_HANDLER);
                         }
-                        struct.add(dtm.getPointer(dt), pointerSize, dt.getName(), null);
+                        struct.add(dtm.getPointer(dt), pointerSize, function.getName(), null);
                     } else {
                         DataType dt = new PointerDataType(null, pointerSize, dtm);
                         struct.add(dt);

@@ -37,7 +37,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.CreateTypeInfoBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCmd;
-import ghidra.app.cmd.data.rtti.gcc.CreateVttBackgroundCommand;
+import ghidra.app.cmd.data.rtti.gcc.CreateVttBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
@@ -149,6 +149,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
             } catch (CancelledException e) {
                 throw e;
             } catch (Exception e) {
+                e.printStackTrace();
                 log.appendException(e);
                 return false;
             }
@@ -224,8 +225,8 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
     }
 
     private void createVtt(ClassTypeInfo type, VttModel vtt) {
-        CreateVttBackgroundCommand cmd =
-            new CreateVttBackgroundCommand(vtt, type);
+        CreateVttBackgroundCmd cmd =
+            new CreateVttBackgroundCmd(vtt, type);
         cmd.applyTo(program, dummy);
     }
 

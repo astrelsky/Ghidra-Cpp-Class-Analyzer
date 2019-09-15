@@ -123,13 +123,21 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return true;
     }
 
+    private List<AbstractClassTypeInfoModel> getParents() throws InvalidDataTypeException {
+        List<AbstractClassTypeInfoModel> parents = new ArrayList<>();
+        for (BaseClassTypeInfoModel base : bases) {
+            if (!base.isVirtual()) {
+                parents.add(base.getClassModel());
+            }
+        }
+        parents.addAll(getInheritableVirtualParents());
+        return parents;
+    }
+
     @Override
     public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
         validate();
-        List<ClassTypeInfo> parents = new ArrayList<>();
-        for (int i = 0; i < bases.length; i++) {
-            parents.add(bases[i].getClassModel());
-        }
+        List<AbstractClassTypeInfoModel> parents = getParents();
         return parents.toArray(new ClassTypeInfo[parents.size()]);
     }
 
@@ -146,15 +154,16 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return result;
     }
 
-    private Set<ClassTypeInfo> getInheritableVirtualParents()
+    private Set<AbstractClassTypeInfoModel> getInheritableVirtualParents()
         throws InvalidDataTypeException {
-            Set<ClassTypeInfo> result = new LinkedHashSet<>();
+            Set<AbstractClassTypeInfoModel> result = new LinkedHashSet<>();
             for (BaseClassTypeInfoModel base : bases) {
-                ClassTypeInfo parent = base.getClassModel();
+                AbstractClassTypeInfoModel parent = base.getClassModel();
                 if (base.isVirtual()) {
                     result.add(parent);
                 }
-                result.addAll(parent.getVirtualParents());
+                parent.getVirtualParents().forEach(
+                    (a) -> result.add((AbstractClassTypeInfoModel) a));
             }
             return result;
     }
@@ -208,6 +217,8 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
                 while (struct.getLength() > length) {
                     struct.deleteAtOffset(length);
                 }
+                // remove all remaining trailing undefined bytes
+                trimStructure(struct);
             }
         }
     }
@@ -237,8 +248,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             }
         }
         try {
-            VtableModel vtable = (VtableModel) getVtable();
-            long[] offsets = vtable.getBaseOffsetArray();
+            long[] offsets = ((VtableModel) getVtable()).getBaseOffsetArray();
             Arrays.sort(offsets);
             for (int i = 1; i < offsets.length; i++) {
                 result.add(offsets[i]);
@@ -250,27 +260,13 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     private void addBases(Structure struct) throws InvalidDataTypeException {
         int i = 0;
         List<Long> offsets = getOffsets();
-        for (BaseClassTypeInfoModel base : bases) {
-            if (!base.isVirtual()) {
-                AbstractClassTypeInfoModel parent = base.getClassModel();
-                if (i > 0 && offsets.get(i) == 0) {
+        for (AbstractClassTypeInfoModel parent : getParents()) {
+            if (i > 0 && offsets.get(i) == 0) {
+                if (parent.getSuperClassDataType().getLength() <= 1) {
                     // super class is just a namespace
                     i++;
                     continue;
                 }
-                if (i+1 >= offsets.size()) {
-                    addBase(struct, parent, offsets.get(i++).intValue(), -1);   
-                } else {
-                    addBase(
-                        struct, parent, offsets.get(i++).intValue(), offsets.get(i).intValue());
-                }
-            }
-        }
-        for (ClassTypeInfo parent : getInheritableVirtualParents()) {
-            if (i > 0 && offsets.get(i) == 0) {
-                // super class is just a namespace
-                i++;
-                continue;
             }
             if (i+1 >= offsets.size()) {
                 addBase(struct, parent, offsets.get(i++).intValue(), -1);   

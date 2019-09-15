@@ -39,7 +39,7 @@ import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel implements ClassTypeInfo {
 
     private static final String VPTR = "_vptr";
-    private VtableModel vtable = null;
+    protected VtableModel vtable = null;
 
     protected AbstractClassTypeInfoModel(Program program, Address address) {
         super(program, address);
@@ -132,6 +132,7 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
             Structure superStruct = (Structure) struct.copy(dtm);
             setSuperStructureCategoryPath(superStruct);
             deleteVirtualComponents(superStruct);
+            trimStructure(superStruct);
             return resolveStruct(superStruct);
         } catch (InvalidDataTypeException e) {
             return struct;
@@ -189,8 +190,11 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         }
     }
 
-    private static void trimStructure(Structure struct) {
+    protected static void trimStructure(Structure struct) {
         DataTypeComponent[] comps = struct.getDefinedComponents();
+        if (comps.length == 0) {
+            return;
+        }
         int endOffset =  comps[comps.length-1].getEndOffset()+1;
         while (struct.getLength() > endOffset) {
             struct.deleteAtOffset(endOffset);
@@ -198,7 +202,6 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
     }
 
     protected static Structure resolveStruct(Structure struct) {
-        trimStructure(struct);
         DataTypeManager dtm = struct.getDataTypeManager();
         return (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
     }

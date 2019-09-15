@@ -107,6 +107,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         } catch (CancelledException e) {
             throw e;
         } catch (Exception e) {
+            e.printStackTrace();
             log.appendException(e);
             return false;
         }
@@ -205,7 +206,12 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                 // this works for both vs and gcc
                 continue;
             }
-            type.getClassDataType(true);
+            try {
+                type.getClassDataType(true);
+            } catch (IndexOutOfBoundsException e) {
+                e.printStackTrace();
+                Msg.trace(this, e);
+            }
             monitor.incrementProgress(1);
         }
     }
@@ -214,7 +220,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         SymbolTable table = program.getSymbolTable();
         PluginTool tool = analysisManager.getAnalysisTool();
         repairInheritance();
-        if (constructorAnalysisOption) {
+        if (fillClassFieldsOption) {
             monitor.initialize(vftables.size());
             monitor.setMessage("Filling Class Structures...");
             Msg.setErrorDisplay(new ConsoleErrorDisplay());

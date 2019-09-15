@@ -1,6 +1,7 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -10,17 +11,13 @@ import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
-import ghidra.program.model.reloc.Relocation;
 import ghidra.util.Msg;
-import ghidra.app.cmd.disassemble.DisassembleCommand;
-import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
@@ -46,6 +43,7 @@ public class VtableModel implements Vtable {
     private static final int FUNCTION_TABLE_ORDINAL = 2;
     private static final int MAX_PREFIX_ELEMENTS = 3;
     private int arrayCount;
+    private boolean construction;
     private Set<Function> functions = new HashSet<>();
     private ClassTypeInfo type = null;
     private long[] offsets;
@@ -58,11 +56,11 @@ public class VtableModel implements Vtable {
     }
 
     public VtableModel(Program program, Address address, ClassTypeInfo type) {
-        this(program, address, type, -1);
+        this(program, address, type, -1, false);
     }
 
     public VtableModel(Program program, Address address) {
-        this(program, address, null, -1);
+        this(program, address, null, -1, false);
     }
     
     /**
@@ -71,19 +69,17 @@ public class VtableModel implements Vtable {
      * @param Program program the vtable is in.
      * @param Address starting address of the vtable or the first typeinfo pointer.
      */
-    public VtableModel(Program program, Address address, ClassTypeInfo type, int arrayCount) {
+    public VtableModel(Program program, Address address, ClassTypeInfo type, int arrayCount, boolean construction) {
         this.program = program;
         this.address = address;
         this.type = type;
         this.arrayCount = arrayCount;
+        this.construction = construction;
         if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
             if (this.type == null) {
                 Address typeAddress = getAbsoluteAddress(program, address);
                 this.type = (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
             }
-            int length = arrayCount > 0 ? 2 : VtableUtils.getNumPtrDiffs(program, address);
-            DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
-            this.address = address.subtract(length * ptrdiff_t.getLength());
         } else if (this.type == null) {
             int length = VtableUtils.getNumPtrDiffs(program, address);
             DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
@@ -91,8 +87,12 @@ public class VtableModel implements Vtable {
             Address typeAddress = getAbsoluteAddress(program, typePointerAddress);
             this.type = (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
         }
-        setupVtablePrefixes();
-        this.isValid = !vtablePrefixes.isEmpty();
+        try {
+            setupVtablePrefixes();
+            this.isValid = !vtablePrefixes.isEmpty();
+        } catch (InvalidDataTypeException e) {
+            this.isValid = false;
+        }
     }
 
     @Override
@@ -142,64 +142,27 @@ public class VtableModel implements Vtable {
         validate();
         Address[] result = new Address[vtablePrefixes.size()];
         for (int i = 0; i < result.length; i++) {
-            result[i] = vtablePrefixes.get(i).getTableAddress();
+            try {
+                result[i] = vtablePrefixes.get(i).getTableAddress();
+            } catch (IndexOutOfBoundsException e) {
+                result = Arrays.copyOf(result, i);
+                break;
+            }
         }
         return result;
-    }
-
-    private Function createFunction(Address currentAddress) {
-        Listing listing = program.getListing();
-        if (listing.getInstructionAt(currentAddress) == null) {
-            // If it has not been disassembled, disassemble it first.
-            if (program.getMemory().getBlock(currentAddress).isInitialized()) {
-                DisassembleCommand cmd = new DisassembleCommand(currentAddress, null, true);
-                cmd.applyTo(program);
-            }
-        }
-        CreateFunctionCmd cmd = new CreateFunctionCmd(currentAddress);
-        cmd.applyTo(program);
-        return cmd.getFunction();
-    }
-
-    private Address getFunctionAddress(Address currentAddress) {
-        Address functionAddress = getAbsoluteAddress(program, currentAddress);
-        if (GnuUtils.hasFunctionDescriptors(program) && functionAddress.getOffset() != 0) {
-            Relocation reloc = program.getRelocationTable().getRelocation(currentAddress);
-            if (reloc == null || reloc.getSymbolName() == null) {
-                return getAbsoluteAddress(program, functionAddress);
-            }
-        } return functionAddress;
     }
 
     @Override
     
     public Function[][] getFunctionTables() throws InvalidDataTypeException {
         validate();
-        int pointerSize = program.getDefaultPointerSize();
         Address[] tableAddresses = getTableAddresses();
         if (tableAddresses.length == 0) {
             return new Function[0][];
         }
         Function[][] result = new Function[tableAddresses.length][];
-        Listing listing = program.getListing();
         for (int i = 0; i < tableAddresses.length; i++) {
-            Address currentAddress = tableAddresses[i];
-            int elements = VtableUtils.getFunctionTableLength(program, currentAddress);
-            Function[] virtualFunctions = new Function[elements];
-            for (int j = 0; j < elements; j++) {
-                Address functionAddress = getFunctionAddress(currentAddress);
-                if (functionAddress.getOffset() != 0) {
-                    Function function = listing.getFunctionAt(functionAddress);
-                    if (function == null) {
-                        function = createFunction(functionAddress);
-                    }
-                    functions.add(function);
-                    virtualFunctions[j] = function;
-                } else {
-                    virtualFunctions[j] = null;
-                }
-                currentAddress = currentAddress.add(pointerSize);
-            } result[i] = virtualFunctions;
+            result[i] = VtableUtils.getFunctionTable(program, tableAddresses[i]);
         } return result;
     }
 
@@ -284,15 +247,29 @@ public class VtableModel implements Vtable {
         return result;
     }
 
-    private void setupVtablePrefixes() {
+    private void setupVtablePrefixes() throws InvalidDataTypeException {
         vtablePrefixes = new ArrayList<>();
-        VtablePrefixModel prefix = new VtablePrefixModel(address);
-        while (prefix.isValid()) {
-            if (arrayCount > 0 && vtablePrefixes.size() >= arrayCount) {
+        int count = construction ? 2 : type.getVirtualParents().size()+1;
+        if (arrayCount < 0) {
+            arrayCount = type.getParentModels().length;
+            if (arrayCount == type.getVirtualParents().size()) {
+                arrayCount++;
+            }
+        }
+        VtablePrefixModel prefix = new VtablePrefixModel(getNextPrefixAddress(), count);
+        if (!prefix.isValid()) {
+            return;
+        }
+        if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
+            address = prefix.prefixAddress;
+        }
+        vtablePrefixes.add(prefix);
+        for (int i = 1; i < arrayCount; i++) {
+            prefix = new VtablePrefixModel(getNextPrefixAddress());
+            if (!prefix.isValid()) {
                 break;
             }
             vtablePrefixes.add(prefix);
-            prefix = new VtablePrefixModel(getNextPrefixAddress());
         }
     }
 
@@ -306,20 +283,28 @@ public class VtableModel implements Vtable {
         private List<DataType> dataTypes;
 
         private VtablePrefixModel(Address prefixAddress) {
+            this(prefixAddress, -1);
+        }
+
+        private VtablePrefixModel(Address prefixAddress, int ptrDiffs) {
             this.prefixAddress = prefixAddress;
-            int numPtrDiffs = VtableUtils.getNumPtrDiffs(program, prefixAddress);
+            int numPtrDiffs = ptrDiffs > 0 ? ptrDiffs :
+                VtableUtils.getNumPtrDiffs(program, prefixAddress);
             dataTypes = new ArrayList<>(3);
             if (numPtrDiffs > 0) {
-                int pointerSize = program.getDefaultPointerSize();
                 DataTypeManager dtm = program.getDataTypeManager();
                 DataType ptrdiff_t = GnuUtils.getPtrDiff_t(dtm);
+                int pointerSize = program.getDefaultPointerSize();
+                if (TypeInfoUtils.isTypeInfoPointer(program, prefixAddress)) {
+                    this.prefixAddress = prefixAddress.subtract(numPtrDiffs * ptrdiff_t.getLength());
+                }
                 dataTypes.add(new ArrayDataType(ptrdiff_t, numPtrDiffs, ptrdiff_t.getLength()));
                 dataTypes.add(new PointerDataType(null, pointerSize, dtm));
-                Address tableAddress = prefixAddress.add(getPrefixSize());
+                Address tableAddress = this.prefixAddress.add(getPrefixSize());
                 int tableSize = VtableUtils.getFunctionTableLength(program, tableAddress);
                 if (tableSize > 0) {
                     ArrayDataType table = new ArrayDataType(
-                        PointerDataType.dataType, tableSize, program.getDefaultPointerSize(), dtm);
+                        PointerDataType.dataType, tableSize, pointerSize, dtm);
                     dataTypes.add(table);
                 }
             }

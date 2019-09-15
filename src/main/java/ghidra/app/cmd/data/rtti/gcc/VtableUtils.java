@@ -12,12 +12,16 @@ import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.Undefined;
 import ghidra.program.model.listing.Data;
+import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
+import ghidra.program.model.reloc.Relocation;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
+import ghidra.app.cmd.disassemble.DisassembleCommand;
+import ghidra.app.cmd.function.CreateFunctionCmd;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -51,7 +55,7 @@ public class VtableUtils {
      * @return the number of ptrdiff_t's in the vtable_prefix at the address.
      */
     public static int getNumPtrDiffs(Program program, Address address) {
-        return getNumPtrDiffs(program, address, MAX_PTR_DIFFS);
+        return getNumPtrDiffs(program, address, -1);
     }
 
     /* This is not pretty. The rules I have found are as follows.
@@ -70,6 +74,9 @@ public class VtableUtils {
      * @return the number of ptrdiff_t's in the array or 0 if invalid.
      */
     public static int getNumPtrDiffs(Program program, Address address, int maxLength) {
+        if (maxLength < 0) {
+            maxLength = MAX_PTR_DIFFS;
+        }
         Listing listing = program.getListing();
         Data before = listing.getDefinedDataBefore(address);
         Data after = listing.getDefinedDataAfter(address);
@@ -79,6 +86,9 @@ public class VtableUtils {
             if (before.equals(containing)) {
                 set = new AddressRangeImpl(before.getAddress(), after.getAddress());
             } else {
+                while(isValidData(before)) {
+                    before = listing.getDefinedDataBefore(before.getAddress());
+                }
                 set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
             }
             if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
@@ -90,9 +100,9 @@ public class VtableUtils {
                 }
                 int ptrDiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
                 set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
-                return getNumPtrDiffs(program, address.subtract(ptrDiffSize), set, true);
+                return getNumPtrDiffs(program, address.subtract(ptrDiffSize), set, true, maxLength);
             }
-            return getNumPtrDiffs(program, address, set, false);
+            return getNumPtrDiffs(program, address, set, false, maxLength);
         }
         return 0;
     }
@@ -113,7 +123,7 @@ public class VtableUtils {
     }
 
     private static int getNumPtrDiffs(Program program, Address address,
-        AddressRange range, boolean reverse) {
+        AddressRange range, boolean reverse, int maxLength) {
             MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), address);
             DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
             int length = ptrdiff_t.getLength();
@@ -122,7 +132,7 @@ public class VtableUtils {
             long value = 0;
             List<Long> values = new ArrayList<>();
             IntToLongFunction getValue = length == 8 ? buf::getLong : buf::getInt;
-            while (range.contains(buf.getAddress())) {
+            while (range.contains(buf.getAddress()) && count < maxLength) {
                 try {
                     if (GnuUtils.isValidPointer(buf) && !(getValue.applyAsLong(0) == 0)) {
                         if ((direction < 0) ^ TypeInfoUtils.isTypeInfoPointer(buf)) {
@@ -226,6 +236,48 @@ public class VtableUtils {
             }
         }
         return tableSize;
+    }
+
+    public static Function[] getFunctionTable(Program program, Address address) {
+        Function[] functions = new Function[getFunctionTableLength(program, address)];
+        int pointerSize = program.getDefaultPointerSize();
+        for (int i = 0; i < functions.length; i++) {
+            Address functionAddress = getFunctionAddress(program, address.add(i * pointerSize));
+            if (functionAddress.getOffset() != 0) {
+                functions[i] = createFunction(program, functionAddress);
+            } else {
+                functions[i] = null;
+            }
+        }
+        return functions;
+    }
+
+    private static Address getFunctionAddress(Program program, Address currentAddress) {
+        Address functionAddress = getAbsoluteAddress(program, currentAddress);
+        if (GnuUtils.hasFunctionDescriptors(program) && functionAddress.getOffset() != 0) {
+            Relocation reloc = program.getRelocationTable().getRelocation(currentAddress);
+            if (reloc == null || reloc.getSymbolName() == null) {
+                return getAbsoluteAddress(program, functionAddress);
+            }
+        } return functionAddress;
+    }
+
+    private static Function createFunction(Program program, Address currentAddress) {
+        Listing listing = program.getListing();
+        Function function = listing.getFunctionAt(currentAddress);
+        if (function != null) {
+            return function;
+        }
+        if (listing.getInstructionAt(currentAddress) == null) {
+            // If it has not been disassembled, disassemble it first.
+            if (program.getMemory().getBlock(currentAddress).isInitialized()) {
+                DisassembleCommand cmd = new DisassembleCommand(currentAddress, null, true);
+                cmd.applyTo(program);
+            }
+        }
+        CreateFunctionCmd cmd = new CreateFunctionCmd(currentAddress);
+        cmd.applyTo(program);
+        return cmd.getFunction();
     }
 
     /**

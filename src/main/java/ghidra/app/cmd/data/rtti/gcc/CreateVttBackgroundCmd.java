@@ -20,9 +20,9 @@ import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
 
 
-public class CreateVttBackgroundCommand extends BackgroundCommand {
+public class CreateVttBackgroundCmd extends BackgroundCommand {
 
-    private static final String NAME = CreateVttBackgroundCommand.class.getSimpleName();
+    private static final String NAME = CreateVttBackgroundCmd.class.getSimpleName();
 
     private VttModel vtt;
     private ClassTypeInfo child;
@@ -33,7 +33,7 @@ public class CreateVttBackgroundCommand extends BackgroundCommand {
     private static final String VTT = "VTT";
     private static final DemanglerOptions OPTIONS = new DemanglerOptions();
 
-    public CreateVttBackgroundCommand(VttModel vtt, ClassTypeInfo child) {
+    public CreateVttBackgroundCmd(VttModel vtt, ClassTypeInfo child) {
         super(NAME, true, true, false);
         this.vtt = vtt;
         this.child = child;

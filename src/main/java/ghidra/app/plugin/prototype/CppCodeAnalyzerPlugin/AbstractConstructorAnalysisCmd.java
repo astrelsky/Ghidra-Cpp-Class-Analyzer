@@ -19,6 +19,7 @@ import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.symbol.FlowType;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
@@ -60,7 +61,8 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
         } catch (CancelledException e) {
             return false;
         } catch (Exception e) {
-            Msg.error(this, "analyze", e);
+            e.printStackTrace();
+            Msg.trace(this, e);
             return false;
         }
     }
@@ -85,7 +87,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 
     protected Function createConstructor(ClassTypeInfo typeinfo, Address address) {
         Function function = fManager.getFunctionContaining(address);
-        if (VftableAnalysisUtils.isProcessedFunction(function)) {
+        if (function != null && VftableAnalysisUtils.isProcessedFunction(function)) {
             try {
                 if (function.getName().equals(typeinfo.getName())) {
                     return function;
@@ -154,7 +156,8 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
         Instruction inst = listing.getInstructionAt(function.getEntryPoint());
         while (function.getBody().contains(inst.getAddress())) {
             monitor.checkCanceled();
-            if (inst.getFlowType().isCall()) {
+            FlowType flow = inst.getFlowType();
+            if (flow.isCall() && !flow.isComputed()) {
                 Function callee = fManager.getFunctionAt(inst.getFlows()[0]);
                 if (callee.isThunk()) {
                     callee = callee.getThunkedFunction(true);

@@ -149,7 +149,8 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
                         createConstructor(typeinfo, fromAddress, false);
                     }
                 } catch (Exception e) {
-                    Msg.error(this, e);
+                    e.printStackTrace();
+                    Msg.trace(this, e);
                 }
             }
         }
@@ -222,7 +223,8 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
                 param.setDataType(vpp, SourceType.IMPORTED);
             }
         } catch (Exception e) {
-            Msg.error(this, e);
+            e.printStackTrace();
+            Msg.trace(this, e);
         }
     }
 
@@ -243,8 +245,8 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
                     try {
                         functionTables[i][j].setParentNamespace(typeinfo.getGhidraClass());
                     } catch (Exception e) {
-                        Msg.error(this, "Failed to set function namespace at " + functionTables[i][j].getEntryPoint(),
-                                e);
+                        Msg.error(this, "Failed to set function namespace at "
+                                        + functionTables[i][j].getEntryPoint(), e);
                     }
                 }
             }

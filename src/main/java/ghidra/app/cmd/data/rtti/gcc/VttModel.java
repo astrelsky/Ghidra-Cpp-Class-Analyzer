@@ -228,7 +228,7 @@ public class VttModel {
                 continue;
             }
             VtableModel cvtable = new VtableModel(
-                program, getTIPointer(currentAddress), currentType, subCount);
+                program, getTIPointer(currentAddress), currentType, subCount, true);
             tableSize += subCount;
             currentAddress = address.add(tableSize * pointerSize);
             constructionModels.add(cvtable);
