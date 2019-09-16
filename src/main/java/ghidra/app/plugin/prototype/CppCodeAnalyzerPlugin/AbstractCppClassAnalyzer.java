@@ -49,7 +49,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     private static final String OPTION_VTABLE_ANALYSIS_DESCRIPTION = "Turn on to search for Constructors/Destructors.";
 
     private static final String OPTION_FILLER_ANALYSIS_NAME = "Fill Class Fields";
-    private static final boolean OPTION_DEFAULT_FILLER_ANALYSIS = true;
+    private static final boolean OPTION_DEFAULT_FILLER_ANALYSIS = false;
     private static final String OPTION_FILLER_ANALYSIS_DESCRIPTION = "Turn on to fill out the found class structures.";
 
     private boolean constructorAnalysisOption;
@@ -100,6 +100,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
             setupVftables();
             analyzeVftables();
             fixClassFunctionSignatures();
+            repairInheritance();
             if (fillClassFieldsOption) {
                 fillStructures();
             }
