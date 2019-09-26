@@ -13,10 +13,13 @@ from ghidra.app.util.demangler import DemanglerOptions
 from ghidra.program.model.symbol.SourceType import IMPORTED
 from ghidra.app.decompiler.flatapi import FlatDecompilerAPI
 from ghidra.program.flatapi import FlatProgramAPI
+from ghidra.util.exception import CancelledException
+from ghidra.app.cmd.data.rtti import ClassTypeInfo
 
 mangled_prefix = "_Z"
 options = DemanglerOptions()
 global dInterface
+mangled_symbols = []
 
 def get_function_symbols(table, vtable):
     result = []
@@ -59,16 +62,13 @@ def validate_typeinfo(symbol):
 
 @monitored
 def validate_vtable(ti):
+    if not isinstance(ti, ClassTypeInfo):
+        return False
     try:
         ti.getVtable().validate()
         return True
     except InvalidDataTypeException:
         return False
-
-def fixupFunctionSignature(function):
-    results = dInterface.decompileFunction(function, 0, None)
-    prototype = results.getHighFunction().getFunctionPrototype()
-    function.setReturnType(prototype.getReturnType(), IMPORTED)
 
 def populate_database(symbol_table, vtables):
     db = {}
@@ -83,13 +83,9 @@ def populate_database(symbol_table, vtables):
     return db
 
 def apply_function_definition(mangled, function):
-    address = function.getEntryPoint()
-    demangled = demangle(mangled)
-    if demangled:
-        removeFunction(function)
-        demangled.applyTo(currentProgram, address, options, DUMMY)
-        function = getFunctionAt(address)
-        fixupFunctionSignature(function)
+    if mangled:
+        table = currentProgram.getSymbolTable()
+        s = table.createLabel(function.getEntryPoint(), mangled, IMPORTED)
 
 def apply_db_definitions(vtables, db):
     monitor.initialize(len(vtables))
@@ -111,15 +107,26 @@ def apply_db_definitions(vtables, db):
 if __name__ == '__main__':
     decompiler = FlatDecompilerAPI(FlatProgramAPI(currentProgram))
     decompiler.initialize()
-    dInterface = decompiler.getDecompiler()
     symbol_table = currentProgram.getSymbolTable()
     types = get_types(symbol_table)
     monitor.initialize(len(types))
     monitor.setMessage("finding vtables")
     vtables = [ti.getVtable() for ti in types if validate_vtable(ti)]
     db = {}
-    with open(askFile('chose database file', 'open').toString(), 'r') as fd:
-        db = json.load(fd)
-    applied_definitions = apply_db_definitions(vtables, db)
-    decompiler.dispose()
-    print('Successfully applied %d function definitions' % applied_definitions)
+    while True:
+        try:
+            with open(askFile('chose database file', 'open').toString(), 'r') as fd:
+                db = json.load(fd)
+            applied_definitions = apply_db_definitions(vtables, db)
+            print('Successfully applied %d function definitions' % applied_definitions)
+        except CancelledException:
+            for symbol in mangled_symbols:
+                for s in symbol_table.getSymbols(symbol.getAddress()):
+                    if not s.isPrimary():
+                        s.delete()
+                demangled = demangle(s.getName)
+                if demangled:
+                    address = symbol.getAddress()
+                    removeFunction(getFunctionAt(address))
+                    demangled.applyTo(currentProgram, address, options, DUMMY)      
+            break

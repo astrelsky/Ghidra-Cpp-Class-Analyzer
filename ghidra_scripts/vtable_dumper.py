@@ -3,6 +3,8 @@ import json
 from ghidra.app.cmd.data.rtti.gcc import VtableModel
 from ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory import getTypeInfo, isTypeInfo
 from ghidra.app.cmd.data.rtti.TypeInfo import SYMBOL_NAME
+from ghidra.app.cmd.data.rtti import ClassTypeInfo
+from ghidra.program.model.data import InvalidDataTypeException
 
 mangled_prefix = "_Z"
 
@@ -31,8 +33,13 @@ def get_mangled_symbol(table, address):
 def get_types(symbol_table):
     type_symbols = [symbol for symbol in symbol_table.getAllSymbols(False)
                     if SYMBOL_NAME in symbol.getName()]
-    return [getTypeInfo(currentProgram, symbol.getAddress()) for symbol in type_symbols
-            if validate_typeinfo(symbol)]
+    types = []
+    for symbol in type_symbols:
+        if validate_typeinfo(symbol):
+            ti = getTypeInfo(currentProgram, symbol.getAddress())
+            if isinstance(ti, ClassTypeInfo):
+                types.append(ti)
+    return types
 
 def monitored(function):
     def wrapper(arg):
@@ -59,7 +66,10 @@ def populate_database(symbol_table, vtables):
     monitor.setMessage("dumping vtables")
     for vtable in vtables:
         key = vtable.getTypeInfo().getUniqueTypeName()
-        assert key not in db, "Key not unique!"
+        if key in db:
+            gc = vtable.getTypeInfo().getGhidraClass()
+            vtable_symbols = symbol_table.getSymbols('vtable', gc)
+            assert len(vtable_symbols) <= 1, "Key not unique! "+gc.getName(True)
         value = get_function_symbols(symbol_table, vtable)
         db[key] = value
         monitor.incrementProgress(1)
