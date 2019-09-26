@@ -41,7 +41,13 @@ C++ Class Analyzer.
 Compatibility
 -------------
 
-It is compatible with current builds of 9.1 as well as 9.0.4
+It is compatible with current builds of 9.1, 9.1-BETA as well as 9.0.4
+
+TODO
+----
+
+Implement an actual database to hold ClassTypeInfo instances for resolving of base classes
+from external libraries.
 
 License
 ---------
