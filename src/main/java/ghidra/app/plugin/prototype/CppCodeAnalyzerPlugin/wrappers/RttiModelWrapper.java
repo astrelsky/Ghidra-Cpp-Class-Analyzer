@@ -70,27 +70,36 @@ public class RttiModelWrapper implements ClassTypeInfo {
     }
 
     public RttiModelWrapper(Rtti4Model model) {
-        try {
-            this.objectLocator = model;
-            this.type = objectLocator.getRtti0Model();
-            this.hierarchyDescriptor = objectLocator.getRtti3Model();
-            this.baseArray = hierarchyDescriptor.getRtti2Model();
-            this.parents = getParentModels();
-        } catch (InvalidDataTypeException | NullPointerException e) {
-            Msg.error(this, "Input model invalid");
+        if (model != null) {
+            try {
+                this.objectLocator = model;
+                this.type = objectLocator.getRtti0Model();
+                this.hierarchyDescriptor = objectLocator.getRtti3Model();
+                this.baseArray = hierarchyDescriptor.getRtti2Model();
+                this.parents = getParentModels();
+            } catch (InvalidDataTypeException e) {
+                Msg.error(this, "Input model invalid");
+            }
         }
     }
 
     private static Rtti4Model getRtti4Model(TypeDescriptorModel model) {
         SymbolTable table = model.getProgram().getSymbolTable();
-        for (Symbol symbol : table.getSymbols(model.getDescriptorAsNamespace())) {
-            if (symbol.getName().contains(LOCATOR_SYMBOL_NAME)) {
-                Rtti4Model locatorModel =
-                    new Rtti4Model(model.getProgram(), symbol.getAddress(), DEFAULT_OPTIONS);
-                try {
-                    locatorModel.validate();
-                    return locatorModel;
-                } catch (InvalidDataTypeException e) {}
+        Namespace ns = model.getDescriptorAsNamespace();
+        if (ns == null) {
+            Symbol symbol = table.getPrimarySymbol(model.getAddress());
+            ns = symbol.getParentNamespace();
+        }
+        if (ns != null && !ns.isGlobal()) {
+            for (Symbol symbol : table.getSymbols(ns)) {
+                if (symbol.getName().contains(LOCATOR_SYMBOL_NAME)) {
+                    Rtti4Model locatorModel =
+                        new Rtti4Model(model.getProgram(), symbol.getAddress(), DEFAULT_OPTIONS);
+                    try {
+                        locatorModel.validate();
+                        return locatorModel;
+                    } catch (InvalidDataTypeException e) {}
+                }
             }
         }
         return null;
@@ -147,6 +156,10 @@ public class RttiModelWrapper implements ClassTypeInfo {
 
     @Override
     public void validate() throws InvalidDataTypeException {
+        if (objectLocator == null || type == null ||
+            hierarchyDescriptor == null || baseArray == null) {
+                throw new InvalidDataTypeException("Invalid ClassTypeInfo");
+        }
         type.validate();
     }
 
@@ -213,6 +226,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
                     String name = model.getRtti0Model().getDescriptorName();
                     if (!vModels.contains(name)) {
                         RttiModelWrapper parent = new RttiModelWrapper(model);
+                        parent.validate();
                         for (Rtti1Model grandparent : parent.getVirtualModels()) {
                             String grandparentName = grandparent.getRtti0Model().getDescriptorName();
                             if (!vModels.contains(grandparentName)) {
@@ -300,6 +314,9 @@ public class RttiModelWrapper implements ClassTypeInfo {
     }
 
     private Structure getSuperClassDataType() throws InvalidDataTypeException {
+        if (virtualMetaData == null) {
+            getParentModels();
+        }
         if (virtualMetaData.isEmpty()) {
             return getClassDataType();
         }
@@ -335,6 +352,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
 
     @Override
 	public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
+        validate();
         DataTypeManager dtm = type.getProgram().getDataTypeManager();
         Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
         for (Rtti1Model model : bases) {
@@ -342,6 +360,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
                 continue;
             }
             RttiModelWrapper parent = new RttiModelWrapper(model);
+            parent.validate();
             Structure parentStruct = parent.getSuperClassDataType();
             inheritClass(struct, parentStruct, getOffset(model));
         }

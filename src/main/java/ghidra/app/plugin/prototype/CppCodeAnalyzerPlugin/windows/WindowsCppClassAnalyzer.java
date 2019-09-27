@@ -76,7 +76,9 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
                 ClassTypeInfo type = new RttiModelWrapper(descriptor);
                 try {
                     type.validate();
-                    classes.add(type);
+                    if (type.getNamespace() != null) {
+                        classes.add(type);
+                    }
                 } catch (InvalidDataTypeException e) {
                     continue;
                 }
