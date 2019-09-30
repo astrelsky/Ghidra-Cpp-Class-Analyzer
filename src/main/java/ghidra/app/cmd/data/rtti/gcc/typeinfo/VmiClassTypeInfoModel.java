@@ -99,11 +99,13 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             BaseClassTypeInfoModel.getDataType(dtm), ARRAY_NAME, null);
         struct.setDescription(DESCRIPTION);
         Structure result = (Structure) dtm.resolve(struct, KEEP_HANDLER);
-        Structure flexComponent = (Structure) result.getFlexibleArrayComponent().getDataType();
-        DataTypeComponent baseFlagsComp = flexComponent.getComponent(
-            BaseClassTypeInfoModel.FLAGS_ORDINAL);
-        if (baseFlagsComp.getDataType() instanceof Structure) {
-            return result;
+        if (!result.isNotYetDefined()) {
+            Structure flexComponent = (Structure) result.getFlexibleArrayComponent().getDataType();
+            DataTypeComponent baseFlagsComp = flexComponent.getComponent(
+                BaseClassTypeInfoModel.FLAGS_ORDINAL);
+            if (baseFlagsComp.getDataType() instanceof Structure) {
+                return result;
+            }
         }
         return (Structure) dtm.resolve(struct, REPLACE_HANDLER);
     }
@@ -130,7 +132,11 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
                 parents.add(base.getClassModel());
             }
         }
-        parents.addAll(getInheritableVirtualParents());
+        try {
+            parents.addAll(getInheritableVirtualParents());
+        } catch (NullPointerException e) {
+            throw e;
+        }
         return parents;
     }
 
@@ -227,6 +233,9 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         int offset, int maxLength) throws InvalidDataTypeException {
             AbstractClassTypeInfoModel base = (AbstractClassTypeInfoModel) parent;
             Structure parentStruct = base.getSuperClassDataType();
+            if (!parentStruct.getDataTypeManager().equals(program.getDataTypeManager())) {
+                parentStruct = (Structure) parentStruct.clone(program.getDataTypeManager());
+            }
             if (maxLength > 0) {
                 shrinkStruct(parentStruct, maxLength);
             } else {
@@ -300,6 +309,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         if (!ClassTypeInfoUtils.isPlaceholder(struct) && !repopulate) {
             return struct;
         }
+        int id = dtm.startTransaction("Creating Class DataType for "+getName());
         stashComponents(struct);
         struct.setDescription("");
         try {
@@ -309,6 +319,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             addNonVirtualBases(struct);
         }
         fixComponents(struct);
+        dtm.endTransaction(id, true);
         return resolveStruct(struct);
     }
 

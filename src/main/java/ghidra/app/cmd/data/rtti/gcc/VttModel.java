@@ -175,10 +175,14 @@ public class VttModel {
     }
 
     private Address getTIPointer(Address pointerAddress) {
-        Address pointer = getAbsoluteAddress(program, pointerAddress).subtract(pointerSize);
-        if (!TypeInfoUtils.isTypeInfoPointer(program, pointer)) {
-            return Address.NO_ADDRESS;
-        } return pointer;
+        Address pointee = getAbsoluteAddress(program, pointerAddress);
+        if (pointee != null) {
+            Address pointer = pointee.subtract(pointerSize);
+            if (!TypeInfoUtils.isTypeInfoPointer(program, pointer)) {
+                return Address.NO_ADDRESS;
+            } return pointer;
+        }
+        return Address.NO_ADDRESS;
     }
 
     private int getSubTableCount(Address startAddress) {
@@ -199,14 +203,21 @@ public class VttModel {
     private int getVTTableCount() {
         int tableSize = 0;
         Address currentAddress = address;
-        ClassTypeInfo[] parentModels;
+        Set<ClassTypeInfo> validTypes;
         try {
-            parentModels = typeinfo.getParentModels();
+            validTypes = new HashSet<>(Arrays.asList(typeinfo.getParentModels()));
+            Set<ClassTypeInfo> vParents = typeinfo.getVirtualParents();
+            if (!validTypes.containsAll(vParents)) {
+                for (ClassTypeInfo parent : new HashSet<>(validTypes)) {
+                    validTypes.addAll(Arrays.asList(parent.getParentModels()));
+                }
+                validTypes.addAll(vParents);
+            }
+            validTypes.add(typeinfo);
+            validTypes.forEach((a) -> validAddresses.add(a.getAddress()));
         } catch (InvalidDataTypeException e) {
             return 0;
         }
-        Set<ClassTypeInfo> validTypes = new HashSet<>(Arrays.asList(parentModels));
-        validTypes.add(typeinfo);
         constructionModels = new ArrayList<>();
         while (true) {
             if (!GnuUtils.isValidPointer(program, currentAddress)) {

@@ -9,7 +9,6 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
@@ -198,22 +197,6 @@ public class ClassTypeInfoUtils {
     }
 
     /**
-     * Gets the most derived parent of the ClassTypeInfo.
-     * 
-     * @param type
-     * @return the most derived parent of the ClassTypeInfo.
-     * @throws InvalidDataTypeException
-     */
-    public static ClassTypeInfo getPrimaryParent(ClassTypeInfo type)
-        throws InvalidDataTypeException {
-            if (type.hasParent()) {
-                if (type instanceof VmiClassTypeInfoModel) {
-                    return ((VmiClassTypeInfoModel) type).getParentAtOffset(0, false);
-                } return type.getParentModels()[0];
-            } return null;
-    }
-
-    /**
      * Gets the function for the ClassTypeInfo at the specified address.
      * 
      * @param program the Program the function is in.
@@ -331,6 +314,11 @@ public class ClassTypeInfoUtils {
             if (functionTable.length > 0 && functionTable[0].length > 0) {
                 for (Function function : functionTable[0]) {
                     if (function != null) {
+                        if (function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
+                            struct.add(dtm.getPointer(VoidDataType.dataType), pointerSize,
+                                       PURE_VIRTUAL_FUNCTION_NAME, null);
+                            continue;
+                        }
                         DataType dt = new FunctionDefinitionDataType(function, false);
                         dt.setCategoryPath(path);
                         if (dtm.contains(dt)) {

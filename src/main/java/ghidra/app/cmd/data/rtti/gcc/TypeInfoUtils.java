@@ -9,6 +9,8 @@ import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.symbol.Namespace;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -18,6 +20,7 @@ import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.TerminatedStringDataType;
+import ghidra.program.model.data.Undefined;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
 import ghidra.app.cmd.data.rtti.TypeInfo;
@@ -62,10 +65,15 @@ public class TypeInfoUtils {
             return "";
         }
         Data data = program.getListing().getDataAt(nameAddress);
-        if (data == null || !data.hasStringValue()) {
+        if (data == null) {
+            data = createString(program, nameAddress);
+        } else if (Undefined.isUndefined(data.getDataType())) {
             data = createString(program, nameAddress);
         }
-        if (data != null && data.hasStringValue()) {
+        if (data == null) {
+            return "";
+        }
+        if (data.hasStringValue()) {
             String result = (String) data.getValue();
             /*
              * Some anonymous namespaces typename strings start with * Unfortunately the *
@@ -161,10 +169,17 @@ public class TypeInfoUtils {
     public static String getIDString(Program program, Address address) {
         RelocationTable table = program.getRelocationTable();
         Relocation reloc = table.getRelocation(address);
-        if (reloc != null) {
-            String name = relocationToID(reloc);
-            if (name != null) {
-                return name;
+        if (reloc != null && reloc.getSymbolName() != null) {
+            Address relocationAddress = getAbsoluteAddress(program, address);
+            if (relocationAddress == null || relocationAddress.getOffset() == 0) {
+                return "";
+            }
+            MemoryBlock block = program.getMemory().getBlock(relocationAddress);
+            if (block == null || !block.isInitialized()) {
+                String name = relocationToID(reloc);
+                if (name != null) {
+                    return name;
+                }
             }
         } else {
             Address relocAddress = getAbsoluteAddress(program, address);
@@ -273,6 +288,20 @@ public class TypeInfoUtils {
         }
         path = path.replaceAll(Namespace.NAMESPACE_DELIMITER, CategoryPath.DELIMITER_STRING);
         return new DataTypePath(path, type.getName());
+    }
+
+    public static TypeInfo getExternalTypeInfo(Program program, Relocation reloc) throws
+        InvalidDataTypeException {
+            Program extProgram = GnuUtils.getExternalProgram(program, reloc);
+            if (extProgram != null) {
+                SymbolTable table = extProgram.getSymbolTable();
+                for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
+                    if (TypeInfoFactory.isTypeInfo(extProgram, symbol.getAddress())) {
+                        return TypeInfoFactory.getTypeInfo(extProgram, symbol.getAddress());
+                    }
+                }
+            }
+            throw new InvalidDataTypeException(reloc.toString() + " could not be resolved");
     }
 
 }

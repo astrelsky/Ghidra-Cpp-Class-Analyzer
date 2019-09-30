@@ -8,8 +8,10 @@ import java.util.Map.Entry;
 import java.util.List;
 
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
+import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.program.database.ProgramBuilder;
 import ghidra.program.model.data.StringDataType;
@@ -100,7 +102,10 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
     public List<VtableModel> getVtableList() {
         List<VtableModel> list = new ArrayList<>(vtableMap.size());
         Program program = getProgram();
-        vtableMap.keySet().forEach((a) -> list.add(new VtableModel(program, addr(a))));
+        for (Long offset : vtableMap.keySet()) {
+            ClassTypeInfo type = VtableUtils.getTypeInfo(program, addr(offset));
+            list.add(new VtableModel(program, addr(offset), type));
+        }
         return list;
     }
 

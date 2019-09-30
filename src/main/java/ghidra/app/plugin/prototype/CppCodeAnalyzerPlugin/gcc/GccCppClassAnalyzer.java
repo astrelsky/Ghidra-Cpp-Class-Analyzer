@@ -9,7 +9,7 @@ import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
-import ghidra.app.plugin.prototype.GnuRttiAnalyzer;
+import ghidra.app.plugin.prototype.GccRttiAnalyzer;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
 import ghidra.program.model.data.InvalidDataTypeException;
@@ -26,7 +26,7 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
     public GccCppClassAnalyzer() {
         super(NAME);
-        setPriority(new GnuRttiAnalyzer().getPriority().after());
+        setPriority(new GccRttiAnalyzer().getPriority().after());
     }
 
     @SuppressWarnings("hiding")
@@ -48,7 +48,10 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
         for (Symbol symbol : table.getSymbols(TypeInfo.SYMBOL_NAME)) {
             TypeInfo type = TypeInfoFactory.getTypeInfo(program, symbol.getAddress());
             if (type instanceof ClassTypeInfo) {
-                classes.add((ClassTypeInfo) type);
+                try {
+                    type.validate();
+                    classes.add((ClassTypeInfo) type);
+                } catch (InvalidDataTypeException e) {}
             }
         }
         return classes;
@@ -82,6 +85,4 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
         }
         return constructorAnalyzer.applyTo(program);
     }
-
-    
 }

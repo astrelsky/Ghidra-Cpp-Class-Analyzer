@@ -95,8 +95,11 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
             } catch (InvalidDataTypeException e) {
                 Msg.error(this, "createConstructor", e);
             }
+        } else if (function != null) {
+            function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, function.getEntryPoint());
+        } else {
+            function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
         }
-        function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
         setFunction(typeinfo, function, false);
         return function;
     }
@@ -151,7 +154,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
                 }
     }
 
-    private List<Function> getCalledFunctions(Function function) throws CancelledException {
+    protected List<Function> getCalledFunctions(Function function) throws CancelledException {
         List<Function> result = new ArrayList<>();
         Instruction inst = listing.getInstructionAt(function.getEntryPoint());
         while (function.getBody().contains(inst.getAddress())) {

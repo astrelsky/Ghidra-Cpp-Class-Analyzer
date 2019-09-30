@@ -14,6 +14,7 @@ import ghidra.util.task.TaskMonitor;
 import ghidra.framework.options.Options;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
+import ghidra.docking.settings.SettingsDefinition;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.program.model.address.Address;
@@ -29,6 +30,7 @@ import ghidra.util.exception.CancelledException;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.MutabilitySettingsDefinition;
 import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -48,9 +50,9 @@ import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
-public class GnuRttiAnalyzer extends AbstractAnalyzer {
+public class GccRttiAnalyzer extends AbstractAnalyzer {
 
-    private static final String NAME = "GNU RTTI Analyzer";
+    private static final String NAME = "GCC RTTI Analyzer";
     private static final String DESCRIPTION =
         "This analyzer finds and creates all of the RTTI metadata structures and their associated vtables.";
 
@@ -92,7 +94,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
     /**
      * Constructs an RttiAnalyzer.
      */
-    public GnuRttiAnalyzer() {
+    public GccRttiAnalyzer() {
         super(NAME, DESCRIPTION, AnalyzerType.BYTE_ANALYZER);
         setSupportsOneTimeAnalysis();
         setPriority(AnalysisPriority.DATA_TYPE_PROPOGATION.before().before());
@@ -210,9 +212,30 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
     private void createVtable(VtableModel vtable) throws Exception {
         CreateVtableBackgroundCmd vtableCmd = new CreateVtableBackgroundCmd(vtable);
         vtableCmd.applyTo(program, dummy);
+        markDataAsConstant(vtable.getAddress());
+        if (!vtable.getTypeInfo().isAbstract()) {
+            for (Address tableAddress : vtable.getTableAddresses()) {
+                markDataAsConstant(tableAddress);
+            }
+        }
         locateVTT(vtable);
         monitor.incrementProgress(1);
     }
+
+    public final void markDataAsConstant(Address address) {
+        Data data = program.getListing().getDataAt(address);
+        if (data == null) {
+            return;
+        }
+		SettingsDefinition[] settings = data.getDataType().getSettingsDefinitions();
+		for (SettingsDefinition setting : settings) {
+			if (setting instanceof MutabilitySettingsDefinition) {
+				MutabilitySettingsDefinition mutabilitySetting =
+					(MutabilitySettingsDefinition) setting;
+				mutabilitySetting.setChoice(data, MutabilitySettingsDefinition.CONSTANT);
+			}
+		}
+	}
 
     private void locateVTT(Vtable vtable) throws Exception {
         ClassTypeInfo type = vtable.getTypeInfo();
@@ -241,13 +264,13 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
             monitor.checkCanceled();
             VtableModel vtable = (VtableModel) type.getVtable();
             if (vtable == null) {
-                monitor.incrementProgress(0);
+                monitor.incrementProgress(1);
                 continue;
             }
             try {
                 vtable.validate();
             } catch (InvalidDataTypeException e) {
-                monitor.incrementProgress(0);
+                monitor.incrementProgress(1);
                 continue;
             }
             createVtable(vtable);
@@ -336,6 +359,7 @@ public class GnuRttiAnalyzer extends AbstractAnalyzer {
                 }
                 CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
                 cmd.applyTo(program, dummy);
+                markDataAsConstant(type.getAddress());
             } catch (InvalidDataTypeException e) {}
             monitor.incrementProgress(1);
         }

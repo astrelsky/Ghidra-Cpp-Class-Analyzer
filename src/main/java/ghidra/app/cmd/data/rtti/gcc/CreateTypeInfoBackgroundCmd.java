@@ -7,16 +7,16 @@ import ghidra.program.model.data.DataType;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.Namespace;
+import ghidra.program.model.symbol.SourceType;
+import ghidra.program.model.symbol.SymbolTable;
 import ghidra.framework.cmd.BackgroundCommand;
-import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.program.model.data.DataUtilities;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.InvalidInputException;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
-import ghidra.app.util.demangler.DemangledObject;
-import ghidra.app.util.demangler.DemanglerOptions;
 import ghidra.program.model.util.CodeUnitInsertionException;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -30,15 +30,6 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
     private TypeInfo typeInfo;
     private TaskMonitor monitor;
     private Program program;
-    private String typename;
-
-    private Exception exception;
-
-    private static final DemanglerOptions OPTIONS = new DemanglerOptions();
-
-    private static final String NAME_PREFIX = "_ZTS";
-    private static final String TYPE_INFO_PREFIX = "_ZTI";
-
 
     /**
      * Constructs a command for applying a TypeInfo at an address
@@ -73,14 +64,9 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
         }
     }
 
-    public Exception getException() {
-        return exception;
-    }
-
     private boolean doApplyTo() throws CancelledException, InvalidDataTypeException {
         try {
             monitor.checkCanceled();
-            typename = typeInfo.getTypeName();
             Data data = createData(typeInfo.getAddress(), typeInfo.getDataType());
             if (typeInfo instanceof VmiClassTypeInfoModel) {
                 VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) typeInfo;
@@ -99,29 +85,17 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
         return DataUtilities.createData(program, address, dt, 0, false, CLEAR_ALL_CONFLICT_DATA);
     }
 
-    private boolean applyTypeInfoSymbols() throws CancelledException {
-        DemangledObject[] demangledObjects = new DemangledObject[]{
-            DemanglerUtil.demangle(TYPE_INFO_PREFIX+typename),
-            DemanglerUtil.demangle(NAME_PREFIX+typename),
-        };
-        Address[] addresses  = new Address[]{
-            typeInfo.getAddress(),
-            getAbsoluteAddress(program, typeInfo.getAddress().add(program.getDefaultPointerSize()))
-        };
-        for (int i = 0; i < demangledObjects.length; i++) {
-            monitor.checkCanceled();
-            try {
-                demangledObjects[i].applyTo(program, addresses[i], OPTIONS, monitor);
-                Symbol[] symbols = program.getSymbolTable().getSymbols(addresses[i]);
-                for (Symbol symbol : symbols) {
-                    if (symbol.getName(true).equals(demangledObjects[i].getDemangledName())) {
-                        symbol.setPrimary();
-                    }
-                }
-            } catch (Exception e) {
-                Msg.error(this, e);
-                return false;
-            }
+    private boolean applyTypeInfoSymbols() throws InvalidDataTypeException {
+        SymbolTable table = program.getSymbolTable();
+        Namespace ns = typeInfo.getNamespace();
+        Address typenameAddress = getAbsoluteAddress(
+            program, typeInfo.getAddress().add(program.getDefaultPointerSize()));
+        try {
+            table.createLabel(typeInfo.getAddress(), TypeInfo.SYMBOL_NAME, ns, SourceType.ANALYSIS);
+            table.createLabel(typenameAddress, TypeInfo.SYMBOL_NAME+"_name", ns, SourceType.ANALYSIS);
+        } catch (InvalidInputException e) {
+            Msg.trace(this, e);
+            return false;
         }
         return true;
     }

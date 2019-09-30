@@ -250,12 +250,6 @@ public class VtableModel implements Vtable {
     private void setupVtablePrefixes() throws InvalidDataTypeException {
         vtablePrefixes = new ArrayList<>();
         int count = construction ? 2 : type.getVirtualParents().size()+1;
-        if (arrayCount < 0) {
-            arrayCount = type.getParentModels().length;
-            if (arrayCount == type.getVirtualParents().size()) {
-                arrayCount++;
-            }
-        }
         VtablePrefixModel prefix = new VtablePrefixModel(getNextPrefixAddress(), count);
         if (!prefix.isValid()) {
             return;
@@ -263,13 +257,20 @@ public class VtableModel implements Vtable {
         if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
             address = prefix.prefixAddress;
         }
-        vtablePrefixes.add(prefix);
-        for (int i = 1; i < arrayCount; i++) {
-            prefix = new VtablePrefixModel(getNextPrefixAddress());
-            if (!prefix.isValid()) {
-                break;
+        if (arrayCount < 0) {
+            while (prefix.isValid()) {
+                vtablePrefixes.add(prefix);
+                prefix = new VtablePrefixModel(getNextPrefixAddress());
             }
+        } else {
             vtablePrefixes.add(prefix);
+            for (int i = 1; i < arrayCount; i++) {
+                prefix = new VtablePrefixModel(getNextPrefixAddress());
+                if (!prefix.isValid()) {
+                    break;
+                }
+                vtablePrefixes.add(prefix);
+            }
         }
     }
 

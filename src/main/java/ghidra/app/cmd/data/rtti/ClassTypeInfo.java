@@ -19,7 +19,7 @@ import ghidra.util.task.DummyCancellableTaskMonitor;
 public interface ClassTypeInfo extends TypeInfo {
     
     default DataType getRepresentedDataType() throws InvalidDataTypeException {
-        return getClassDataType();
+        return getClassDataType(true);
     }
 
     /**

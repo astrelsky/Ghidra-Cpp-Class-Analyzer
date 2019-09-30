@@ -10,6 +10,7 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryBufferImpl;
+import ghidra.program.model.reloc.Relocation;
 import ghidra.util.Msg;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
@@ -17,6 +18,8 @@ import ghidra.program.model.listing.Program;
 import static ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory.getTypeInfo;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
+
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 
 /**
  * Model for the __base_type_info helper class.
@@ -107,8 +110,16 @@ final class BaseClassTypeInfoModel {
         return (Address) pointer.getValue(buf, pointer.getDefaultSettings(), -1);
     }
 
-    protected AbstractClassTypeInfoModel getClassModel() {
-        return (AbstractClassTypeInfoModel) getTypeInfo(program, getClassAddress());
+    protected AbstractClassTypeInfoModel getClassModel() throws InvalidDataTypeException {
+        Address classAddress = getClassAddress();
+        if (program.getMemory().getBlock(classAddress).isInitialized()) {
+            return (AbstractClassTypeInfoModel) getTypeInfo(program, classAddress);
+        }
+        Relocation reloc = program.getRelocationTable().getRelocation(getAddress());
+        if (reloc != null && reloc.getSymbolName() != null) {
+            return (AbstractClassTypeInfoModel) TypeInfoUtils.getExternalTypeInfo(program, reloc);
+        }
+        return null;
     }
 
     protected String getName() throws InvalidDataTypeException {

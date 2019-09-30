@@ -89,7 +89,11 @@ public class VtableUtils {
                 while(isValidData(before)) {
                     before = listing.getDefinedDataBefore(before.getAddress());
                 }
-                set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
+                if (after == null) {
+                    set = new AddressRangeImpl(before.getMaxAddress(), program.getMaxAddress());
+                } else {
+                    set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
+                }
             }
             if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
                 if (isPtrDiffArray(before)) {

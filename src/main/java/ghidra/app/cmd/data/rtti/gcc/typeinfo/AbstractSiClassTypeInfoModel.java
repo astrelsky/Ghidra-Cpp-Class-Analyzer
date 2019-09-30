@@ -7,8 +7,12 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.reloc.Relocation;
+import ghidra.program.model.reloc.RelocationTable;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -33,16 +37,22 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
         if (!ClassTypeInfoUtils.isPlaceholder(struct) && !repopulate) {
             return struct;
         }
-        struct.setDescription("");
+        int id = dtm.startTransaction("Creating Class DataType for "+getName());
         AbstractClassTypeInfoModel parent = (AbstractClassTypeInfoModel) getParentModels()[0];
+        Structure parentStruct = parent.getSuperClassDataType();
+        if (!parentStruct.getDataTypeManager().equals(program.getDataTypeManager())) {
+            parentStruct = (Structure) parentStruct.clone(program.getDataTypeManager());
+        }
         replaceComponent(
-            struct, parent.getSuperClassDataType(), SUPER+parent.getName(), 0);
+            struct, parentStruct, SUPER+parent.getName(), 0);
         addVptr(struct);
+        dtm.endTransaction(id, true);
         return resolveStruct(struct);
     }
 
     private static Address getBaseTypeAddress(Program program, Address address) {
-        return getAbsoluteAddress(program, address.add(program.getDefaultPointerSize() << 1));
+        Address pointerAddress = address.add(program.getDefaultPointerSize() << 1);
+        return getAbsoluteAddress(program, pointerAddress);
     }
 
     @Override
@@ -53,16 +63,34 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
     @Override
     public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
         validate();
-        return new ClassTypeInfo[]{
-            (ClassTypeInfo) TypeInfoFactory.getTypeInfo(
-                program, getBaseTypeAddress(program, address))
-            };
+        Address baseAddress = getBaseTypeAddress(program, address);
+        if (baseAddress != null && program.getMemory().getBlock(baseAddress).isInitialized()) {
+            TypeInfo parent = TypeInfoFactory.getTypeInfo(program, baseAddress);
+            if (parent instanceof ClassTypeInfo) {
+                return new ClassTypeInfo[]{
+                    (ClassTypeInfo) parent
+                    };
+            }
+        }
+        RelocationTable table = program.getRelocationTable();
+        Relocation reloc = table.getRelocation(
+            address.add(program.getDefaultPointerSize() << 1));
+        if (reloc != null && reloc.getSymbolName() != null) {
+            TypeInfo parent = TypeInfoUtils.getExternalTypeInfo(program, reloc);
+            if (parent instanceof ClassTypeInfo) {
+                return new ClassTypeInfo[]{
+                    (ClassTypeInfo) parent
+                    };
+            }
+        }
+        return new ClassTypeInfo[0];
     }
 
     @Override
     public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
         validate();
-        return getParentModels()[0].getVirtualParents();
+        ClassTypeInfo[] parents = getParentModels();
+        return parents[0].getVirtualParents();
     }
 
 }

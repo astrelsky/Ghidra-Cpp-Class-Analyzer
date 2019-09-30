@@ -2,7 +2,9 @@ package ghidra.app.cmd.data.rtti.gcc;
 
 import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
+
 import ghidra.program.model.listing.Data;
+import ghidra.program.model.data.Array;
 import ghidra.program.model.data.DataType;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
@@ -15,10 +17,11 @@ import ghidra.app.util.demangler.DemanglerOptions;
 import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.data.DataUtilities;
+import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Pointer;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
-
 
 public class CreateVttBackgroundCmd extends BackgroundCommand {
 
@@ -42,7 +45,7 @@ public class CreateVttBackgroundCmd extends BackgroundCommand {
     @Override
     public final boolean applyTo(DomainObject obj, TaskMonitor taskMonitor) {
         try {
-            if(!vtt.isValid()) {
+            if (!vtt.isValid()) {
                 return false;
             } else if (!(obj instanceof Program)) {
                 String message = "Can only apply a vtable data type to a program.";
@@ -61,25 +64,43 @@ public class CreateVttBackgroundCmd extends BackgroundCommand {
     private boolean doApplyTo() throws CancelledException {
         try {
             monitor.checkCanceled();
+            Data data = program.getListing().getDataContaining(vtt.getAddress());
+            if (data != null && data.isArray()) {
+                Array array = (Array) data.getDataType();
+                if (array.getDataType() instanceof Pointer) {
+                    if (array.getNumElements() > vtt.getElementCount()) {
+                        return createAssociatedData();
+                    }
+                }
+            }
             createData(vtt.getAddress(), vtt.getDataType());
             return createAssociatedData();
-        } catch (CodeUnitInsertionException e) {
+        } catch (CodeUnitInsertionException | InvalidDataTypeException e) {
+            Msg.trace(this, e);
             return false;
         }
     }
 
     private Data createData(Address address, DataType dt) throws CodeUnitInsertionException {
-        return DataUtilities.createData(
-            program, address, dt, 0, false, ClearDataMode.CLEAR_ALL_CONFLICT_DATA);
+        return DataUtilities.createData(program, address, dt, 0, false, ClearDataMode.CLEAR_ALL_CONFLICT_DATA);
     }
 
-    private boolean createAssociatedData() {
+    private boolean createAssociatedData() throws InvalidDataTypeException {
         SymbolTable table = program.getSymbolTable();
         for (VtableModel model : vtt.getConstructionVtableModels()) {
-            CreateConstructionVtableBackgroundCmd cmd =
-                new CreateConstructionVtableBackgroundCmd(model, child);
-            if (!cmd.applyTo(program, monitor)) {
-                return false;
+            Address vtableAddress = ((VtableModel) model.getTypeInfo().getVtable()).getAddress();
+            if (!model.getAddress().equals(vtableAddress)) {
+                    CreateConstructionVtableBackgroundCmd cmd =
+                    new CreateConstructionVtableBackgroundCmd(model, child);
+                    if (!cmd.applyTo(program, monitor)) {
+                        return false;
+                    }
+            } else {
+                CreateVtableBackgroundCmd cmd =
+                new CreateVtableBackgroundCmd(model);
+                if (!cmd.applyTo(program, monitor)) {
+                    return false;
+                }
             }
         }
         Symbol primarySymbol = table.getPrimarySymbol(vtt.getAddress());

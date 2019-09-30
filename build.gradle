@@ -15,6 +15,9 @@
 // for the correction version of Gradle to use for the Ghidra installation you specify.
 
 import org.apache.tools.ant.filters.ReplaceTokens
+import org.gradle.plugins.ide.eclipse.model.ClasspathEntry
+import org.gradle.plugins.ide.eclipse.model.Library
+apply plugin: 'eclipse'
 
 //----------------------START "DO NOT MODIFY" SECTION------------------------------
 def ghidraInstallDir
@@ -33,3 +36,19 @@ else {
     throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
+
+eclipse.classpath.file.whenMerged {
+	File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
+	for (ClasspathEntry entry : entries) {
+		if (entry instanceof Library) {
+			File folder = new File(entry.getPath()).getParentFile();
+			for (File file : folder.listFiles()) {
+				if (file.getName().endsWith(".zip")) {
+					entry.setSourcePath(it.fileReference(file));
+					entry.setJavadocPath(it.fileReference(javaDoc));
+				}
+			}
+			//entry.getEntryAttributes().remove("gradle_used_by_scope");
+		}
+	}
+}

@@ -68,12 +68,14 @@ public class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
         if (getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
             return (Structure) getDataType();
         }
-        Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(
-            this, program.getDataTypeManager());
+        DataTypeManager dtm = program.getDataTypeManager();
+        Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
         if (!ClassTypeInfoUtils.isPlaceholder(struct) && !repopulate) {
             return struct;
         }
+        int id = dtm.startTransaction("Creating Class DataType for "+getName());
         addVptr(struct);
+        dtm.endTransaction(id, true);
         return struct;
     }
 

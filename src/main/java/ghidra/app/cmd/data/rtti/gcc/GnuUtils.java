@@ -8,6 +8,11 @@ import java.util.Collections;
 import ghidra.program.model.data.DataType;
 import ghidra.app.util.demangler.DemangledFunction;
 import ghidra.app.util.demangler.DemangledObject;
+import ghidra.framework.main.AppInfo;
+import ghidra.framework.model.DomainFile;
+import ghidra.framework.model.Project;
+import ghidra.framework.model.Tool;
+import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
@@ -15,6 +20,11 @@ import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
+import ghidra.program.model.symbol.ExternalManager;
+import ghidra.program.model.symbol.Namespace;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.listing.Library;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataTypeManager;
@@ -27,15 +37,17 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.DummyCancellableTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
-import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.app.util.demangler.DemanglerUtil.demangle;
+import static ghidra.plugins.fsbrowser.FSBUtils.getProgramManager;
+import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
 public final class GnuUtils {
 
     private static final String PTRDIFF = "ptrdiff_t";
     private static final String PPC = "PowerPC";
     private static final String CXXABI = "__cxxabiv1";
+    private static final String EXTERNAL = "<EXTERNAL>";
 
     public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
     public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
@@ -103,7 +115,6 @@ public final class GnuUtils {
         List<MemoryBlock> dataBlocks = new ArrayList<MemoryBlock>();
         for (MemoryBlock block : blocks) {
             if (isDataBlock(block)) {
-                // READ | WRITE && !EXECUTE && !VOLATILE
                 dataBlocks.add(block);
             }
         }
@@ -117,7 +128,7 @@ public final class GnuUtils {
      * @return true if this MemoryBlock has non-volatile data.
      */
     public static boolean isDataBlock(MemoryBlock block) {
-        return block.isRead() || block.isWrite();
+        return block != null ? block.isRead() || block.isWrite() : false;
     }
 
     /**
@@ -255,6 +266,43 @@ public final class GnuUtils {
                 program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
             return ProgramMemoryUtil.findDirectReferences(program, dataBlocks,
                 pointerAlignment, dataAddress, monitor);
+    }
+
+    public static Program getExternalProgram(Program program, Relocation reloc) {
+        ExternalManager manager = program.getExternalManager();
+        SymbolTable table = program.getSymbolTable();
+        for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
+            Library library = manager.getExternalLibrary(symbol.getPath()[0]);
+            if (library != null) {
+                return openProgram(library.getAssociatedProgramPath());
+            }
+        }
+        for (String name : manager.getExternalLibraryNames()) {
+            if (name.equals(EXTERNAL)) {
+                continue;
+            }
+            Program exProgram = openProgram(manager.getExternalLibraryPath(name));
+            Namespace global = exProgram.getGlobalNamespace();
+            if (exProgram != null) {
+                SymbolTable exTable = exProgram.getSymbolTable();
+                if (!exTable.getSymbols(reloc.getSymbolName(), global).isEmpty()) {
+                    return exProgram;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Program openProgram(String path) {
+        Project project = AppInfo.getActiveProject();
+        DomainFile file = project.getProjectData().getFile(path);
+        Tool[] tools = project.getToolManager().getRunningTools();
+        for (Tool tool : tools) {
+            if (tool instanceof PluginTool) {
+                return getProgramManager((PluginTool) tool, false).openProgram(file);
+            }
+        }
+        return null;
     }
 
 }

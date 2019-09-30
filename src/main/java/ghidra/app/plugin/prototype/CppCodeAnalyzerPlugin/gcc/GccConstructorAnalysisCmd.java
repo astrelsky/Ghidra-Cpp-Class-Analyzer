@@ -146,7 +146,9 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
                             createConstructor(typeinfo, calledAddress, vtt != null);
                         }
                     } else if (reference.getReferenceType().isData()) {
-                        createConstructor(typeinfo, fromAddress, false);
+                        if (isValidConstructor(fromAddress, reference)) {
+                            createConstructor(typeinfo, fromAddress, false);
+                        }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -155,6 +157,37 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
             }
         }
         return true;
+    }
+
+    private boolean isValidConstructor(Address address, Reference ref) {
+        Function function = fManager.getFunctionContaining(address);
+        Instruction inst = listing.getInstructionAt(function.getEntryPoint());
+        while (function.getBody().contains(inst.getAddress())) {
+            Reference[] references = inst.getReferencesFrom();
+            if (references.length > 0) {
+                for (Reference instRef : references) {
+                    if (instRef.getFromAddress().equals(inst.getAddress())) {
+                        return instRef.equals(ref);
+                    }
+                }
+            }
+            if (inst.getFlowType().isFlow()) {
+                for (int i = 0; i < inst.getDelaySlotDepth(); i++) {
+                    inst = inst.getNext();
+                    references = inst.getReferencesFrom();
+                    if (references.length > 0) {
+                        for (Reference instRef : references) {
+                            if (instRef.getFromAddress().equals(inst.getAddress())) {
+                                return instRef.equals(ref);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            inst = inst.getNext();
+        }
+        return false;
     }
 
     private boolean createFromVttModel() throws Exception {
