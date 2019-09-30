@@ -34,7 +34,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     private static final String DESCRIPTION = "This analyzer analyzes RTTI metadata to recreate classes and their functions";
 
     private static final String OPTION_VTABLE_ANALYSIS_NAME = "Locate Constructors";
-    private static final boolean OPTION_DEFAULT_VTABLE_ANALYSIS = true;
+    private static final boolean OPTION_DEFAULT_VTABLE_ANALYSIS = false;
     private static final String OPTION_VTABLE_ANALYSIS_DESCRIPTION = "Turn on to search for Constructors/Destructors.";
 
     private static final String OPTION_FILLER_ANALYSIS_NAME = "Fill Class Fields";
