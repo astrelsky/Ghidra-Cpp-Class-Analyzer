@@ -162,7 +162,8 @@ public class ClassTypeInfoUtils {
                 return (Structure) struct;
             }
             struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
-            if (!struct.getDataTypePath().isAncestor(DWARF)) {
+            DataTypePath dtPath = struct.getDataTypePath();
+            if (!dtPath.isAncestor(DWARF) && !dtPath.toString().contains(".pdb")) {
                 struct = new StructureDataType(path, type.getName(), 0, dtm);
                 dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
                 try {
@@ -300,9 +301,15 @@ public class ClassTypeInfoUtils {
     }
 
     public static DataType getVptrDataType(Program program, ClassTypeInfo type) {
+        return getVptrDataType(program, type, null);
+    }
+
+    public static DataType getVptrDataType(Program program, ClassTypeInfo type, CategoryPath path) {
         try {
             Vtable vtable = type.getVtable();
-            CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
+            if (path == null) {
+                path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
+            }
             path = new CategoryPath(path, type.getName());
             DataTypeManager dtm = program.getDataTypeManager();
             Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);

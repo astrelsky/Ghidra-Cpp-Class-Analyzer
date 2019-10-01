@@ -249,6 +249,9 @@ public class RttiModelWrapper implements ClassTypeInfo {
             Collections.reverse(virtualModels);
             int pointerSize = type.getProgram().getDefaultPointerSize();
             for (int i = 0; i < virtualModels.size(); i++) {
+                if (i >= vfTableAddresses.size()) {
+                    break;
+                }
                 Address metaAddress = vfTableAddresses.get(i).subtract(pointerSize);
                 Address rtti4Address = getAbsoluteAddress(type.getProgram(), metaAddress);
                 Rtti4Model model =
@@ -295,6 +298,10 @@ public class RttiModelWrapper implements ClassTypeInfo {
     private int getOffset(Rtti1Model model) {
         try {
             if (isVirtual(model)) {
+                if (!virtualMetaData.containsKey(model)) {
+                    Msg.info(this, "Missing offset for: "+model.getRtti0Model().getTypeName());
+                    return -1;
+                }
                 return virtualMetaData.get(model).getVbTableOffset();
             }
             return model.getMDisp();
@@ -362,7 +369,10 @@ public class RttiModelWrapper implements ClassTypeInfo {
             RttiModelWrapper parent = new RttiModelWrapper(model);
             parent.validate();
             Structure parentStruct = parent.getSuperClassDataType();
-            inheritClass(struct, parentStruct, getOffset(model));
+            int offset = getOffset(model);
+            if (offset >= 0) {
+                inheritClass(struct, parentStruct, offset);
+            }
         }
         addVptr(struct);
         return resolve(struct);
@@ -396,8 +406,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
     protected void addVptr(Structure struct) {
         DataTypeComponent comp = struct.getComponentAt(0);
         if (comp == null || Undefined.isUndefined(comp.getDataType())) {
-            DataType vptr = ClassTypeInfoUtils.getVptrDataType(type.getProgram(), this);
-            vptr = type.getProgram().getDataTypeManager().getPointer(vptr);
+            DataType vptr = ClassTypeInfoUtils.getVptrDataType(type.getProgram(), this, struct.getCategoryPath());
             if (vptr != null) {
                 if (struct.getLength() <= 1) {
                     struct.add(
