@@ -13,6 +13,7 @@ import ghidra.app.plugin.prototype.GccRttiAnalyzer;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
@@ -61,6 +62,11 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
     protected AbstractConstructorAnalysisCmd getConstructorAnalyzer() {
         this.vtableAnalyzer = new GccVtableAnalysisCmd();
         return new GccConstructorAnalysisCmd();
+    }
+
+    @Override
+    protected boolean isDestructor(Function function) {
+        return function.getName().startsWith("~");
     }
 
     @Override

@@ -2,52 +2,52 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 
 import java.util.*;
 
-import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 import ghidra.framework.options.Options;
-import ghidra.framework.plugintool.PluginTool;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
-import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
-import ghidra.app.plugin.core.decompile.actions.FillOutStructureCmd;
+import ghidra.app.plugin.core.analysis.ConstantPropagationContextEvaluator;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
-import ghidra.program.model.symbol.SymbolType;
-import ghidra.program.util.FunctionParameterFieldLocation;
+import ghidra.program.util.SymbolicPropogator;
 import ghidra.program.model.listing.*;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.util.ConsoleErrorDisplay;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.address.AddressSetView;
+import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Pointer;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.lang.Register;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 
 public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
-    private static final String DESCRIPTION = "This analyzer analyzes RTTI metadata to recreate classes and their functions";
+    private static final String DESCRIPTION =
+        "This analyzer analyzes RTTI metadata to recreate classes and their functions";
 
     private static final String OPTION_VTABLE_ANALYSIS_NAME = "Locate Constructors";
     private static final boolean OPTION_DEFAULT_VTABLE_ANALYSIS = false;
-    private static final String OPTION_VTABLE_ANALYSIS_DESCRIPTION = "Turn on to search for Constructors/Destructors.";
+    private static final String OPTION_VTABLE_ANALYSIS_DESCRIPTION =
+        "Turn on to search for Constructors/Destructors.";
 
     private static final String OPTION_FILLER_ANALYSIS_NAME = "Fill Class Fields";
     private static final boolean OPTION_DEFAULT_FILLER_ANALYSIS = false;
-    private static final String OPTION_FILLER_ANALYSIS_DESCRIPTION = "Turn on to fill out the found class structures.";
+    private static final String OPTION_FILLER_ANALYSIS_DESCRIPTION =
+        "Turn on to fill out the found class structures.";
 
     private boolean constructorAnalysisOption;
     private boolean fillClassFieldsOption;
 
     protected Program program;
     private TaskMonitor monitor;
-    private CancelOnlyWrappingTaskMonitor dummy;
-    private AutoAnalysisManager analysisManager;
+    private SymbolicPropogator symProp;
 
     private List<ClassTypeInfo> classes;
     private ArrayList<Vtable> vftables;
@@ -67,10 +67,11 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     }
 
     protected abstract boolean hasVtt();
-
     protected abstract List<ClassTypeInfo> getClassTypeInfoList();
-
     protected abstract AbstractConstructorAnalysisCmd getConstructorAnalyzer();
+    protected abstract boolean analyzeVftable(ClassTypeInfo type);
+    protected abstract boolean analyzeConstructor(ClassTypeInfo type);
+    protected abstract boolean isDestructor(Function function);
 
     @Override
     @SuppressWarnings("hiding")
@@ -79,10 +80,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         this.program = program;
         this.monitor = monitor;
         this.log = log;
-        this.analysisManager = AutoAnalysisManager.getAnalysisManager(program);
         this.constructorAnalyzer = getConstructorAnalyzer();
 
-        dummy = new CancelOnlyWrappingTaskMonitor(monitor);
         classes = getClassTypeInfoList();
 
         try {
@@ -107,6 +106,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     public void analysisEnded(Program program) {
         classes = null;
         vftables = null;
+        symProp = null;
+        constructorAnalyzer = null;
         super.analysisEnded(program);
     }
 
@@ -145,43 +146,99 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         }
     }
 
-    private void fillStructures() throws CancelledException, InvalidDataTypeException {
-        SymbolTable table = program.getSymbolTable();
-        PluginTool tool = analysisManager.getAnalysisTool();
+    private void fillStructures() throws Exception {
         repairInheritance();
         if (fillClassFieldsOption) {
+            symProp = new SymbolicPropogator(program);
             monitor.initialize(vftables.size());
             monitor.setMessage("Filling Class Structures...");
-            Msg.setErrorDisplay(new ConsoleErrorDisplay());
             for (Vtable vtable : vftables) {
                 ClassTypeInfo type = vtable.getTypeInfo();
                 if (type.getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
                     continue;
                 }
-                GhidraClass gc = type.getGhidraClass();
-                for (Symbol symbol : table.getChildren(gc.getSymbol())) {
-                    monitor.checkCanceled();
-                    if(!symbol.getSymbolType().equals(SymbolType.FUNCTION)) {
-                        continue;
-                    }
-                    Function function = getFunction(symbol.getAddress());
-                    if (function == null) {
-                        Msg.error(this, "Null function at: "+symbol.getAddress());
-                    }
-                    Parameter thisParam = function.getParameter(0);
-                    FunctionParameterFieldLocation location = new FunctionParameterFieldLocation(
-                        program, symbol.getAddress(), symbol.getAddress(),
-                        0, function.getSignature().toString(), thisParam);
-                    try {
-                        FillOutStructureCmd cmd = new FillOutStructureCmd(program, location, tool);
-                        cmd.applyTo(program, dummy);
-                    } catch (Exception e) {
-                        Msg.error(this, "Failed to populate class structure.", e);
+                Function[][] fTable = vtable.getFunctionTables();
+                if (fTable.length > 0 && fTable[0].length > 0) {
+                    Function destructor = fTable[0][0];
+                    if (destructor != null && isDestructor(destructor)) {
+                        analyzeDestructor(type, destructor);
                     }
                 }
                 monitor.incrementProgress(1);
             }
-            repairInheritance();
+        }
+    }
+
+    private Structure getMemberDataType(Function function) {
+        Parameter auto = function.getParameter(0);
+        if (auto.getDataType() instanceof Pointer) {
+            Pointer pointer = (Pointer) auto.getDataType();
+            if (pointer.getDataType() instanceof Structure) {
+                return (Structure) pointer.getDataType();   
+            }
+        }
+        return VariableUtilities.findExistingClassStruct(
+            (GhidraClass) function.getParentNamespace(), program.getDataTypeManager());
+    }
+
+    private void clearComponent(Structure struct, int length, int offset) {
+        if (offset >= struct.getLength()) {
+            return;
+        }
+        for (int size = 0; size < length;) {
+            DataTypeComponent comp = struct.getComponentAt(offset);
+            if (comp!= null) {
+                size += comp.getLength();
+            } else {
+                size++;
+            }
+            struct.deleteAtOffset(offset);
+        }
+    }
+
+    private void propagateConstants(Function function, ClassTypeInfo type) 
+        throws CancelledException {
+            Parameter auto = function.getParameter(0);
+            try {
+                symProp.setRegister(type.getVtable().getTableAddresses()[0], auto.getRegister());
+            } catch (InvalidDataTypeException e) {}
+            ConstantPropagationContextEvaluator eval =
+                    new ConstantPropagationContextEvaluator(true);
+            symProp.flowConstants(
+                function.getEntryPoint(), function.getBody(), eval, true, monitor);
+    }
+
+    private void analyzeDestructor(ClassTypeInfo type, Function destructor) throws Exception {
+        InstructionIterator instructions = program.getListing().getInstructions(
+            destructor.getBody(), true);
+        propagateConstants(destructor, type);
+        Register thisRegister = destructor.getParameter(0).getRegister();
+        for (Instruction inst : instructions) {
+            monitor.checkCanceled();
+            if (inst.getFlowType().isCall() && !inst.getFlowType().isComputed()) {
+                Function function = getFunction(inst.getFlows()[0]);
+                if (function == null || !isDestructor(function)) {
+                    continue;
+                }
+                int delayDepth = inst.getDelaySlotDepth();
+                for (int i = 0; i <= delayDepth; i++) {
+                    inst = inst.getNext();
+                }
+                SymbolicPropogator.Value value = symProp.getRegisterValue(
+                    inst.getAddress(), thisRegister);
+                if (value != null && value.getValue() > 0) {
+                    Structure struct = type.getClassDataType();
+                    DataTypeComponent comp = struct.getComponentAt((int) value.getValue());
+                    Structure member = getMemberDataType(function);
+                    if (comp != null) {
+                        if (comp.getDataType() instanceof Structure) {
+                            continue;
+                        }
+                        clearComponent(struct, member.getLength(), (int) value.getValue());
+                    }
+                    struct.insertAtOffset((int) value.getValue(), member, member.getLength());
+                }
+            }
         }
     }
 
@@ -234,9 +291,6 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
             analyzeConstructors(namespaces);
         }
     }
-
-    protected abstract boolean analyzeVftable(ClassTypeInfo type);
-    protected abstract boolean analyzeConstructor(ClassTypeInfo type);
 
     protected boolean shouldAnalyzeConstructors() {
         return constructorAnalysisOption;

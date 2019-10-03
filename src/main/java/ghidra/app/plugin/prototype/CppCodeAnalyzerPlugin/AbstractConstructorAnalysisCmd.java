@@ -133,7 +133,8 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
                     new LinkedHashSet<>(typeinfo.getVirtualParents());
                 parents.addAll(Arrays.asList(typeinfo.getParentModels()));
                 List<Function> functions = getCalledFunctions(constructor);
-                if (functions.size() < parents.size()) {
+                if (functions.size() != parents.size()) {
+                    // TODO obtain from the struct field that is passed as the first parameter
                     return;
                 }
                 int i = 0;

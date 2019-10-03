@@ -117,5 +117,10 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
         this.vfTableAnalyzer = new WindowsVftableAnalysisCmd();
         return new WindowsConstructorAnalysisCmd();
     }
+
+    @Override
+    protected boolean isDestructor(Function function) {
+        return function.getName().contains("destructor");
+    }
     
 }

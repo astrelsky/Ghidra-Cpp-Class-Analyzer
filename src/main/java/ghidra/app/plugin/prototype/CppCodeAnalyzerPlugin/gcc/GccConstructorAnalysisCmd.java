@@ -1,6 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -91,7 +92,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
         return false;
     }
 
-    private void detectVirtualDestructors(Data data, Vtable vtable) throws InvalidDataTypeException {
+    private void detectVirtualDestructors(Set<Address> addresses, Vtable vtable) throws InvalidDataTypeException {
         Function[][] fTable = vtable.getFunctionTables();
         if (fTable.length == 0 || fTable[0].length == 0 || fTable[0][0] == null) {
             return;
@@ -99,11 +100,24 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
             createVirtualDestructors(vtable.getTypeInfo());
             return;
         }
-        List<Address> addresses = Arrays.asList(XReferenceUtil.getXRefList(data));
-        Set<Function> functions = new HashSet<>(addresses.size());
-        addresses.forEach((a) -> functions.add(fManager.getFunctionContaining(a)));
-        if (functions.contains(fTable[0][0])) {
-            createVirtualDestructors(vtable.getTypeInfo());
+        for (Instruction inst : listing.getInstructions(fTable[0][0].getBody(), true)) {
+            for (Reference ref : inst.getReferencesFrom()) {
+                if (addresses.contains(ref.getToAddress())) {
+                    createVirtualDestructors(vtable.getTypeInfo());
+                    return;
+                }
+            }
+        }
+    }
+
+    private void addAddresses(Set<Address> addresses, Collection<ClassTypeInfo> parents) {
+        for (ClassTypeInfo parent : parents) {
+            try {
+                addAddresses(addresses, Arrays.asList(parent.getParentModels()));
+                addAddresses(addresses, parent.getVirtualParents());
+                Vtable parentVtable = parent.getVtable();
+                addresses.addAll(Arrays.asList(parentVtable.getTableAddresses()));
+            } catch (InvalidDataTypeException e) {}
         }
     }
 
@@ -120,7 +134,10 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
         ClassTypeInfo typeinfo = vtable.getTypeInfo();
         List<Reference> references = Arrays.asList(XReferenceUtil.getOffcutXReferences(data, -1));
         Collections.reverse(references);
-        detectVirtualDestructors(data, vtable);
+        Set<Address> addresses = new HashSet<>(Arrays.asList(tableAddresses));
+        addAddresses(addresses, Arrays.asList(typeinfo.getParentModels()));
+        addAddresses(addresses, typeinfo.getVirtualParents());
+        detectVirtualDestructors(addresses, vtable);
         for (Reference reference : references) {
             if (monitor.isCancelled()) {
                 return false;
@@ -207,7 +224,6 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
                     createConstructor(vtable.getTypeInfo(), reference, true);
                 }
             }
-            detectVirtualDestructors(data, vtable);
         }
         for (int i = 0; i < vtt.getElementCount(); i++) {
             ClassTypeInfo baseType = vtt.getTypeInfo(i);
