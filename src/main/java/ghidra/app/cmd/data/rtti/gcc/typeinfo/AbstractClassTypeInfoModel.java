@@ -8,6 +8,7 @@ import java.util.stream.IntStream;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.AbstractTypeInfoModel;
 import ghidra.program.model.address.Address;
@@ -101,7 +102,12 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         validate();
         if (!(namespace instanceof GhidraClass)) {
             try {
-                namespace = NamespaceUtils.convertNamespaceToClass(namespace);
+                if (namespace.getSymbol().checkIsValid()) {
+                    namespace = NamespaceUtils.convertNamespaceToClass(namespace);
+                } else {
+                    namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
+                    namespace = NamespaceUtils.convertNamespaceToClass(namespace);
+                }
             } catch (InvalidInputException e) {
                 Msg.error(this, e);
                 return null;
