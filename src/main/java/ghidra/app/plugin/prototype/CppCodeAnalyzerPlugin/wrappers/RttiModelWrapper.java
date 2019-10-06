@@ -25,15 +25,20 @@ import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.IntegerDataType;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
-import ghidra.program.model.data.Undefined;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
+import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemBuffer;
+import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.util.CompositeDataTypeElementInfo;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
@@ -42,6 +47,7 @@ import ghidra.util.task.TaskMonitor;
 import static ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils.inheritClass;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
+import static ghidra.program.model.data.Undefined.isUndefined;
 
 public class RttiModelWrapper implements ClassTypeInfo {
 
@@ -50,6 +56,8 @@ public class RttiModelWrapper implements ClassTypeInfo {
     private static final String VFTABLE = "vftable";
     private static final String PURE_VIRTUAL_FUNCTION_NAME = "_purecall";
     private static final String SUPER = "super_";
+    private static final String VFPTR = "_vfptr";
+    private static final String VBPTR = "_vbptr";
     private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 
     private TypeDescriptorModel type;
@@ -60,6 +68,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
     private WindowsVtableModel vtable;
     private ClassTypeInfo[] parents;
     private Map<Rtti1Model, Rtti4Model> virtualMetaData;
+    private Map<CompositeDataTypeElementInfo, String> dtComps = Collections.emptyMap();
 
     public RttiModelWrapper(TypeDescriptorModel model) {
         this(getRtti4Model(model));
@@ -338,7 +347,9 @@ public class RttiModelWrapper implements ClassTypeInfo {
             struct.insertAtOffset(comp.getOrdinal(), comp.getDataType(), comp.getLength(),
                                   comp.getFieldName(), comp.getComment());
         }
-        addVptr(struct);
+        addVfptr(struct);
+        addVbptr(struct);
+        fixComponents(struct);
         return resolve(struct);
     }
 
@@ -362,6 +373,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
         validate();
         DataTypeManager dtm = type.getProgram().getDataTypeManager();
         Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
+        stashComponents(struct);
         for (Rtti1Model model : bases) {
             if (shouldIgnore(model)) {
                 continue;
@@ -374,12 +386,52 @@ public class RttiModelWrapper implements ClassTypeInfo {
                 inheritClass(struct, parentStruct, offset);
             }
         }
-        addVptr(struct);
+        addVfptr(struct);
+        addVbptr(struct);
+        fixComponents(struct);
         return resolve(struct);
+    }
+
+    private void stashComponents(Structure struct) {
+        if(dtComps.isEmpty()) {
+            dtComps = new HashMap<>(struct.getNumDefinedComponents());
+            for (DataTypeComponent comp : struct.getDefinedComponents()) {
+                String fieldName = comp.getFieldName();
+                if (validFieldName(fieldName)) {
+                    if (!comp.getDataType().isNotYetDefined()) {
+                        CompositeDataTypeElementInfo savedComp = new CompositeDataTypeElementInfo(
+                            comp.getDataType(), comp.getOffset(),
+                            comp.getLength(), comp.getDataType().getAlignment());
+                        dtComps.put(savedComp, comp.getFieldName());
+                    }
+                }
+            }
+            struct.deleteAll();
+        }
+    }
+
+    private void fixComponents(Structure struct) {
+        for (CompositeDataTypeElementInfo comp : dtComps.keySet()) {
+            int offset = comp.getDataTypeOffset();
+            DataTypeComponent replaced = struct.getComponentAt(offset);
+            if (replaced != null && !validFieldName(replaced.getFieldName())) {
+                continue;
+            }
+            replaceComponent(struct, (DataType) comp.getDataTypeHandle(),
+                             dtComps.get(comp), offset);
+        }
+    }
+
+    private boolean validFieldName(String name) {
+        if (name == null) {
+            return true;
+        }
+        return !name.startsWith(SUPER) && !name.equals("_vfptr") && !name.equals("_vbptr");
     }
 
     @Override
     public String getUniqueTypeName() throws InvalidDataTypeException {
+        validate();
         List<String> names = baseArray.getBaseClassTypes();
         StringBuffer buffer = new StringBuffer();
         for (String name : names) {
@@ -403,20 +455,86 @@ public class RttiModelWrapper implements ClassTypeInfo {
         return result;
     }
 
-    protected void addVptr(Structure struct) {
-        DataTypeComponent comp = struct.getComponentAt(0);
-        if (comp == null || Undefined.isUndefined(comp.getDataType())) {
-            DataType vptr = ClassTypeInfoUtils.getVptrDataType(type.getProgram(), this, struct.getCategoryPath());
-            if (vptr != null) {
-                if (struct.getLength() <= 1) {
-                    struct.add(
-                        vptr, type.getProgram().getDefaultPointerSize(), "_vptr", null);
-                } else {
-                    struct.replace(0,
-                        vptr, type.getProgram().getDefaultPointerSize(), "_vptr", null);
-                }
+    private void clearComponent(Structure struct, int length, int offset) {
+        if (offset >= struct.getLength()) {
+            return;
+        }
+        for (int size = 0; size < length;) {
+            DataTypeComponent comp = struct.getComponentAt(offset);
+            if (comp!= null) {
+                size += comp.getLength();
+            } else {
+                size++;
             }
+            struct.deleteAtOffset(offset);
         }
     }
-    
+
+    private void replaceComponent(Structure struct, DataType parent, String name, int offset) {
+        clearComponent(struct, parent.getLength(), offset);
+        struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
+    }
+
+    private int getVbValue() {
+        List<Symbol> symbols = type.getProgram().getSymbolTable().getSymbols(
+            "`vbtable'", getGhidraClass());
+        if (symbols.isEmpty() || symbols.size() > 1) {
+            return -1;
+        }
+        MemBuffer buf = new MemoryBufferImpl(type.getProgram().getMemory(), symbols.get(0).getAddress());
+        try {
+            return buf.getInt(0);
+        } catch (MemoryAccessException e) {
+            return -1;
+        }
+    }
+
+    private void addVfptr(Structure struct) {
+        try {
+            getVtable().validate();
+            if (getVbValue() >= 0) {
+                // we don't have one
+                return;
+            }
+        } catch (InvalidDataTypeException e) {
+            return;
+        }
+        DataType vfptr = ClassTypeInfoUtils.getVptrDataType(type.getProgram(), this);
+        DataTypeComponent comp = struct.getComponentAt(0);
+        if (comp == null || isUndefined(comp.getDataType())) {
+            if (vfptr != null) {
+                clearComponent(struct, type.getProgram().getDefaultPointerSize(), 0);
+                struct.insertAtOffset(0, vfptr, type.getProgram().getDefaultPointerSize(), VFPTR, null);
+            }
+        } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
+            clearComponent(struct, type.getProgram().getDefaultPointerSize(), 0);
+            struct.insertAtOffset(0, vfptr, type.getProgram().getDefaultPointerSize(), VFPTR, null);
+        }
+    }
+
+    private void addVbptr(Structure struct) {
+        if (virtualMetaData.isEmpty()) {
+            return;
+        }
+        Program program = type.getProgram();
+        int pointerSize = program.getDefaultPointerSize();
+        int offset;
+        if (getVbValue() >= 0) {
+            offset = 0;
+        } else {
+            offset = pointerSize;
+        }
+        DataType vbptr = program.getDataTypeManager().getPointer(
+            IntegerDataType.dataType, pointerSize);
+        DataTypeComponent comp = struct.getComponentAt(1);
+        if (comp == null || isUndefined(comp.getDataType())) {
+            if (vbptr != null) {
+                clearComponent(struct, pointerSize, offset);
+                struct.insertAtOffset(offset, vbptr, pointerSize, VBPTR, null);
+            }
+        } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
+            clearComponent(struct, pointerSize, offset);
+            struct.insertAtOffset(offset, vbptr, pointerSize, VBPTR, null);
+        }
+    }
 }
