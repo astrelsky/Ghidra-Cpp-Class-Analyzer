@@ -14,7 +14,6 @@ import ghidra.program.model.address.Address;
 import ghidra.program.util.SymbolicPropogator;
 import ghidra.program.model.listing.*;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
-import ghidra.util.ConsoleErrorDisplay;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.address.AddressSetView;
@@ -199,13 +198,16 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     private void propagateConstants(Function function, ClassTypeInfo type) 
         throws CancelledException {
             Parameter auto = function.getParameter(0);
-            try {
-                symProp.setRegister(type.getVtable().getTableAddresses()[0], auto.getRegister());
-            } catch (InvalidDataTypeException e) {}
-            ConstantPropagationContextEvaluator eval =
-                    new ConstantPropagationContextEvaluator(true);
-            symProp.flowConstants(
-                function.getEntryPoint(), function.getBody(), eval, true, monitor);
+            if (!auto.isStackVariable()) {
+                try {
+                    symProp.setRegister(type.getVtable().getTableAddresses()[0], auto.getRegister());
+                } catch (InvalidDataTypeException e) {}
+                ConstantPropagationContextEvaluator eval =
+                        new ConstantPropagationContextEvaluator(true);
+                symProp.flowConstants(
+                    function.getEntryPoint(), function.getBody(), eval, true, monitor);
+            }
+            // TODO figure out what to do for stack variable
     }
 
     private void analyzeDestructor(ClassTypeInfo type, Function destructor) throws Exception {
