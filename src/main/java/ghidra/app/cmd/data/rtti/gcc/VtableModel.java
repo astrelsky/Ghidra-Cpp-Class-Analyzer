@@ -299,7 +299,7 @@ public class VtableModel implements Vtable {
                 if (TypeInfoUtils.isTypeInfoPointer(program, prefixAddress)) {
                     this.prefixAddress = prefixAddress.subtract(numPtrDiffs * ptrdiff_t.getLength());
                 }
-                dataTypes.add(new ArrayDataType(ptrdiff_t, numPtrDiffs, ptrdiff_t.getLength()));
+                dataTypes.add(new ArrayDataType(ptrdiff_t, numPtrDiffs, ptrdiff_t.getLength(), dtm));
                 dataTypes.add(new PointerDataType(null, pointerSize, dtm));
                 Address tableAddress = this.prefixAddress.add(getPrefixSize());
                 int tableSize = VtableUtils.getFunctionTableLength(program, tableAddress);

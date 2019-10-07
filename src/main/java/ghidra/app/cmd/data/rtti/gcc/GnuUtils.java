@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import ghidra.program.model.data.DataType;
+import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunction;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.framework.main.AppInfo;
@@ -27,9 +28,8 @@ import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.listing.Library;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DataOrganization;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.IntegerDataType;
-import ghidra.program.model.data.LongLongDataType;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
@@ -75,9 +75,16 @@ public final class GnuUtils {
         return dtm.getDataOrganization().getPointerSize() == 8;
     }
 
+    private static DataType getPointerSizedInteger(DataTypeManager dtm) {
+        DataOrganization org = dtm.getDataOrganization();
+        String dtName = org.getIntegerCTypeApproximation(org.getPointerSize(), true);
+        DemangledDataType dt = new DemangledDataType(dtName);
+        // builtin type. dtm parameter unused.
+        return dt.getDataType(null);
+    }
+
     private static DataType createPtrDiff(DataTypeManager dtm) {
-        DataType dataType = isLLP64(dtm) ? LongLongDataType.dataType.clone(dtm)
-            : IntegerDataType.dataType.clone(dtm);
+        DataType dataType = getPointerSizedInteger(dtm);
         return new TypedefDataType(CategoryPath.ROOT, PTRDIFF, dataType, dtm);
     }
 
@@ -114,7 +121,7 @@ public final class GnuUtils {
         MemoryBlock[] blocks = program.getMemory().getBlocks();
         List<MemoryBlock> dataBlocks = new ArrayList<MemoryBlock>();
         for (MemoryBlock block : blocks) {
-            if (isDataBlock(block)) {
+            if (isDataBlock(block) && block.getName().contains("data")) {
                 dataBlocks.add(block);
             }
         }
@@ -142,6 +149,11 @@ public final class GnuUtils {
         if (!processor.toString().contentEquals(PPC)) {
             return false;
         } return isLLP64(program.getDataTypeManager());
+    }
+
+    public static boolean isGnuCompiler(Program program) {
+        String id = program.getCompilerSpec().getCompilerSpecID().getIdAsString().toLowerCase();
+        return COMPILER_NAMES.contains(id);
     }
 
     /**
