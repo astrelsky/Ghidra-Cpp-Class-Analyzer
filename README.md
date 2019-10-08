@@ -1,8 +1,35 @@
 Ghidra C++ Class and Run Time Type Information Analyzer
 =======================================================
 
+Building
+--------
+
+Prior to building, the GHIDRA_INSTALL_DIR environment variable and the version number in extension.properties must be correctly set.
+
+The target versions settings are as follows:
+
+* Ghidra_9.0.4: version=9.0.4
+* Ghidra_9.1-BETA: version=9.1-BETA
+* Ghidra_9.1-DEV: version=9.1
+
+Once the version has been correctly set, run the following command in a terminal of your choice.
+
+`gradle buildExtension`
+
+Upon completion the output will be located in the dist folder.
+
+Installation
+------------
+
+Extract the archive to a destination folder of your choice.
+Launch ghidra and from the project manager go to file->Install Extensions...
+Click the + icon near the top right corner of the window.
+Select the the path of the extracted Ghidra-Cpp-Class-Analyzer folder and select OK.
+After restarting ghidra the plugin will be installed and ready for use.
+You will know it has been successfully installed if the TypeInfo datatype appears within the BuiltInTypes datatype manager.
+
 Features
----------
+--------
 
 * GCC RTTI models and analysis.
 * Vtable analysis and class namespace setting.
