@@ -4,7 +4,10 @@ import java.util.*;
 
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
+import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
+import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.util.XReferenceUtil;
+import ghidra.framework.plugintool.PluginTool;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -31,7 +34,9 @@ public class ClassTypeInfoUtils {
     private static final String MISSING = "Missing";
     private static final CategoryPath DWARF = new CategoryPath(CategoryPath.ROOT, "DWARF");
     private static final String SUPER = "super_";
-    
+    private static final String GENERIC_CPP_LIB = "generic_c++lib";
+    private static final String GENERIC_CPP_LIB64 = GENERIC_CPP_LIB+"_64";
+
     // for error logging
     private static final ClassTypeInfoUtils THIS = new ClassTypeInfoUtils();
 
@@ -158,21 +163,27 @@ public class ClassTypeInfoUtils {
         throws InvalidDataTypeException {
             CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
             DataType struct = dtm.getDataType(path, type.getName());
-            if (struct != null) {
-                return (Structure) struct;
-            }
             struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
             DataTypePath dtPath = struct.getDataTypePath();
             if (!dtPath.isAncestor(DWARF) && !dtPath.toString().contains(".pdb")) {
-                struct = new StructureDataType(path, type.getName(), 0, dtm);
-                dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
-                try {
-                    struct.setDescription(PLACEHOLDER_DESCRIPTION);
-                    struct.setCategoryPath(path);
-                } catch (DuplicateNameException e) {
-                    Msg.error(
-                        THIS, "Failed to change placeholder struct "
-                              +type.getName()+"'s CategoryPath", e);
+                DataTypeManager cppDtm = getCppDataTypeManager(dtm);
+                if (cppDtm == null) {
+                    cppDtm = dtm;
+                }
+                struct = VariableUtilities.findExistingClassStruct(type.getGhidraClass(), cppDtm);
+                if (struct != null && path.isAncestorOrSelf(struct.getCategoryPath())) {
+                    struct = dtm.addDataType(struct, DataTypeConflictHandler.REPLACE_HANDLER);
+                } else {
+                    struct = new StructureDataType(path, type.getName(), 0, dtm);
+                    dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
+                    try {
+                        struct.setDescription(PLACEHOLDER_DESCRIPTION);
+                        struct.setCategoryPath(path);
+                    } catch (DuplicateNameException e) {
+                        Msg.error(
+                            THIS, "Failed to change placeholder struct "
+                                  +type.getName()+"'s CategoryPath", e);
+                    }
                 }
             }
             if (!struct.equals(VariableUtilities.findOrCreateClassStruct(
@@ -182,6 +193,33 @@ public class ClassTypeInfoUtils {
             }
             return (Structure) struct;
     }
+
+    private static DataTypeManager getCppDataTypeManager(DataTypeManager dtm) {
+        if (dtm instanceof ProgramBasedDataTypeManager) {
+            Program program = ((ProgramBasedDataTypeManager) dtm).getProgram();
+            if (GnuUtils.isGnuCompiler(program)) {
+                AutoAnalysisManager mgr = AutoAnalysisManager.getAnalysisManager(program);
+                PluginTool tool = mgr.getAnalysisTool();
+                return program.getDefaultPointerSize() > 4 ?
+                    getDataTypeManagerByName(tool, GENERIC_CPP_LIB64) :
+                    getDataTypeManagerByName(tool, GENERIC_CPP_LIB);
+            }
+            // TODO VisualStudio
+        }
+        return null;
+    }
+
+    private static DataTypeManager getDataTypeManagerByName(PluginTool tool, String name) {
+		DataTypeManagerService service = tool.getService(DataTypeManagerService.class);
+		DataTypeManager[] dataTypeManagers = service.getDataTypeManagers();
+		for (DataTypeManager manager : dataTypeManagers) {
+			String managerName = manager.getName();
+			if (name.equals(managerName)) {
+				return manager;
+			}
+		}
+		return null;
+	}
 
     /**
      * Returns true if the Structure is a "placeholder" structure.

@@ -5,6 +5,7 @@ import java.util.List;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows.WindowsConstructorAnalysisCmd;
@@ -40,7 +41,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
     @SuppressWarnings("hiding")
     @Override
     public boolean canAnalyze(Program program) {
-        return PEUtil.canAnalyze(program);
+        return PEUtil.canAnalyze(program) && !GnuUtils.isGnuCompiler(program);
     }
 
     private boolean hasGuardedVftables() {
@@ -58,8 +59,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
         return false;
     }
 
-    @Override
-    protected List<ClassTypeInfo> getClassTypeInfoList() {
+    public static List<ClassTypeInfo> getClassTypeInfoList(Program program) {
         ArrayList<ClassTypeInfo> classes = new ArrayList<>();
         SymbolTable table = program.getSymbolTable();
         for (Symbol symbol : table.getAllSymbols(false)) {
@@ -86,6 +86,11 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
         }
         classes.trimToSize();
         return classes;
+    }
+
+    @Override
+    protected List<ClassTypeInfo> getClassTypeInfoList() {
+        return getClassTypeInfoList(program);
     }
 
     @Override

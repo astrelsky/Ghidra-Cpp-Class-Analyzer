@@ -35,8 +35,6 @@ public class VtableModel implements Vtable {
     public static final String DESCRIPTION = "Vtable Model";
     public static final String MANGLED_PREFIX = "_ZTV";
 
-    private MemoryBufferImpl buf;
-
     private Program program;
     private boolean isValid = true;
     private Address address;
@@ -133,10 +131,6 @@ public class VtableModel implements Vtable {
         return address;
     }
 
-    private void resetBuffer() {
-        buf.setPosition(address);
-    }
-
     @Override
     public Address[] getTableAddresses() throws InvalidDataTypeException {
         validate();
@@ -202,7 +196,6 @@ public class VtableModel implements Vtable {
         if (ordinal >= getElementCount()) {
             return Long.MAX_VALUE;
         }
-        resetBuffer();
         return vtablePrefixes.get(index).getBaseOffset(ordinal);
     }
 

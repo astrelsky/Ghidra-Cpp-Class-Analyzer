@@ -2,15 +2,11 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.DataType;
-
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
-import ghidra.program.model.data.Structure;
 
 /**
  * Model for the __class_type_info class.
@@ -62,25 +58,4 @@ public class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return new ClassTypeInfo[0];
     }
 
-    @Override
-    public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
-        validate();
-        if (getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
-            return (Structure) getDataType();
-        }
-        DataTypeManager dtm = program.getDataTypeManager();
-        Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
-        if (!ClassTypeInfoUtils.isPlaceholder(struct) && !repopulate) {
-            return struct;
-        }
-        int id = dtm.startTransaction("Creating Class DataType for "+getName());
-        addVptr(struct);
-        dtm.endTransaction(id, true);
-        return struct;
-    }
-
-    @Override
-    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
-        return getClassDataType();
-    }
 }

@@ -135,7 +135,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                 continue;
             }
             try {
-                type.getClassDataType(true);
+                type.getClassDataType();
             } catch (IndexOutOfBoundsException e) {
                 Msg.trace(this, e);
             } catch (InvalidDataTypeException e) {

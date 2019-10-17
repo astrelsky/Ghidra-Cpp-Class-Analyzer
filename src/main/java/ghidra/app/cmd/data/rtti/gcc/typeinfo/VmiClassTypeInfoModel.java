@@ -9,7 +9,6 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
-import ghidra.program.model.util.CompositeDataTypeElementInfo;
 import ghidra.util.Msg;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.EnumDataType;
@@ -19,9 +18,7 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
-import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
@@ -61,7 +58,6 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     private BaseClassTypeInfoModel[] bases;
     private Flags flags;
-    private Map<CompositeDataTypeElementInfo, String> dtComps = Collections.emptyMap();
 
     public VmiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
@@ -174,10 +170,6 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             return result;
     }
 
-    public BaseClassTypeInfoModel getBase(int ordinal) {
-        return getBases()[ordinal];
-    }
-
     private int getBaseCount() {
         MemBuffer buf = getBuffer();
         DataTypeComponent comp = getDataType().getComponent(BASE_COUNT_ORDINAL);
@@ -189,7 +181,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
     }
 
-    private BaseClassTypeInfoModel[] getBases() {
+    public BaseClassTypeInfoModel[] getBases() {
         if (bases != null) {
             return bases;
         }
@@ -203,53 +195,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return bases;
     }
 
-    public ClassTypeInfo getParentAtOffset(long offset, boolean virtual)
-        throws InvalidDataTypeException {
-            validate();
-            for (BaseClassTypeInfoModel base : bases) {
-                    if (base.isVirtual() == virtual) {
-                        if (base.getFlags().getOffset() == offset) {
-                            return base.getClassModel();
-                        }
-                    }
-                }
-            return null;
-    }
-
-    private static void shrinkStruct(DataType dt, int length) {
-        if (length > 0  && dt.getLength() > length) {
-            if (dt instanceof Structure) {
-                Structure struct = (Structure) dt;
-                while (struct.getLength() > length) {
-                    struct.deleteAtOffset(length);
-                }
-                // remove all remaining trailing undefined bytes
-                trimStructure(struct);
-            }
-        }
-    }
-
-    private void addBase(Structure struct, ClassTypeInfo parent,
-        int offset, int maxLength) throws InvalidDataTypeException {
-            AbstractClassTypeInfoModel base = (AbstractClassTypeInfoModel) parent;
-            Structure parentStruct = base.getSuperClassDataType();
-            if (!parentStruct.getDataTypeManager().equals(program.getDataTypeManager())) {
-                parentStruct = (Structure) parentStruct.clone(program.getDataTypeManager());
-            }
-            if (maxLength > 0) {
-                shrinkStruct(parentStruct, maxLength);
-            } else {
-                DataTypeComponent comp = struct.getComponentAt(offset);
-                if (comp != null) {
-                    if (comp.getDataType().getCategoryPath().equals(parentStruct.getCategoryPath())) {
-                        shrinkStruct(comp.getDataType(), offset - comp.getOffset());
-                    }
-                }
-            }
-            replaceComponent(struct, parentStruct, SUPER+base.getName(), offset);
-    }
-
-    private List<Long> getOffsets() {
+    public List<Long> getOffsets() {
         List<Long> result = new ArrayList<>();
         for (BaseClassTypeInfoModel base : bases) {
             if(!base.isVirtual()) {
@@ -264,107 +210,6 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
             }
         } catch (InvalidDataTypeException e) {}
         return result;
-    }
-
-    private void addBases(Structure struct) throws InvalidDataTypeException {
-        int i = 0;
-        List<Long> offsets = getOffsets();
-        for (AbstractClassTypeInfoModel parent : getParents()) {
-            if (i > 0 && offsets.get(i) == 0) {
-                if (parent.getSuperClassDataType().getLength() <= 1) {
-                    // super class is just a namespace
-                    i++;
-                    continue;
-                }
-            }
-            if (i+1 >= offsets.size()) {
-                addBase(struct, parent, offsets.get(i++).intValue(), -1);   
-            } else {
-                addBase(
-                    struct, parent, offsets.get(i++).intValue(), offsets.get(i).intValue());
-            }
-        }
-    }
-
-
-    private void addNonVirtualBases(Structure struct) throws InvalidDataTypeException {
-        for (BaseClassTypeInfoModel base : bases) {
-            if (base.getOffset() < 0) {
-                throw new InvalidDataTypeException(base.getName()+" in "+getName()
-                    +" is virtual but there is no vtable");
-            }
-            Structure parentStruct = base.getClassModel().getClassDataType();
-            replaceComponent(struct, parentStruct, SUPER+base.getName(), base.getOffset());
-        }
-    }
-
-    @Override
-    public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
-        validate();
-        if (getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
-            return TypeInfoUtils.getDataType(program, getTypeName());
-        }
-        DataTypeManager dtm = program.getDataTypeManager();
-        Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
-        if (!ClassTypeInfoUtils.isPlaceholder(struct) && !repopulate) {
-            return struct;
-        }
-        int id = dtm.startTransaction("Creating Class DataType for "+getName());
-        stashComponents(struct);
-        struct.setDescription("");
-        try {
-            addBases(struct);
-            addVptr(struct);
-        } catch (InvalidDataTypeException e) {
-            addNonVirtualBases(struct);
-        }
-        fixComponents(struct);
-        dtm.endTransaction(id, true);
-        return resolveStruct(struct);
-    }
-
-    private void fixComponents(Structure struct) {
-        for (CompositeDataTypeElementInfo comp : dtComps.keySet()) {
-            int offset = comp.getDataTypeOffset();
-            DataTypeComponent replaced = struct.getComponentAt(offset);
-            if (replaced != null && !validFieldName(replaced.getFieldName())) {
-                continue;
-            }
-            replaceComponent(struct, (DataType) comp.getDataTypeHandle(),
-                             dtComps.get(comp), offset);
-        }
-    }
-
-    @Override
-    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
-        Structure struct = super.getSuperClassDataType();
-        fixComponents(struct);
-        return resolveStruct(struct);
-    }
-
-    private boolean validFieldName(String name) {
-        if (name == null) {
-            return true;
-        }
-        return !name.startsWith(SUPER) && !name.equals("_vptr");
-    }
-
-    private void stashComponents(Structure struct) {
-        if(dtComps.isEmpty()) {
-            dtComps = new HashMap<>(struct.getNumDefinedComponents());
-            for (DataTypeComponent comp : struct.getDefinedComponents()) {
-                String fieldName = comp.getFieldName();
-                if (validFieldName(fieldName)) {
-                    if (!comp.getDataType().isNotYetDefined()) {
-                        CompositeDataTypeElementInfo savedComp = new CompositeDataTypeElementInfo(
-                            comp.getDataType(), comp.getOffset(),
-                            comp.getLength(), comp.getDataType().getAlignment());
-                        dtComps.put(savedComp, comp.getFieldName());
-                    }
-                }
-            }
-            struct.deleteAll();
-        }
     }
 
     private static DataType getFlags(DataTypeManager dtm, CategoryPath path) {

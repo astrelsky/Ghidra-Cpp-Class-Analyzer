@@ -105,8 +105,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
     @Override
     @SuppressWarnings("hiding")
     public boolean canAnalyze(Program program) {
-        String id = program.getCompilerSpec().getCompilerSpecID().getIdAsString().toLowerCase();
-        return GnuUtils.COMPILER_NAMES.contains(id);
+        return GnuUtils.isGnuCompiler(program);
     }
 
     @Override

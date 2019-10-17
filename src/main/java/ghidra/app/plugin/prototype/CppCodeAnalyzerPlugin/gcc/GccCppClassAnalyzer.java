@@ -18,7 +18,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 
-import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.COMPILER_NAMES;
+import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.isGnuCompiler;
 
 public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
@@ -33,8 +33,7 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
     @SuppressWarnings("hiding")
     @Override
     public boolean canAnalyze(Program program) {
-        String id = program.getCompilerSpec().getCompilerSpecID().getIdAsString().toLowerCase();
-        return COMPILER_NAMES.contains(id);
+        return isGnuCompiler(program);
     }
 
     @Override

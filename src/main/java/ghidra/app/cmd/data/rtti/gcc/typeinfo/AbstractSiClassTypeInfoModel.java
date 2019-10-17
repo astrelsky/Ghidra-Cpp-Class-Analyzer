@@ -3,15 +3,12 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 import java.util.Set;
 
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
@@ -24,30 +21,6 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
 
     protected AbstractSiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
-    }
-
-    @Override
-    public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
-        validate();
-        if (getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
-            return (Structure) getDataType();
-        }
-        DataTypeManager dtm = program.getDataTypeManager();
-        Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
-        if (!ClassTypeInfoUtils.isPlaceholder(struct) && !repopulate) {
-            return struct;
-        }
-        int id = dtm.startTransaction("Creating Class DataType for "+getName());
-        AbstractClassTypeInfoModel parent = (AbstractClassTypeInfoModel) getParentModels()[0];
-        Structure parentStruct = parent.getSuperClassDataType();
-        if (!parentStruct.getDataTypeManager().equals(program.getDataTypeManager())) {
-            parentStruct = (Structure) parentStruct.clone(program.getDataTypeManager());
-        }
-        replaceComponent(
-            struct, parentStruct, SUPER+parent.getName(), 0);
-        addVptr(struct);
-        dtm.endTransaction(id, true);
-        return resolveStruct(struct);
     }
 
     private static Address getBaseTypeAddress(Program program, Address address) {

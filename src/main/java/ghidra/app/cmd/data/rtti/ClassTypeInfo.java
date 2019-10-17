@@ -19,7 +19,7 @@ import ghidra.util.task.DummyCancellableTaskMonitor;
 public interface ClassTypeInfo extends TypeInfo {
     
     default DataType getRepresentedDataType() throws InvalidDataTypeException {
-        return getClassDataType(true);
+        return getClassDataType();
     }
 
     /**
@@ -91,17 +91,7 @@ public interface ClassTypeInfo extends TypeInfo {
      * 
      * @return the structure datatype for this class.
      */
-    default Structure getClassDataType() throws InvalidDataTypeException {
-        return getClassDataType(false);
-    }
-
-    /**
-     * Gets the underlying structure of the class for this type_info
-     * 
-     * @param repopulate true to re-insert the correct inherited components.
-     * @return the structure datatype for this class.
-     */
-    Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException;
+    Structure getClassDataType() throws InvalidDataTypeException;
 
     /**
      * Gets a unique typename for this ClassTypeInfo instance.

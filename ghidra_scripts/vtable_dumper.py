@@ -5,8 +5,14 @@ from ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory import getTypeInfo, is
 from ghidra.app.cmd.data.rtti.TypeInfo import SYMBOL_NAME
 from ghidra.app.cmd.data.rtti import ClassTypeInfo
 from ghidra.program.model.data import InvalidDataTypeException
+from ghidra.program.model.data.DataTypeConflictHandler import REPLACE_HANDLER
+from ghidra.program.model.data import CategoryPath
+from ghidra.program.model.data import FileDataTypeManager
+from ghidra.app.cmd.data.rtti.gcc.GnuUtils import isGnuCompiler
+from ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows.WindowsCppClassAnalyzer import getClassTypeInfoList
 
 mangled_prefix = "_Z"
+mangled_vs = '??'
 
 def get_function_symbols(table, vtable):
     result = []
@@ -27,10 +33,12 @@ def get_mangled_symbol(table, address):
     symbols = table.getSymbols(address)
     for symbol in symbols:
         symbol_name = symbol.getName()
-        if mangled_prefix in symbol_name:
+        if mangled_prefix in symbol_name or '@' in symbol_name:
             return symbol_name
 
 def get_types(symbol_table):
+    if not isGnuCompiler(currentProgram):
+        return getClassTypeInfoList(currentProgram)
     type_symbols = [symbol for symbol in symbol_table.getAllSymbols(False)
                     if SYMBOL_NAME in symbol.getName()]
     types = []
@@ -76,11 +84,25 @@ def populate_database(symbol_table, vtables):
     return db
 
 if __name__ == '__main__':
+    file = FileDataTypeManager.convertFilename(askFile("Select New Archive File", "OK"))
+    dtm = FileDataTypeManager.createFileArchive(file)
+    if dtm.isClosed():
+        dtm = FileDataTypeManager.openFileArchive(file, True)
     symbol_table = currentProgram.getSymbolTable()
     types = get_types(symbol_table)
     monitor.initialize(len(types))
     monitor.setMessage("finding vtables")
     vtables = [ti.getVtable() for ti in types if validate_vtable(ti)]
     vtable_database = populate_database(symbol_table, vtables)
-    with open(askFile('chose output file', 'vtable_database.json').toString(), 'w+') as fd:
+    with open(askFile('chose output file', 'OK').toString(), 'w+') as fd:
         json.dump(vtable_database, fd, indent=4)
+    transaction = dtm.startTransaction("Adding Classes")
+    print(len(types))
+    for ti in types:
+        try:
+            dtm.addDataType(ti.getClassDataType(), REPLACE_HANDLER)
+        except:
+            pass
+    dtm.endTransaction(transaction, True)
+    dtm.save()
+    dtm.close()

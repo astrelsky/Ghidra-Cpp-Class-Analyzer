@@ -1,5 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers;
 
+import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -16,38 +18,22 @@ import ghidra.app.cmd.data.rtti.Rtti2Model;
 import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Rtti4Model;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.IntegerDataType;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
-import ghidra.program.model.listing.Program;
-import ghidra.program.model.mem.MemBuffer;
-import ghidra.program.model.mem.MemoryAccessException;
-import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
-import ghidra.program.model.util.CompositeDataTypeElementInfo;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
-
-import static ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils.inheritClass;
-import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
-import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
-import static ghidra.program.model.data.Undefined.isUndefined;
 
 public class RttiModelWrapper implements ClassTypeInfo {
 
@@ -55,9 +41,6 @@ public class RttiModelWrapper implements ClassTypeInfo {
     private static final String META_PTR = "meta_ptr";
     private static final String VFTABLE = "vftable";
     private static final String PURE_VIRTUAL_FUNCTION_NAME = "_purecall";
-    private static final String SUPER = "super_";
-    private static final String VFPTR = "_vfptr";
-    private static final String VBPTR = "_vbptr";
     private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 
     private TypeDescriptorModel type;
@@ -68,7 +51,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
     private WindowsVtableModel vtable;
     private ClassTypeInfo[] parents;
     private Map<Rtti1Model, Rtti4Model> virtualMetaData;
-    private Map<CompositeDataTypeElementInfo, String> dtComps = Collections.emptyMap();
+    private VsCppClassBuilder builder;
 
     public RttiModelWrapper(TypeDescriptorModel model) {
         this(getRtti4Model(model));
@@ -86,6 +69,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
                 this.hierarchyDescriptor = objectLocator.getRtti3Model();
                 this.baseArray = hierarchyDescriptor.getRtti2Model();
                 this.parents = getParentModels();
+                builder = new VsCppClassBuilder(this);
             } catch (InvalidDataTypeException e) {
                 Msg.error(this, "Input model invalid");
             }
@@ -102,12 +86,12 @@ public class RttiModelWrapper implements ClassTypeInfo {
         if (ns != null && !ns.isGlobal()) {
             for (Symbol symbol : table.getSymbols(ns)) {
                 if (symbol.getName().contains(LOCATOR_SYMBOL_NAME)) {
-                    Rtti4Model locatorModel =
-                        new Rtti4Model(model.getProgram(), symbol.getAddress(), DEFAULT_OPTIONS);
+                    Rtti4Model locatorModel = new Rtti4Model(model.getProgram(), symbol.getAddress(), DEFAULT_OPTIONS);
                     try {
                         locatorModel.validate();
                         return locatorModel;
-                    } catch (InvalidDataTypeException e) {}
+                    } catch (InvalidDataTypeException e) {
+                    }
                 }
             }
         }
@@ -119,7 +103,8 @@ public class RttiModelWrapper implements ClassTypeInfo {
         if (o instanceof RttiModelWrapper) {
             try {
                 return getUniqueTypeName().equals(((RttiModelWrapper) o).getUniqueTypeName());
-            } catch (InvalidDataTypeException e) {}
+            } catch (InvalidDataTypeException e) {
+            }
         }
         return false;
     }
@@ -165,9 +150,8 @@ public class RttiModelWrapper implements ClassTypeInfo {
 
     @Override
     public void validate() throws InvalidDataTypeException {
-        if (objectLocator == null || type == null ||
-            hierarchyDescriptor == null || baseArray == null) {
-                throw new InvalidDataTypeException("Invalid ClassTypeInfo");
+        if (objectLocator == null || type == null || hierarchyDescriptor == null || baseArray == null) {
+            throw new InvalidDataTypeException("Invalid ClassTypeInfo");
         }
         type.validate();
     }
@@ -263,8 +247,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
                 }
                 Address metaAddress = vfTableAddresses.get(i).subtract(pointerSize);
                 Address rtti4Address = getAbsoluteAddress(type.getProgram(), metaAddress);
-                Rtti4Model model =
-                    new Rtti4Model(type.getProgram(), rtti4Address, DEFAULT_OPTIONS);
+                Rtti4Model model = new Rtti4Model(type.getProgram(), rtti4Address, DEFAULT_OPTIONS);
                 try {
                     model.validate();
                 } catch (InvalidDataTypeException e) {
@@ -274,7 +257,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
             }
         }
         parents = new ClassTypeInfo[bases.size()];
-        for (int i =0; i < bases.size(); i++) {
+        for (int i = 0; i < bases.size(); i++) {
             parents[i] = new RttiModelWrapper(bases.get(i));
         }
         return parents;
@@ -308,7 +291,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
         try {
             if (isVirtual(model)) {
                 if (!virtualMetaData.containsKey(model)) {
-                    Msg.info(this, "Missing offset for: "+model.getRtti0Model().getTypeName());
+                    Msg.info(this, "Missing offset for: " + model.getRtti0Model().getTypeName());
                     return -1;
                 }
                 return virtualMetaData.get(model).getVbTableOffset();
@@ -320,44 +303,6 @@ public class RttiModelWrapper implements ClassTypeInfo {
         return -1;
     }
 
-    private int getFirstVirtualOffset() {
-        for (Rtti1Model model : bases) {
-            if (virtualMetaData.containsKey(model)) {
-                return getOffset(model);
-            }
-        }
-        return -1;
-    }
-
-    private Structure getSuperClassDataType() throws InvalidDataTypeException {
-        if (virtualMetaData == null) {
-            getParentModels();
-        }
-        if (virtualMetaData.isEmpty()) {
-            return getClassDataType();
-        }
-        int vOffset = getFirstVirtualOffset();
-        CategoryPath path = getClassDataType().getCategoryPath();
-        DataTypeManager dtm = type.getProgram().getDataTypeManager();
-        Structure struct = new StructureDataType(path, SUPER+getName(), 0, dtm);
-        for (DataTypeComponent comp : struct.getDefinedComponents()) {
-            if (comp.getOffset() >= vOffset) {
-                break;
-            }
-            struct.insertAtOffset(comp.getOrdinal(), comp.getDataType(), comp.getLength(),
-                                  comp.getFieldName(), comp.getComment());
-        }
-        addVfptr(struct);
-        addVbptr(struct);
-        fixComponents(struct);
-        return resolve(struct);
-    }
-
-    private Structure resolve(Structure struct) {
-        return (Structure) type.getProgram().getDataTypeManager().resolve(
-            struct, REPLACE_HANDLER);
-    }
-
     private boolean shouldIgnore(Rtti1Model model) {
         try {
             // Not virtual and a repeated base
@@ -366,67 +311,6 @@ public class RttiModelWrapper implements ClassTypeInfo {
             Msg.error(this, e);
             return true;
         }
-    }
-
-    @Override
-	public Structure getClassDataType(boolean repopulate) throws InvalidDataTypeException {
-        validate();
-        DataTypeManager dtm = type.getProgram().getDataTypeManager();
-        Structure struct = ClassTypeInfoUtils.getPlaceholderStruct(this, dtm);
-        stashComponents(struct);
-        for (Rtti1Model model : bases) {
-            if (shouldIgnore(model)) {
-                continue;
-            }
-            RttiModelWrapper parent = new RttiModelWrapper(model);
-            parent.validate();
-            Structure parentStruct = parent.getSuperClassDataType();
-            int offset = getOffset(model);
-            if (offset >= 0) {
-                inheritClass(struct, parentStruct, offset);
-            }
-        }
-        addVfptr(struct);
-        addVbptr(struct);
-        fixComponents(struct);
-        return resolve(struct);
-    }
-
-    private void stashComponents(Structure struct) {
-        if(dtComps.isEmpty()) {
-            dtComps = new HashMap<>(struct.getNumDefinedComponents());
-            for (DataTypeComponent comp : struct.getDefinedComponents()) {
-                String fieldName = comp.getFieldName();
-                if (validFieldName(fieldName)) {
-                    if (!comp.getDataType().isNotYetDefined()) {
-                        CompositeDataTypeElementInfo savedComp = new CompositeDataTypeElementInfo(
-                            comp.getDataType(), comp.getOffset(),
-                            comp.getLength(), comp.getDataType().getAlignment());
-                        dtComps.put(savedComp, comp.getFieldName());
-                    }
-                }
-            }
-            struct.deleteAll();
-        }
-    }
-
-    private void fixComponents(Structure struct) {
-        for (CompositeDataTypeElementInfo comp : dtComps.keySet()) {
-            int offset = comp.getDataTypeOffset();
-            DataTypeComponent replaced = struct.getComponentAt(offset);
-            if (replaced != null && !validFieldName(replaced.getFieldName())) {
-                continue;
-            }
-            replaceComponent(struct, (DataType) comp.getDataTypeHandle(),
-                             dtComps.get(comp), offset);
-        }
-    }
-
-    private boolean validFieldName(String name) {
-        if (name == null) {
-            return true;
-        }
-        return !name.startsWith(SUPER) && !name.equals("_vfptr") && !name.equals("_vbptr");
     }
 
     @Override
@@ -455,86 +339,18 @@ public class RttiModelWrapper implements ClassTypeInfo {
         return result;
     }
 
-    private void clearComponent(Structure struct, int length, int offset) {
-        if (offset >= struct.getLength()) {
-            return;
-        }
-        for (int size = 0; size < length;) {
-            DataTypeComponent comp = struct.getComponentAt(offset);
-            if (comp!= null) {
-                size += comp.getLength();
-            } else {
-                size++;
+    protected Map<ClassTypeInfo, Integer> getBaseOffsets() {
+        Map<ClassTypeInfo, Integer> map = new HashMap<>(bases.size());
+        for (Rtti1Model base : bases) {
+            if (!shouldIgnore(base)) {
+                map.put(new RttiModelWrapper(base), getOffset(base));
             }
-            struct.deleteAtOffset(offset);
         }
+        return map;
     }
 
-    private void replaceComponent(Structure struct, DataType parent, String name, int offset) {
-        clearComponent(struct, parent.getLength(), offset);
-        struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
-    }
-
-    private int getVbValue() {
-        List<Symbol> symbols = type.getProgram().getSymbolTable().getSymbols(
-            "`vbtable'", getGhidraClass());
-        if (symbols.isEmpty() || symbols.size() > 1) {
-            return -1;
-        }
-        MemBuffer buf = new MemoryBufferImpl(type.getProgram().getMemory(), symbols.get(0).getAddress());
-        try {
-            return buf.getInt(0);
-        } catch (MemoryAccessException e) {
-            return -1;
-        }
-    }
-
-    private void addVfptr(Structure struct) {
-        try {
-            getVtable().validate();
-            if (getVbValue() >= 0) {
-                // we don't have one
-                return;
-            }
-        } catch (InvalidDataTypeException e) {
-            return;
-        }
-        DataType vfptr = ClassTypeInfoUtils.getVptrDataType(type.getProgram(), this);
-        DataTypeComponent comp = struct.getComponentAt(0);
-        if (comp == null || isUndefined(comp.getDataType())) {
-            if (vfptr != null) {
-                clearComponent(struct, type.getProgram().getDefaultPointerSize(), 0);
-                struct.insertAtOffset(0, vfptr, type.getProgram().getDefaultPointerSize(), VFPTR, null);
-            }
-        } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
-            clearComponent(struct, type.getProgram().getDefaultPointerSize(), 0);
-            struct.insertAtOffset(0, vfptr, type.getProgram().getDefaultPointerSize(), VFPTR, null);
-        }
-    }
-
-    private void addVbptr(Structure struct) {
-        if (virtualMetaData.isEmpty()) {
-            return;
-        }
-        Program program = type.getProgram();
-        int pointerSize = program.getDefaultPointerSize();
-        int offset;
-        if (getVbValue() >= 0) {
-            offset = 0;
-        } else {
-            offset = pointerSize;
-        }
-        DataType vbptr = program.getDataTypeManager().getPointer(
-            IntegerDataType.dataType, pointerSize);
-        DataTypeComponent comp = struct.getComponentAt(1);
-        if (comp == null || isUndefined(comp.getDataType())) {
-            if (vbptr != null) {
-                clearComponent(struct, pointerSize, offset);
-                struct.insertAtOffset(offset, vbptr, pointerSize, VBPTR, null);
-            }
-        } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
-            clearComponent(struct, pointerSize, offset);
-            struct.insertAtOffset(offset, vbptr, pointerSize, VBPTR, null);
-        }
+    @Override
+    public Structure getClassDataType() throws InvalidDataTypeException {
+        return builder.getDataType();
     }
 }

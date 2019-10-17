@@ -1,7 +1,6 @@
 #@category VtableDatabase
 import json
 from ghidra.util.task.TaskMonitor import DUMMY
-from ghidra.program.model.data import FunctionDefinition
 from ghidra.program.model.data import InvalidDataTypeException
 from ghidra.app.cmd.data.rtti.gcc import VtableModel
 from ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils import getDataTypePath
@@ -11,10 +10,11 @@ from ghidra.app.cmd.data.rtti.TypeInfo import SYMBOL_NAME
 from ghidra.app.util.demangler.DemanglerUtil import demangle
 from ghidra.app.util.demangler import DemanglerOptions
 from ghidra.program.model.symbol.SourceType import IMPORTED
-from ghidra.app.decompiler.flatapi import FlatDecompilerAPI
-from ghidra.program.flatapi import FlatProgramAPI
 from ghidra.util.exception import CancelledException
 from ghidra.app.cmd.data.rtti import ClassTypeInfo
+from ghidra.program.model.data import DataTypePath
+from ghidra.program.model.data import Composite, FunctionDefinition, Union, Structure, Array, Pointer
+from ghidra.program.model.data import UnionDataType, StructureDataType
 
 mangled_prefix = "_Z"
 options = DemanglerOptions()
@@ -103,10 +103,56 @@ def apply_db_definitions(vtables, db):
         monitor.incrementProgress(1)
     return count
 
+def get_datatype_path(entry):
+    return DataTypePath(entry["CategoryPath", "Name"])
+
+def get_datatype(entry):
+    global dt_table
+    path = get_datatype_path(entry)
+    dtm = currentProgram.getDataTypeManager()
+    dt = dtm.getDataType(path)
+    if dt:
+        return dt
+    return dt_table[entry["Type"]](entry)
+
+def get_pointer(entry):
+    base = get_datatype(entry["BaseType"])
+    dtm = currentProgram.getDataTypeManager()
+    return dtm.getPointer(base, entry["length"])
+
+def get_array(entry):
+    base = get_datatype(entry["BaseType"])
+    dtm = currentProgram.getDataTypeManager()
+    return ArrayDataType(base, entry["length"], entry["element_length"])
+
+def get_structure(entry):
+    path = get_datatype_path(entry).getCategoryPath()
+    dtm = currentProgram.getDataTypeManager()
+    struct = StructureDataType(path, entry["Name"], 0, dtm)
+    for comp in entry["Components"]:
+        if comp["bitfield"]:
+            bitfield = comp["bitfield"]
+            struct.insertBitfieldAt(comp["offset"], bitfield["byteWidth"],
+                                    bitfield["bitOffset"], get_datatype(bitfield["DataType"]),
+                                    bitfield["bitSize"], comp["name"], comp["comment"])
+        else:
+            struct.insertAtOffset(
+                comp["offset"], get_datatype(comp["DataType"]),
+                comp["length"], comp["name"], comp["comment"])
+
+def get_union(entry):
+    path = get_datatype_path(entry).getCategoryPath()
+    dtm = currentProgram.getDataTypeManager()
+    union = UnionDataType(path, entry["Name"], dtm)
+    for comp in entry["Components"]:
+        if comp["bitfield"]:
+            bitfield = comp["bitfield"]
+            union.addBitField(get_datatype(bitfield["DataType"]), bitfield["bitSize"],
+                              comp["name"], comp["comment"])
+        else:
+            union.add(get_datatype(comp["DataType"]), comp["length"], comp["name"], comp["comment"]
 
 if __name__ == '__main__':
-    decompiler = FlatDecompilerAPI(FlatProgramAPI(currentProgram))
-    decompiler.initialize()
     symbol_table = currentProgram.getSymbolTable()
     types = get_types(symbol_table)
     monitor.initialize(len(types))
