@@ -27,6 +27,8 @@ abstract public class AbstractCppClassBuilder {
 
     protected static final String SUPER = "super_";
     private static final String ERROR_MESSAGE = "Invalid ClassTypeInfo. Class cannot be built";
+    private static final String INTERFACE_DESCRIPTION = "Implemented Interfaces: ";
+    private static final String INTERFACE_SEPARATOR = ", ";
 
     private Program program;
     protected Structure struct;
@@ -67,11 +69,45 @@ abstract public class AbstractCppClassBuilder {
         }
         stashComponents();
         try {
+            int i = 0;
             Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
             for (ClassTypeInfo parent : baseMap.keySet()) {
                 AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
-                replaceComponent(struct, parentBuilder.getSuperClassDataType(),
-                    SUPER+parent.getName(), baseMap.get(parent));
+                int offset = baseMap.get(parent);
+                if (offset == 0 && 0 < i++) {
+                    if (!parent.hasParent()) {
+                        // it is an empty class, interface or essentially a namespace.
+                        String description = struct.getDescription();
+                        if (!description.contains(INTERFACE_DESCRIPTION)) {
+                            StringBuilder builder = new StringBuilder(INTERFACE_DESCRIPTION);
+                            builder.append(parent.getName());
+                            struct.setDescription(builder.toString());
+                        } else if (!description.contains(parent.getName())) {
+                            StringBuilder builder = new StringBuilder(description);
+                            builder.append(INTERFACE_SEPARATOR);
+                            builder.append(parent.getName());
+                            struct.setDescription(builder.toString());
+                        }
+                    } else {
+                        String fieldName = struct.getComponent(0).getFieldName();
+                        fieldName = fieldName.replace(SUPER, "");
+                        String description = struct.getDescription();
+                        if (!description.contains(INTERFACE_DESCRIPTION)) {
+                            StringBuilder builder = new StringBuilder(INTERFACE_DESCRIPTION);
+                            builder.append(fieldName);
+                            struct.setDescription(builder.toString());
+                        } else if (!description.contains(fieldName)) {
+                            StringBuilder builder = new StringBuilder(description);
+                            builder.insert(
+                                INTERFACE_DESCRIPTION.length(), fieldName+INTERFACE_SEPARATOR);
+                            struct.setDescription(builder.toString());
+                        }
+                        replaceComponent(struct, parentBuilder.getSuperClassDataType(),
+                            SUPER+parent.getName(), baseMap.get(parent));
+                } else {
+                    replaceComponent(struct, parentBuilder.getSuperClassDataType(),
+                        SUPER+parent.getName(), baseMap.get(parent));
+                }
             }
         } catch (InvalidDataTypeException e) {
             try {

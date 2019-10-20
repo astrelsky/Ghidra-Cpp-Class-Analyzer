@@ -146,7 +146,6 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     }
 
     private void fillStructures() throws Exception {
-        repairInheritance();
         if (fillClassFieldsOption) {
             symProp = new SymbolicPropogator(program);
             monitor.initialize(vftables.size());
