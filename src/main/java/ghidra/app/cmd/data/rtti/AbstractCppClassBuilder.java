@@ -16,6 +16,8 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.Union;
+import ghidra.program.model.data.UnionDataType;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.util.CompositeDataTypeElementInfo;
@@ -27,8 +29,7 @@ abstract public class AbstractCppClassBuilder {
 
     protected static final String SUPER = "super_";
     private static final String ERROR_MESSAGE = "Invalid ClassTypeInfo. Class cannot be built";
-    private static final String INTERFACE_DESCRIPTION = "Implemented Interfaces: ";
-    private static final String INTERFACE_SEPARATOR = ", ";
+    private static final String INTERFACES = "interfaces";
 
     private Program program;
     protected Structure struct;
@@ -75,35 +76,18 @@ abstract public class AbstractCppClassBuilder {
                 AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
                 int offset = baseMap.get(parent);
                 if (offset == 0 && 0 < i++) {
-                    if (!parent.hasParent()) {
-                        // it is an empty class, interface or essentially a namespace.
-                        String description = struct.getDescription();
-                        if (!description.contains(INTERFACE_DESCRIPTION)) {
-                            StringBuilder builder = new StringBuilder(INTERFACE_DESCRIPTION);
-                            builder.append(parent.getName());
-                            struct.setDescription(builder.toString());
-                        } else if (!description.contains(parent.getName())) {
-                            StringBuilder builder = new StringBuilder(description);
-                            builder.append(INTERFACE_SEPARATOR);
-                            builder.append(parent.getName());
-                            struct.setDescription(builder.toString());
-                        }
-                    } else {
-                        String fieldName = struct.getComponent(0).getFieldName();
-                        fieldName = fieldName.replace(SUPER, "");
-                        String description = struct.getDescription();
-                        if (!description.contains(INTERFACE_DESCRIPTION)) {
-                            StringBuilder builder = new StringBuilder(INTERFACE_DESCRIPTION);
-                            builder.append(fieldName);
-                            struct.setDescription(builder.toString());
-                        } else if (!description.contains(fieldName)) {
-                            StringBuilder builder = new StringBuilder(description);
-                            builder.insert(
-                                INTERFACE_DESCRIPTION.length(), fieldName+INTERFACE_SEPARATOR);
-                            struct.setDescription(builder.toString());
-                        }
-                        replaceComponent(struct, parentBuilder.getSuperClassDataType(),
-                            SUPER+parent.getName(), baseMap.get(parent));
+                    // it is an empty class, interface or essentially a namespace.
+                    DataTypeComponent comp = struct.getComponent(0);
+                    if (!(comp.getDataType() instanceof Union)) {
+                        Union interfaces = new UnionDataType(
+                            path, INTERFACES, program.getDataTypeManager());
+                        interfaces.add(comp.getDataType(), comp.getFieldName(), null);
+                        replaceComponent(struct, interfaces, SUPER+INTERFACES, 0);
+                        comp = struct.getComponent(0);
+                    }
+                    Union interfaces = (Union) comp.getDataType();
+                    interfaces.add(parentBuilder.getSuperClassDataType(),
+                                    SUPER+parent.getName(), null);
                 } else {
                     replaceComponent(struct, parentBuilder.getSuperClassDataType(),
                         SUPER+parent.getName(), baseMap.get(parent));
