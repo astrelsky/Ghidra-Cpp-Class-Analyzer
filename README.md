@@ -49,7 +49,7 @@ Information
 This was initially built with the intention of having it merged into Ghidra.
 As time went on it grew exponentially. There is still work needed to be done
 regarding package paths, cleanup, documentation and testing. It it mostly
-functional. All packages, class names subject to change.
+functional. All packages, class names, etc. subject to change.
 
 The Visual Studio class analysis was hastily thrown together in two days.
 Issues and minor oversights are to be expected.
