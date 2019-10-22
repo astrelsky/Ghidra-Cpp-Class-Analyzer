@@ -265,6 +265,10 @@ public class ClassTypeInfoUtils {
         try {
             function.setParentNamespace(type.getGhidraClass());
             function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
+            if (function.hasCustomVariableStorage()) {
+                // this shouldn't be and causes problems
+                function.setCustomVariableStorage(false);
+            }
             return function;
         } catch (Exception e) {
             Msg.error(THIS, "Failed to retrieve class function at "+address, e);
