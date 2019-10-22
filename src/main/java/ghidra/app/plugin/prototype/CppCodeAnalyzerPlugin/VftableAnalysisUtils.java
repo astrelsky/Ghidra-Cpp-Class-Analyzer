@@ -12,9 +12,9 @@ import ghidra.util.Msg;
 
 public class VftableAnalysisUtils {
 
-    private static final String CONSTRUCTOR = "CONSTRUCTOR";
-    private static final String DESTRUCTOR = "DESTRUCTOR";
-    private static final String DESTRUCTOR_CHAR = "~";
+    public static final String CONSTRUCTOR = "CONSTRUCTOR";
+    public static final String DESTRUCTOR = "DESTRUCTOR";
+    public static final String DESTRUCTOR_CHAR = "~";
 
     private static final VftableAnalysisUtils THIS = new VftableAnalysisUtils();
 

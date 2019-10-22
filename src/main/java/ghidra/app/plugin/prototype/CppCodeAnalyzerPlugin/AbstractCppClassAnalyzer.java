@@ -204,7 +204,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                 ConstantPropagationContextEvaluator eval =
                         new ConstantPropagationContextEvaluator(true);
                 symProp.flowConstants(
-                    function.getEntryPoint(), function.getBody(), eval, true, monitor);
+                    function.getEntryPoint(), function.getBody(), eval, false, monitor);
             }
             // TODO figure out what to do for stack variable
     }

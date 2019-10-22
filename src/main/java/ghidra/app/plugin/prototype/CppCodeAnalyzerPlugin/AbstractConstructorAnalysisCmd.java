@@ -1,27 +1,29 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows.WindowsConstructorAnalysisCmd;
+import ghidra.app.plugin.core.analysis.ConstantPropagationContextEvaluator;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.Parameter;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.FlowType;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.SourceType;
+import ghidra.program.util.SymbolicPropogator;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -85,7 +87,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
         }
     }
 
-    protected Function createConstructor(ClassTypeInfo typeinfo, Address address) {
+    protected Function createConstructor(ClassTypeInfo typeinfo, Address address) throws Exception {
         Function function = fManager.getFunctionContaining(address);
         if (function != null && VftableAnalysisUtils.isProcessedFunction(function)) {
             try {
@@ -101,6 +103,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
             function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
         }
         setFunction(typeinfo, function, false);
+        createSubConstructors(typeinfo, function, false);
         return function;
     }
 
@@ -122,37 +125,83 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
             function.setName(name, SourceType.IMPORTED);
             function.setParentNamespace(typeinfo.getGhidraClass());
             VftableAnalysisUtils.setConstructorDestructorTag(program, function, destructor);
+            // necessary due to ghidra bug.
+            function.setCustomVariableStorage(true);
+            function.setCustomVariableStorage(false);
         } catch (Exception e) {
             Msg.error(this, "setFunction", e);
         }
     }
 
-    protected void createSubConstructors(ClassTypeInfo typeinfo, Function constructor, boolean destructor)
-            throws Exception {
-                Set<ClassTypeInfo> parents =
-                    new LinkedHashSet<>(typeinfo.getVirtualParents());
-                parents.addAll(Arrays.asList(typeinfo.getParentModels()));
-                List<Function> functions = getCalledFunctions(constructor);
-                if (functions.size() != parents.size()) {
-                    // TODO obtain from the struct field that is passed as the first parameter
-                    return;
-                }
-                int i = 0;
-                for (ClassTypeInfo parent : parents) {
-                    monitor.checkCanceled();
-                    if (parent.isAbstract() && i == 0) {
-                        if (this instanceof WindowsConstructorAnalysisCmd) {
-                            // skip __CheckForDebuggerJustMyCode
-                            i++;
-                            if (i >= functions.size()) {
-                                return;
-                            }
+    protected void createSubConstructors(ClassTypeInfo typeinfo, Function constructor,
+        boolean destructor) throws Exception {
+            if (constructor.getParameter(0).isStackVariable()) {
+                // Need to figure out how to handle stack parameters
+                return;
+            }
+            InstructionIterator instructions = program.getListing().getInstructions(
+            constructor.getBody(), true);
+            SymbolicPropogator symProp = new SymbolicPropogator(program);
+            propagateConstants(constructor, symProp);
+            Register thisRegister = constructor.getParameter(0).getRegister();
+            for (Instruction inst : instructions) {
+                monitor.checkCanceled();
+                if (inst.getFlowType().isCall() && !inst.getFlowType().isComputed()) {
+                    Address flows = inst.getFlows().length > 0 ? inst.getFlows()[0] : null;
+                    Function function = flows != null ? fManager.getFunctionAt(flows) : null;
+                    if (function == null) {
+                        continue;
+                    }
+                    int delayDepth = inst.getDelaySlotDepth();
+                    for (int i = 0; i <= delayDepth; i++) {
+                        inst = inst.getNext();
+                    }
+                    SymbolicPropogator.Value value = symProp.getRegisterValue(
+                        inst.getAddress(), thisRegister);
+                    int offset = value != null ? (int) value.getValue() : 0;
+                    Structure struct = type.getClassDataType();
+                    DataTypeComponent comp = struct.getComponentAt(offset);
+                    if (comp != null) {
+                        ClassTypeInfo parent = getParentFromComponent(comp);
+                        createConstructor(parent, function.getEntryPoint());
+                        if (destructor) {
+                            setDestructor(parent, function);
                         }
                     }
-                    ClassTypeInfoUtils.getClassFunction(program, parent, functions.get(i).getEntryPoint());
-                    setFunction(parent, functions.get(i), destructor);
-                    i++;
                 }
+            }
+    }
+
+    private void propagateConstants(Function function, SymbolicPropogator symProp) 
+        throws CancelledException {
+            Parameter auto = function.getParameter(0);
+            if (!auto.isStackVariable()) {
+                try {
+                    symProp.setRegister(type.getVtable().getTableAddresses()[0], auto.getRegister());
+                } catch (InvalidDataTypeException e) {}
+                ConstantPropagationContextEvaluator eval =
+                        new ConstantPropagationContextEvaluator(true);
+                symProp.flowConstants(
+                    function.getEntryPoint(), function.getBody(), eval, false, monitor);
+            }
+            // TODO figure out what to do for stack variable
+    }
+
+    private ClassTypeInfo getParentFromComponent(DataTypeComponent comp) {
+        String name = comp.getFieldName();
+        if (name != null && name.contains("super_")) {
+            name = name.replace("super_", "");
+            try {
+                for (ClassTypeInfo parent : type.getParentModels()) {
+                    if (parent.getName().equals(name)) {
+                        return parent;
+                    }
+                }
+            } catch (InvalidDataTypeException e) {
+                Msg.error(this, e);
+            }
+        }
+        return null;
     }
 
     protected List<Function> getCalledFunctions(Function function) throws CancelledException {

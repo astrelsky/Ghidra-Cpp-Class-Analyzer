@@ -1,20 +1,49 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
-import java.util.*;
+import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.framework.plugintool.PluginTool;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.*;
-import ghidra.program.model.listing.*;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataTypeComponent;
+import ghidra.program.model.data.DataTypeConflictHandler;
+import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.DataTypePath;
+import ghidra.program.model.data.DefaultDataType;
+import ghidra.program.model.data.FunctionDefinitionDataType;
+import ghidra.program.model.data.GenericCallingConvention;
+import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Pointer;
+import ghidra.program.model.data.PointerDataType;
+import ghidra.program.model.data.ProgramBasedDataTypeManager;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.StructureDataType;
+import ghidra.program.model.data.VoidDataType;
+import ghidra.program.model.listing.Data;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.FunctionManager;
+import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.Program;
+import ghidra.program.model.listing.VariableUtilities;
 import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.Memory;
@@ -25,8 +54,6 @@ import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.task.TaskMonitor;
-
-import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
 public class ClassTypeInfoUtils {
 
@@ -265,10 +292,9 @@ public class ClassTypeInfoUtils {
         try {
             function.setParentNamespace(type.getGhidraClass());
             function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
-            if (function.hasCustomVariableStorage()) {
-                // this shouldn't be and causes problems
-                function.setCustomVariableStorage(false);
-            }
+            // necessary due to ghidra bug.
+            function.setCustomVariableStorage(true);
+            function.setCustomVariableStorage(false);
             return function;
         } catch (Exception e) {
             Msg.error(THIS, "Failed to retrieve class function at "+address, e);

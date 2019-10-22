@@ -10,10 +10,10 @@ import java.util.Set;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.AddParameterCommand;
+import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
+import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -24,7 +24,6 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Parameter;
 import ghidra.program.model.listing.ParameterImpl;
-import ghidra.program.model.mem.Memory;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
@@ -97,9 +96,12 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
         if (fTable.length == 0 || fTable[0].length == 0 || fTable[0][0] == null) {
             return;
         } else if (fTable[0][0].getName().equals(vtable.getTypeInfo().getName())) {
+            // if this was marked as a constructor fix it
+            fTable[0][0].removeTag(VftableAnalysisUtils.CONSTRUCTOR);
             createVirtualDestructors(vtable.getTypeInfo());
             return;
         }
+        // The function must make a reference to the vtable
         for (Instruction inst : listing.getInstructions(fTable[0][0].getBody(), true)) {
             for (Reference ref : inst.getReferencesFrom()) {
                 if (addresses.contains(ref.getToAddress())) {
@@ -208,41 +210,46 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
     }
 
     private boolean createFromVttModel() throws Exception {
-        Memory mem = program.getMemory();
         Address address = vtt.getAddress();
         Vtable vtable = vtt.getVtableModel(0);
-        Data data = program.getListing().getDataAt(address);
-        analyzeVtable(vtable);
-        if (data != null) {
-            for (Address reference : XReferenceUtil.getOffcutXRefList(data)) {
-                if (mem.getBlock(reference).isExecute() && !isConstructor(type, reference)) {
-                    createConstructor(vtable.getTypeInfo(), reference, true);
-                }
-            }
-            for (Address reference : XReferenceUtil.getXRefList(data)) {
-                if (mem.getBlock(reference).isExecute() && !isConstructor(type, reference)) {
-                    createConstructor(vtable.getTypeInfo(), reference, true);
-                }
-            }
+        Function[][] fTables = vtable.getFunctionTables();
+        if (fTables.length == 0 || fTables[0].length == 0 || fTables[0][0] == null) {
+            return false;
         }
+        for (int i = 0; i < vtt.getElementCount(); i++) {
+            for (Reference reference : manager.getReferencesTo(address)) {
+                if (isFunctionReference(reference)) {
+                    Function function = fManager.getFunctionContaining(reference.getFromAddress());
+                    if (fTables[0][0].equals(function)) {
+                        createVirtualDestructors(type);
+                    } else if (!VftableAnalysisUtils.isDestructor(function)) {
+                        createConstructor(type, function.getEntryPoint());
+                    }
+                }
+            }
+            address = address.add(program.getDefaultPointerSize());
+        }
+        address = vtt.getAddress();
         for (int i = 0; i < vtt.getElementCount(); i++) {
             ClassTypeInfo baseType = vtt.getTypeInfo(i);
             if (!baseType.equals(type)) {
                 for (Reference reference : manager.getReferencesTo(address)) {
-                    if (reference.getReferenceType().equals(RefType.PARAM)) {
-                        Address fromAddress = reference.getFromAddress();
-                        Function caller = fManager.getFunctionContaining(fromAddress);
-                        if (caller == null || !caller.getParentNamespace().equals(
-                            type.getGhidraClass())) {
-                                continue;
-                        }
-                        Address calleeAddress = getCalledFunctionAddress(fromAddress);
-                        if (!calleeAddress.equals(Address.NO_ADDRESS)) {
-                            Function callee = ClassTypeInfoUtils.getClassFunction(
-                                program, baseType, calleeAddress);
-                            setFunction(
-                                baseType, callee, VftableAnalysisUtils.isDestructor(caller));
-                            setVttParam(callee, baseType);
+                    if (isFunctionReference(reference)) {
+                        if (reference.getReferenceType().equals(RefType.PARAM)) {
+                            Address fromAddress = reference.getFromAddress();
+                            Function caller = fManager.getFunctionContaining(fromAddress);
+                            if (caller == null || !caller.getParentNamespace().equals(
+                                type.getGhidraClass())) {
+                                    continue;
+                            }
+                            Address calleeAddress = getCalledFunctionAddress(fromAddress);
+                            if (!calleeAddress.equals(Address.NO_ADDRESS)) {
+                                Function callee = ClassTypeInfoUtils.getClassFunction(
+                                    program, baseType, calleeAddress);
+                                setFunction(
+                                    baseType, callee, VftableAnalysisUtils.isDestructor(caller));
+                                setVttParam(callee, baseType);
+                            }
                         }
                     }
                 }
@@ -250,6 +257,13 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
             address = address.add(program.getDefaultPointerSize());
         }
         return true;
+    }
+
+    private boolean isFunctionReference(Reference ref) {
+        if (ref.isEntryPointReference()) {
+            return false;
+        }
+        return program.getMemory().getBlock(ref.getFromAddress()).isExecute();
     }
 
     private void createConstructor(ClassTypeInfo typeinfo, Address address, boolean vttParam)
