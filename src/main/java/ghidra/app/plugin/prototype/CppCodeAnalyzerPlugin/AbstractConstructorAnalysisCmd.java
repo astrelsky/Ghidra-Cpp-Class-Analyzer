@@ -143,7 +143,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
             constructor.getBody(), true);
             SymbolicPropogator symProp = new SymbolicPropogator(program);
             propagateConstants(constructor, symProp);
-            Register thisRegister = constructor.getParameter(0).getRegister();
+            Register thisRegister = getThisRegister(constructor.getParameter(0));
             for (Instruction inst : instructions) {
                 monitor.checkCanceled();
                 if (inst.getFlowType().isCall() && !inst.getFlowType().isComputed()) {
@@ -153,8 +153,10 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
                         continue;
                     }
                     int delayDepth = inst.getDelaySlotDepth();
-                    for (int i = 0; i <= delayDepth; i++) {
-                        inst = inst.getNext();
+                    if (delayDepth > 0) {
+                        for (int i = 0; i <= delayDepth; i++) {
+                            inst = inst.getNext();
+                        }
                     }
                     SymbolicPropogator.Value value = symProp.getRegisterValue(
                         inst.getAddress(), thisRegister);
@@ -170,6 +172,11 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
                     }
                 }
             }
+    }
+
+    private Register getThisRegister(Parameter param) {
+        //currentProgram.getLanguage().getProcessor().toString().equals(X86)
+        return param.getRegister();
     }
 
     private void propagateConstants(Function function, SymbolicPropogator symProp) 

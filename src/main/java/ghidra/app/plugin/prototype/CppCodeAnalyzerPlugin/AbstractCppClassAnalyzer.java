@@ -1,30 +1,40 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import ghidra.util.task.TaskMonitor;
-import ghidra.framework.options.Options;
-import ghidra.app.services.AnalyzerType;
-import ghidra.app.util.importer.MessageLog;
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.core.analysis.ConstantPropagationContextEvaluator;
 import ghidra.app.services.AbstractAnalyzer;
+import ghidra.app.services.AnalyzerType;
+import ghidra.app.util.importer.MessageLog;
+import ghidra.framework.options.Options;
 import ghidra.program.model.address.Address;
-import ghidra.program.util.SymbolicPropogator;
-import ghidra.program.model.listing.*;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
-import ghidra.util.Msg;
-import ghidra.util.exception.CancelledException;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.lang.Register;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.FunctionManager;
+import ghidra.program.model.listing.GhidraClass;
+import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.listing.InstructionIterator;
+import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.Parameter;
+import ghidra.program.model.listing.Program;
+import ghidra.program.model.listing.VariableUtilities;
+import ghidra.program.util.SymbolicPropogator;
+import ghidra.util.Msg;
+import ghidra.util.exception.CancelledException;
+import ghidra.util.task.TaskMonitor;
 
 public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
@@ -222,9 +232,11 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                     continue;
                 }
                 int delayDepth = inst.getDelaySlotDepth();
-                for (int i = 0; i <= delayDepth; i++) {
-                    inst = inst.getNext();
-                }
+                if (delayDepth > 0) {
+                        for (int i = 0; i <= delayDepth; i++) {
+                            inst = inst.getNext();
+                        }
+                    }
                 SymbolicPropogator.Value value = symProp.getRegisterValue(
                     inst.getAddress(), thisRegister);
                 if (value != null && value.getValue() > 0) {
