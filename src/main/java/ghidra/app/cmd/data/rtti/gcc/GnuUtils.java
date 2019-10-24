@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.LongLongDataType;
 import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunction;
 import ghidra.app.util.demangler.DemangledObject;
@@ -80,7 +81,7 @@ public final class GnuUtils {
         String dtName = org.getIntegerCTypeApproximation(org.getPointerSize(), true);
         DemangledDataType dt = new DemangledDataType(dtName);
         // builtin type. dtm parameter unused.
-        return dt.getDataType(null);
+        return dt.getDataType(null) != null ? dt.getDataType(null) : LongLongDataType.dataType;
     }
 
     private static DataType createPtrDiff(DataTypeManager dtm) {
