@@ -227,6 +227,10 @@ public class ClassTypeInfoUtils {
             if (GnuUtils.isGnuCompiler(program)) {
                 AutoAnalysisManager mgr = AutoAnalysisManager.getAnalysisManager(program);
                 PluginTool tool = mgr.getAnalysisTool();
+                if (tool == null) {
+                    // we are testing. this is irrelevant
+                    return null;
+                }
                 return program.getDefaultPointerSize() > 4 ?
                     getDataTypeManagerByName(tool, GENERIC_CPP_LIB64) :
                     getDataTypeManagerByName(tool, GENERIC_CPP_LIB);

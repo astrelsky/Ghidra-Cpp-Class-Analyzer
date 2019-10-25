@@ -31,6 +31,8 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataOrganization;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.IntegerDataType;
+import ghidra.program.model.data.LongDataType;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
@@ -79,9 +81,17 @@ public final class GnuUtils {
     private static DataType getPointerSizedInteger(DataTypeManager dtm) {
         DataOrganization org = dtm.getDataOrganization();
         String dtName = org.getIntegerCTypeApproximation(org.getPointerSize(), true);
-        DemangledDataType dt = new DemangledDataType(dtName);
-        // builtin type. dtm parameter unused.
-        return dt.getDataType(null) != null ? dt.getDataType(null) : LongLongDataType.dataType;
+        switch(dtName) {
+            case DemangledDataType.LONG_LONG:
+                return LongLongDataType.dataType;
+            case DemangledDataType.LONG:
+                return LongDataType.dataType;
+            case DemangledDataType.INT:
+                return IntegerDataType.dataType;
+            default:
+                DemangledDataType dt = new DemangledDataType(dtName);
+                return dt.getDataType(null);
+        }
     }
 
     private static DataType createPtrDiff(DataTypeManager dtm) {

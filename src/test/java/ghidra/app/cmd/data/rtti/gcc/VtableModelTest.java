@@ -1,13 +1,12 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
-import generic.test.AbstractGenericTest;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.Ppc64TypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
 
 import org.junit.Test;
 
-public class VtableModelTest extends AbstractGenericTest {
+public class VtableModelTest extends GenericGccRttiTest {
 
     public void test(AbstractTypeInfoProgramBuilder builder) throws Exception {
         for (VtableModel vtable : builder.getVtableList()) {

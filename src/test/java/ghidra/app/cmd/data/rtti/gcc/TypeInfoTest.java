@@ -6,9 +6,7 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 
 import org.junit.Test;
 
-import generic.test.AbstractGenericTest;
-
-public class TypeInfoTest extends AbstractGenericTest {
+public class TypeInfoTest extends GenericGccRttiTest {
 
     @Test
     public void test() throws Exception {
