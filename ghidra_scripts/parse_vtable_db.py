@@ -150,7 +150,7 @@ def get_union(entry):
             union.addBitField(get_datatype(bitfield["DataType"]), bitfield["bitSize"],
                               comp["name"], comp["comment"])
         else:
-            union.add(get_datatype(comp["DataType"]), comp["length"], comp["name"], comp["comment"]
+            union.add(get_datatype(comp["DataType"]), comp["length"], comp["name"], comp["comment"])
 
 if __name__ == '__main__':
     symbol_table = currentProgram.getSymbolTable()
