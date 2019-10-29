@@ -14,41 +14,27 @@
 // application.gradle.version property in <GHIDRA_INSTALL_DIR>/Ghidra/application.properties
 // for the correction version of Gradle to use for the Ghidra installation you specify.
 
-import org.apache.tools.ant.filters.ReplaceTokens
-import org.gradle.plugins.ide.eclipse.model.ClasspathEntry
-import org.gradle.plugins.ide.eclipse.model.Library
-apply plugin: 'eclipse'
-
 //----------------------START "DO NOT MODIFY" SECTION------------------------------
 def ghidraInstallDir
 
 if (System.env.GHIDRA_INSTALL_DIR) {
-    ghidraInstallDir = System.env.GHIDRA_INSTALL_DIR
+	ghidraInstallDir = System.env.GHIDRA_INSTALL_DIR
 }
 else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
-    ghidraInstallDir = project.getProperty("GHIDRA_INSTALL_DIR")
+	ghidraInstallDir = project.getProperty("GHIDRA_INSTALL_DIR")
 }
 
 if (ghidraInstallDir) {
-    apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
+	apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
 }
 else {
-    throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
+	throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 
-eclipse.classpath.file.whenMerged {
-	File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
-	for (ClasspathEntry entry : entries) {
-		if (entry instanceof Library) {
-			File folder = new File(entry.getPath()).getParentFile();
-			for (File file : folder.listFiles()) {
-				if (file.getName().endsWith(".zip")) {
-					entry.setSourcePath(it.fileReference(file));
-					entry.setJavadocPath(it.fileReference(javaDoc));
-				}
-			}
-			//entry.getEntryAttributes().remove("gradle_used_by_scope");
-		}
-	}
+dependencies {
+	compile fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
+	compile fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
+	compile fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
+	helpPath fileTree(dir: ghidraInstallDir + '/Ghidra/Features/Base', include: "**/Base.jar")
 }
