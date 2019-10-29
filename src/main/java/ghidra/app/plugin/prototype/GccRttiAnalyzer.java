@@ -184,6 +184,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
             for (ClassTypeInfo type : classes) {
                 if (type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING)) {
                     Vtable vtable = type.getVtable(dummy);
+                    try {
+                        vtable.validate();
+                    } catch (InvalidDataTypeException e) {
+                        continue;
+                    }
                     Function[][] functionTables = vtable.getFunctionTables();
                     if (checkTableAddresses(functionTables)) {
                         return functionTables[0][2];

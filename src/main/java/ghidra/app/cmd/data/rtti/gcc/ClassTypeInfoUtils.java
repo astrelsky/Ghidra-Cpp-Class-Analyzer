@@ -63,6 +63,7 @@ public class ClassTypeInfoUtils {
     private static final String SUPER = "super_";
     private static final String GENERIC_CPP_LIB = "generic_c++lib";
     private static final String GENERIC_CPP_LIB64 = GENERIC_CPP_LIB+"_64";
+    private static final String ABSTRACT = "abstract";
 
     // for error logging
     private static final ClassTypeInfoUtils THIS = new ClassTypeInfoUtils();
@@ -149,7 +150,7 @@ public class ClassTypeInfoUtils {
                 Function[][] functionTables = vtable.getFunctionTables();
                 if (functionTables.length > 0) {
                     if (functionTables[0].length > 0) {
-                        if (functionTables[0][0] == null) {
+                        if (functionTables[0][0] == null && !typeinfo.getName().contains(ABSTRACT)) {
                             for (Function function : functionTables[0]) {
                                 if (function == null) {
                                     continue;
