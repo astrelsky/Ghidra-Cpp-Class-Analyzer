@@ -10,3 +10,5 @@
 .launch
 /eclipse
 /GnuRtti/
+gradle/
+gradlew*
