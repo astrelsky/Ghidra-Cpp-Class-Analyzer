@@ -63,7 +63,6 @@ public class ClassTypeInfoUtils {
     private static final String SUPER = "super_";
     private static final String GENERIC_CPP_LIB = "generic_c++lib";
     private static final String GENERIC_CPP_LIB64 = GENERIC_CPP_LIB+"_64";
-    private static final String ABSTRACT = "abstract";
 
     // for error logging
     private static final ClassTypeInfoUtils THIS = new ClassTypeInfoUtils();
@@ -133,6 +132,8 @@ public class ClassTypeInfoUtils {
         Memory mem = program.getMemory();
         DataType ptrDiff = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
         Scalar zero = new Scalar(ptrDiff.getLength(), 0);
+        boolean hasPureVirtual = program.getSymbolTable().getSymbols(
+            PURE_VIRTUAL_FUNCTION_NAME).hasNext();
         for (Address reference : references) {
             monitor.checkCanceled();
             MemBuffer buf = new DumbMemBufferImpl(mem, reference.subtract(ptrDiff.getLength()));
@@ -150,12 +151,15 @@ public class ClassTypeInfoUtils {
                 Function[][] functionTables = vtable.getFunctionTables();
                 if (functionTables.length > 0) {
                     if (functionTables[0].length > 0) {
-                        if (functionTables[0][0] == null && !typeinfo.getName().contains(ABSTRACT)) {
+                        if (functionTables[0][0] == null) {
                             for (Function function : functionTables[0]) {
                                 if (function == null) {
                                     continue;
-                                }
-                                if (PURE_VIRTUAL_FUNCTION_NAME.equals(function.getName())) {
+                                } if (hasPureVirtual) {
+                                    if (PURE_VIRTUAL_FUNCTION_NAME.equals(function.getName())) {
+                                        return vtable;
+                                    }
+                                } else {
                                     return vtable;
                                 }
                             }
