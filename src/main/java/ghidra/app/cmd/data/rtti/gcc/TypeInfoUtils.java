@@ -301,7 +301,15 @@ public class TypeInfoUtils {
                     }
                 }
             }
-            throw new InvalidDataTypeException(reloc.toString() + " could not be resolved");
+            String name = reloc.getSymbolName();
+            StringBuilder msg = new StringBuilder("External TypeInfo symbol ");
+            if (name != null) {
+                msg.append(name);
+            }
+            msg.append(" at ")
+            .append(reloc.getAddress().toString())
+            .append(" could not be resolved");
+            throw new InvalidDataTypeException(msg.toString());
     }
 
 }

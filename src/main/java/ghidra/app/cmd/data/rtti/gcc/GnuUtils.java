@@ -295,16 +295,23 @@ public final class GnuUtils {
         ExternalManager manager = program.getExternalManager();
         SymbolTable table = program.getSymbolTable();
         for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
-            Library library = manager.getExternalLibrary(symbol.getPath()[0]);
-            if (library != null) {
-                return openProgram(library.getAssociatedProgramPath());
+            for (String path : symbol.getPath()) {
+                Library library = manager.getExternalLibrary(path);
+                if (library != null) {
+                    return openProgram(library.getAssociatedProgramPath());
+                }
             }
         }
+        // If still not found, brute force it
         for (String name : manager.getExternalLibraryNames()) {
             if (name.equals(EXTERNAL)) {
                 continue;
             }
-            Program exProgram = openProgram(manager.getExternalLibraryPath(name));
+            String path = manager.getExternalLibraryPath(name);
+            if (path == null) {
+                continue;
+            }
+            Program exProgram = openProgram(null);
             Namespace global = exProgram.getGlobalNamespace();
             if (exProgram != null) {
                 SymbolTable exTable = exProgram.getSymbolTable();
