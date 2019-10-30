@@ -164,6 +164,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
             monitor.initialize(vftables.size());
             monitor.setMessage("Filling Class Structures...");
             for (Vtable vtable : vftables) {
+                monitor.checkCanceled();
                 ClassTypeInfo type = vtable.getTypeInfo();
                 if (type.getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
                     continue;
