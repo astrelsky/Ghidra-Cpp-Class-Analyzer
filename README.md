@@ -43,6 +43,12 @@ Supported Compilers
 * Clang  
 * Visual Studio (Control Flow Guard (CFG) not supported)
 
+Documentation
+-------------
+
+While documentation is not yet complete there is quite a bit of documentation
+currently available. This documentation may be build by running gradle javadoc.
+
 Information
 -----------
 

@@ -1,6 +1,7 @@
 /bin
 /build
 /dist
+/docs
 /lib
 /data
 /.*/
@@ -9,6 +10,5 @@
 .project
 .launch
 /eclipse
-/GnuRtti/
 gradle/
 gradlew*
