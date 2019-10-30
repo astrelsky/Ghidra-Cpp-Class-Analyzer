@@ -18,6 +18,7 @@ import ghidra.framework.options.Options;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.DataTypeComponent;
+import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
@@ -253,7 +254,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                         }
                         clearComponent(struct, member.getLength(), (int) value.getValue());
                     }
-                    struct.insertAtOffset((int) value.getValue(), member, member.getLength());
+                    struct.insertAtOffset((int) value.getValue(), member, member.getLength(), member.getName(), null);
+                    struct.getDataTypeManager().resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
                 }
             }
         }
