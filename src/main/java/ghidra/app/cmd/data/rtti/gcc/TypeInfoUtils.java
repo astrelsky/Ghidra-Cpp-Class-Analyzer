@@ -306,7 +306,12 @@ public class TypeInfoUtils {
             String name = reloc.getSymbolName();
             StringBuilder msg = new StringBuilder("External TypeInfo symbol ");
             if (name != null) {
-                msg.append(name);
+                DemangledObject demangled = demangle(name);
+                if (demangled != null) {
+                    msg.append(demangled.getSignature(true));
+                } else {
+                    msg.append(name);   
+                }
             }
             msg.append(" at ")
             .append(reloc.getAddress().toString())
