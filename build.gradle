@@ -15,6 +15,8 @@
 // for the correction version of Gradle to use for the Ghidra installation you specify.
 
 //----------------------START "DO NOT MODIFY" SECTION------------------------------
+apply plugin: 'java'
+apply plugin: 'eclipse'
 def ghidraInstallDir
 
 if (System.env.GHIDRA_INSTALL_DIR) {
@@ -31,10 +33,25 @@ else {
 	throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
-
+def docs = file(ghidraInstallDir+'/docs/GhidraAPI_javadoc.zip')
 dependencies {
-	compile fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
-	compile fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
-	compile fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
-	helpPath fileTree(dir: ghidraInstallDir + '/Ghidra/Features/Base', include: "**/Base.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
+}
+
+
+eclipse.classpath.file.whenMerged {
+	File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
+	for (entry in entries) {
+		if (entry.path.contains('jar')) {
+			File folder = new File(entry.getPath()).getParentFile();
+			for (File file : folder.listFiles()) {
+				if (file.getName().endsWith(".zip")) {
+					entry.setSourcePath(it.fileReference(file));
+					entry.setJavadocPath(it.fileReference(javaDoc));
+				}
+			}
+		}
+	}
 }
