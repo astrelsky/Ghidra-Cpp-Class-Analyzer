@@ -64,33 +64,37 @@ public class VtableModel implements Vtable {
     /**
      * Constructs a new VtableModel
      * 
-     * @param Program program the vtable is in.
-     * @param Address starting address of the vtable or the first typeinfo pointer.
+     * @param program      program the vtable is in.
+     * @param address      starting address of the vtable or the first typeinfo pointer.
+     * @param type         the ClassTypeInfo this vtable belongs to.
+     * @param arrayCount   the maximum vtable table count, if known.
+     * @param construction true if this should be a construction vtable.
      */
-    public VtableModel(Program program, Address address, ClassTypeInfo type, int arrayCount, boolean construction) {
-        this.program = program;
-        this.address = address;
-        this.type = type;
-        this.arrayCount = arrayCount;
-        this.construction = construction;
-        if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
-            if (this.type == null) {
-                Address typeAddress = getAbsoluteAddress(program, address);
+    public VtableModel(Program program, Address address, ClassTypeInfo type,
+        int arrayCount, boolean construction) {
+            this.program = program;
+            this.address = address;
+            this.type = type;
+            this.arrayCount = arrayCount;
+            this.construction = construction;
+            if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
+                if (this.type == null) {
+                    Address typeAddress = getAbsoluteAddress(program, address);
+                    this.type = (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
+                }
+            } else if (this.type == null) {
+                int length = VtableUtils.getNumPtrDiffs(program, address);
+                DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
+                Address typePointerAddress = address.add(length * ptrdiff_t.getLength());
+                Address typeAddress = getAbsoluteAddress(program, typePointerAddress);
                 this.type = (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
             }
-        } else if (this.type == null) {
-            int length = VtableUtils.getNumPtrDiffs(program, address);
-            DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
-            Address typePointerAddress = address.add(length * ptrdiff_t.getLength());
-            Address typeAddress = getAbsoluteAddress(program, typePointerAddress);
-            this.type = (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
-        }
-        try {
-            setupVtablePrefixes();
-            this.isValid = !vtablePrefixes.isEmpty();
-        } catch (InvalidDataTypeException e) {
-            this.isValid = false;
-        }
+            try {
+                setupVtablePrefixes();
+                this.isValid = !vtablePrefixes.isEmpty();
+            } catch (InvalidDataTypeException e) {
+                this.isValid = false;
+            }
     }
 
     @Override

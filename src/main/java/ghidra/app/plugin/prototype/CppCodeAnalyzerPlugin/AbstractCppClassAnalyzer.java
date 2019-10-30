@@ -67,6 +67,9 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
     /**
      * Constructs an AbstractCppClassAnalyzer.
+     * 
+     * @param name The name of the analyzer
+     * 
      */
     public AbstractCppClassAnalyzer(String name) {
         super(name, DESCRIPTION, AnalyzerType.BYTE_ANALYZER);

@@ -50,8 +50,8 @@ public class VtableUtils {
     /**
      * Gets the number of ptrdiff_t's in the vtable_prefix at the address.
      * 
-     * @param Program
-     * @param Address
+     * @param program
+     * @param address
      * @return the number of ptrdiff_t's in the vtable_prefix at the address.
      */
     public static int getNumPtrDiffs(Program program, Address address) {
@@ -69,7 +69,8 @@ public class VtableUtils {
     /**
      * Gets the size of the ptrdiff_t array at the start of a vtable_prefix.
      * 
-     * @param buffer
+     * @param program
+     * @param address
      * @param maxLength
      * @return the number of ptrdiff_t's in the array or 0 if invalid.
      */

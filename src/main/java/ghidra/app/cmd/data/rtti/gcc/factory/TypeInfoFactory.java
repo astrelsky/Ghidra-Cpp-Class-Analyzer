@@ -103,8 +103,8 @@ public class TypeInfoFactory {
 
     /**
      * Checks if a valid TypeInfo is located at the address in the program.
-     * @param Program
-     * @param Address
+     * @param program
+     * @param address
      * @return true if the buffer contains a valid TypeInfo
      */
     public static boolean isTypeInfo(Program program, Address address) {

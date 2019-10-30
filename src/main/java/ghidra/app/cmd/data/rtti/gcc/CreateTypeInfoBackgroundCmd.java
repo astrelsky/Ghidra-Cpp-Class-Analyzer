@@ -35,8 +35,7 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
      * Constructs a command for applying a TypeInfo at an address
      * and its associated data.
      * 
-     * @param TypeInfo the TypeInfo to be created.
-     * @param address the address where the data should be created.
+     * @param typeInfo the TypeInfo to be created.
      */
     public CreateTypeInfoBackgroundCmd(TypeInfo typeInfo) {
         super(NAME, true, true, false);

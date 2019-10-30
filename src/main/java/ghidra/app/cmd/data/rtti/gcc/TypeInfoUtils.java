@@ -54,8 +54,8 @@ public class TypeInfoUtils {
     /**
      * Gets the typename for the __type_info at the specified address.
      * 
-     * @param Program the program to be searched.
-     * @param Address the address of the TypeInfo Model's DataType.
+     * @param program the program to be searched.
+     * @param address the address of the TypeInfo Model's DataType.
      * @return The TypeInfo's typename string or "" if invalid.
      */
     public static String getTypeName(Program program, Address address) {
@@ -87,12 +87,12 @@ public class TypeInfoUtils {
     /**
      * Locates the TypeInfo with the specified typeString.
      * 
-     * @param Program     the program to be searched.
-     * @param String      the typename of the typeinfo to search for.
-     * @param TaskMonitor the active task monitor.
+     * @param program  the program to be searched.
+     * @param typename the typename of the typeinfo to search for.
+     * @param monitor  the active task monitor.
      * @return the TypeInfo with the corresponding typename or invalid if it doesn't
      *         exist.
-     * @throws InvalidDataTypeException
+     * @throws CancelledException
      */
     public static TypeInfo findTypeInfo(Program program, String typename, TaskMonitor monitor)
         throws CancelledException {
@@ -103,12 +103,13 @@ public class TypeInfoUtils {
     /**
      * Locates the TypeInfo with the specified typename.
      * 
-     * @param Program        the program to be searched.
-     * @param AddressSetView the address set to be searched.
-     * @param String         the typename to search for.
-     * @param TaskMonitor    the active task monitor.
+     * @param program  the program to be searched.
+     * @param set      the address set to be searched.
+     * @param typename the typename to search for.
+     * @param monitor  the active task monitor.
      * @return the TypeInfo with the corresponding typename or null if it doesn't
      *         exist.
+     * @throws CancelledException
      */
     public static TypeInfo findTypeInfo(Program program, AddressSetView set, String typename,
         TaskMonitor monitor) throws CancelledException {
@@ -162,8 +163,9 @@ public class TypeInfoUtils {
 
     /**
      * Gets the identifier string for the __type_info at the specified address.
-     * @param Program the program to be searched.
-     * @param Address the address of the TypeInfo Model's DataType.
+     * 
+     * @param program the program to be searched.
+     * @param address the address of the TypeInfo Model's DataType.
      * @return The TypeInfo's identifier string or "" if invalid.
      */
     public static String getIDString(Program program, Address address) {
@@ -212,8 +214,8 @@ public class TypeInfoUtils {
     /**
      * Checks if a typeinfo* is located at the specified address.
      * 
-     * @param Program the program to be searched.
-     * @param Address the address of the suspected pointer
+     * @param program the program to be searched.
+     * @param address the address of the suspected pointer
      * @return true if a typeinfo* is present at the address.
      */
     public static boolean isTypeInfoPointer(Program program, Address address) {
@@ -227,7 +229,7 @@ public class TypeInfoUtils {
     /**
      * Checks if a typeinfo* is present at the buffer's address.
      * 
-     * @param MemBuffer
+     * @param buf
      * @return true if a typeinfo* is present at the buffer's address.
      */
     public static boolean isTypeInfoPointer(MemBuffer buf) {
@@ -274,7 +276,7 @@ public class TypeInfoUtils {
     /**
      * Retrieves the DataTypePath for the represented datatype.
      * 
-     * @param TypeInfo
+     * @param type
      * @return the TypeInfo represented datatype's DataTypePath.
      * @throws InvalidDataTypeException
      */

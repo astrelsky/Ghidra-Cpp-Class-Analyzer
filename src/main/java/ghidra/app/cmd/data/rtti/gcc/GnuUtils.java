@@ -71,7 +71,7 @@ public final class GnuUtils {
     }
 
     /**
-     * @param DataTypeManager the programs datatype manager.
+     * @param dtm the programs datatype manager.
      * @return true if LLP64 was defined
      */
     public static boolean isLLP64(DataTypeManager dtm) {
@@ -102,7 +102,7 @@ public final class GnuUtils {
     /**
      * Gets the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
      * 
-     * @param DataTypeManager the programs datatype manager.
+     * @param dtm the programs datatype manager.
      * @return the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
      */
     public static DataType getPtrDiff_t(DataTypeManager dtm) {
@@ -116,7 +116,7 @@ public final class GnuUtils {
     /**
      * Gets the size in bytes of __PTRDIFF_TYPE__
      * 
-     * @param DataTypeManager the programs datatype manager.
+     * @param dtm the programs datatype manager.
      * @return the size in bytes of __PTRDIFF_TYPE__
      */
     public static int getPtrDiffSize(DataTypeManager dtm) {
@@ -125,7 +125,7 @@ public final class GnuUtils {
 
     /**
      * Gets all MemoryBlocks in a Program which hold non-volatile data.
-     * @param Program the program to be searched.
+     * @param program the program to be searched.
      * @return A list of all memory blocks with non-volatile data.
      */
     public static List<MemoryBlock> getAllDataBlocks(Program program) {
@@ -142,7 +142,7 @@ public final class GnuUtils {
     /**
      * Returns true if this MemoryBlock has non-volatile data.
      * 
-     * @param MemoryBlock
+     * @param block
      * @return true if this MemoryBlock has non-volatile data.
      */
     public static boolean isDataBlock(MemoryBlock block) {

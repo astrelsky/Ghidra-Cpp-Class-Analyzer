@@ -64,7 +64,7 @@ public interface ClassTypeInfo extends TypeInfo {
     /**
      * Gets the TypeInfo's Vtable Model
      * 
-     * @param TaskMonitor the taskmonitor to be used while searching for the vtable
+     * @param monitor the taskmonitor to be used while searching for the vtable
      * @return The TypeInfo's Vtable Model or null if none exists
      * @throws CancelledException 
      * @throws InvalidDataTypeException

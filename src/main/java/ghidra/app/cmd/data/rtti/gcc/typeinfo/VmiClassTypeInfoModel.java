@@ -228,7 +228,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     /**
      * Gets the value of this datatypes's __flags_mask
-     * @param MemBuffer
+     * @param buf
      * @return the value of this datatypes's __flags_mask
      */
     public Flags getFlags(MemBuffer buf) {

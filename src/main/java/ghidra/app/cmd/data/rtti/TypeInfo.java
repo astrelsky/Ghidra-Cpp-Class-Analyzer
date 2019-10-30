@@ -65,7 +65,6 @@ public interface TypeInfo {
     /**
      * Checks if the TypeInfo is a valid type_info structure.
      * 
-     * @return true if valid.
      * @throws InvalidDataTypeException
      */
     void validate() throws InvalidDataTypeException;

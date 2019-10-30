@@ -53,7 +53,7 @@ public abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
 
     /**
      * Gets the DataType for the __qualifier_masks
-     * @param DataTypeManager
+     * @param dtm
      * @return the __qualifier_masks DataType
      */
     public static DataType getFlags(DataTypeManager dtm) {

@@ -73,9 +73,9 @@ public class ClassTypeInfoUtils {
     /**
      * Finds the Vtable for the corresponding TypeInfo.
      * 
-     * @param Program     the program to be searched.
-     * @param Address     the address of the TypeInfo Model's DataType.
-     * @param TaskMonitor the taskmonitor to be used while searching for the vtable
+     * @param program the program to be searched.
+     * @param address the address of the TypeInfo Model's DataType.
+     * @param monitor the taskmonitor to be used while searching for the vtable
      * @return The TypeInfo's Vtable Model or null if none exists
      */
     public static Vtable findVtable(Program program, Address address, TaskMonitor monitor)
