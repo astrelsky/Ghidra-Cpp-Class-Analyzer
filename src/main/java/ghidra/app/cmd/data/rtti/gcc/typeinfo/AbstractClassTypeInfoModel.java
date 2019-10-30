@@ -51,6 +51,7 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
         return getUniqueTypeName(this);
     }
 
+    @Override
     public final Structure getClassDataType() throws InvalidDataTypeException {
         if (getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
             return TypeInfoUtils.getDataType(program, getTypeName());

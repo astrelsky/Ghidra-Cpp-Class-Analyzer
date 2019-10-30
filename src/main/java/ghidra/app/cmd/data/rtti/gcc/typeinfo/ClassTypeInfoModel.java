@@ -22,13 +22,18 @@ public class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
         super(program, address);
     }
 
+    /**
+     * Gets the __class_type_info datatype.
+     */
     @Override
     public DataType getDataType() {
         return getDataType(STRUCTURE_NAME, DESCRIPTION);
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __class_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);

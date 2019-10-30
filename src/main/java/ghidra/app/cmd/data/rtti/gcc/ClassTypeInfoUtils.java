@@ -24,7 +24,6 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
@@ -60,7 +59,6 @@ public class ClassTypeInfoUtils {
     private static final String PLACEHOLDER_DESCRIPTION = "PlaceHolder Class Structure";
     private static final String MISSING = "Missing";
     private static final CategoryPath DWARF = new CategoryPath(CategoryPath.ROOT, "DWARF");
-    private static final String SUPER = "super_";
     private static final String GENERIC_CPP_LIB = "generic_c++lib";
     private static final String GENERIC_CPP_LIB64 = GENERIC_CPP_LIB+"_64";
 
@@ -345,42 +343,25 @@ public class ClassTypeInfoUtils {
             classes.addAll(sortedClasses);
     }
 
-    public static void inheritClass(Structure struct, Structure parent, int offset) {
-        clearComponent(struct, parent.getLength(), offset);
-        if (parent.getName().contains(SUPER)) {
-            struct.insertAtOffset(
-                offset, parent, parent.getLength(), parent.getName(), null);    
-        } else {
-            struct.insertAtOffset(
-                offset, parent, parent.getLength(), SUPER+parent.getName(), null);
-        }
-        resolveStruct(struct);
-    }
-
-    protected static Structure resolveStruct(Structure struct) {
-        DataTypeManager dtm = struct.getDataTypeManager();
-        return (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
-    }
-
-    private static void clearComponent(Structure struct, int length, int offset) {
-        for (int size = 0; size < length;) {
-            if (offset >= struct.getLength()) {
-                break;
-            }
-            DataTypeComponent comp = struct.getComponentAt(offset);
-            if (comp!= null) {
-                size += comp.getLength();
-            } else {
-                size++;
-            }
-            struct.deleteAtOffset(offset);
-        }
-    }
-
+    /**
+     * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
+     * 
+     * @param program
+     * @param type
+     * @return
+     */
     public static DataType getVptrDataType(Program program, ClassTypeInfo type) {
         return getVptrDataType(program, type, null);
     }
 
+    /**
+     * Gets the DataType representation of the _vptr for the specified ClassTypeInfo. 
+     * 
+     * @param program
+     * @param type
+     * @param path The category path to place the datatype in.
+     * @return
+     */
     public static DataType getVptrDataType(Program program, ClassTypeInfo type, CategoryPath path) {
         try {
             Vtable vtable = type.getVtable();

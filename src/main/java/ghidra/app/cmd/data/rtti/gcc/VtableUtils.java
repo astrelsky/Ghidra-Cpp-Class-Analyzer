@@ -243,6 +243,12 @@ public class VtableUtils {
         return tableSize;
     }
 
+    /**
+     * Gets the function table at the specified address.
+     * @param program
+     * @param address
+     * @return a Function[] representing the function table.
+     */
     public static Function[] getFunctionTable(Program program, Address address) {
         Function[] functions = new Function[getFunctionTableLength(program, address)];
         int pointerSize = program.getDefaultPointerSize();

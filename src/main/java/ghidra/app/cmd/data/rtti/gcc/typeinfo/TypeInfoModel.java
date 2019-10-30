@@ -31,7 +31,7 @@ public class TypeInfoModel extends AbstractTypeInfoModel {
     }
 
     /**
-     * Gets corresponding DataType for this TypeInfo Model
+     * Gets the type_info datatype.
      * 
      * @return the DataType for the model in memory.
      */

@@ -2,14 +2,10 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
-import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.FunctionDefinitionDataType;
-import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
@@ -37,6 +33,9 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
         return ID_STRING;
     }
 
+    /**
+     * Gets the __pointer_to_member_type_info datatype
+     */
     @Override
     public DataType getDataType() {
         if (typeInfoDataType == null) {
@@ -46,7 +45,9 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __pointer_to_member_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType superDt = getPBase(dtm);
@@ -61,6 +62,10 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
         return alignDataType(struct, dtm);
     }
 
+    /**
+     * Gets the ClassTypeInfo containing the member being pointed to.
+     * @return the ClassTypeInfo containing the member being pointed to.
+     */
     public ClassTypeInfo getContext() {
         Structure struct = (Structure) getDataType();
         DataTypeComponent comp = struct.getComponent(CONTEXT_ORDINAL);
@@ -68,10 +73,4 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
         return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, pointee);
     }
 
-    public String getFunctionSignature() throws InvalidDataTypeException {
-        FunctionDefinitionDataType dataType =
-                (FunctionDefinitionDataType) ((Pointer) getRepresentedDataType()).getDataType();
-        DemangledFunctionReference method = getDemangledFunction(dataType.getPrototypeString());
-        return method.toSignature(getNamespace().getName(true));
-    }
 }

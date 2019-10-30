@@ -176,6 +176,11 @@ public abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
         return testFlags(Mask.NO_EXCEPT);
     }
 
+    /**
+     * Gets the TypeInfo base being pointed to.
+     * @return the TypeInfo being pointed to.
+     * @throws InvalidDataTypeException
+     */
     public TypeInfo getPointee() throws InvalidDataTypeException {
         validate();
         Structure struct = (Structure) getDataType();

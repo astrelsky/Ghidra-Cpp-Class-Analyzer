@@ -86,7 +86,9 @@ final class BaseClassTypeInfoModel {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __base_class_type_info datatype
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType superDt = ClassTypeInfoModel.getPointer(dtm);

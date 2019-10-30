@@ -22,6 +22,9 @@ public final class IosFailTypeInfoModel extends AbstractSiClassTypeInfoModel {
         super(program, address);
     }
 
+    /**
+     * Gets the __iosfail_type_info datatype.
+     */
     @Override
     public DataType getDataType() {
         if (typeInfoDataType == null) {
@@ -31,7 +34,9 @@ public final class IosFailTypeInfoModel extends AbstractSiClassTypeInfoModel {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __iosfail_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType existingDt = dtm.getDataType(STD_PATH, STRUCTURE_NAME);

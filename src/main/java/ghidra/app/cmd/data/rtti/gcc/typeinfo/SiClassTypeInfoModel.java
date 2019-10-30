@@ -27,6 +27,9 @@ public class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
         return ID_STRING;
     }
 
+    /**
+     * Gets the __si_class_type_info datatype.
+     */
     @Override
     public DataType getDataType() {
         if (typeInfoDataType == null) {
@@ -36,7 +39,9 @@ public class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __si_class_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType superDt = ClassTypeInfoModel.getDataType(dtm);

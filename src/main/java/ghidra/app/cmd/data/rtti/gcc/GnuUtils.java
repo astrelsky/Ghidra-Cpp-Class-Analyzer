@@ -126,14 +126,16 @@ public final class GnuUtils {
     /**
      * Gets all MemoryBlocks in a Program which hold non-volatile data.
      * @param program the program to be searched.
-     * @return A list of all memory blocks with non-volatile data.
+     * @return A list of all memory blocks whose name contains "data" with non-volatile data.
      */
     public static List<MemoryBlock> getAllDataBlocks(Program program) {
         MemoryBlock[] blocks = program.getMemory().getBlocks();
         List<MemoryBlock> dataBlocks = new ArrayList<MemoryBlock>();
         for (MemoryBlock block : blocks) {
             if (isDataBlock(block) && block.getName().contains("data")) {
-                dataBlocks.add(block);
+                if (!block.isVolatile()) {
+                    dataBlocks.add(block);
+                }
             }
         }
         return dataBlocks;
@@ -291,6 +293,12 @@ public final class GnuUtils {
                 pointerAlignment, dataAddress, monitor);
     }
 
+    /**
+     * Attempts to get the Program containing the data for the relocation.
+     * @param program the program containing the relocation
+     * @param reloc the relocation
+     * @return
+     */
     public static Program getExternalProgram(Program program, Relocation reloc) {
         ExternalManager manager = program.getExternalManager();
         SymbolTable table = program.getSymbolTable();

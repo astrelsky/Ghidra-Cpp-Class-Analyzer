@@ -115,6 +115,13 @@ public class TypeInfoFactory {
         }
     }
 
+    /**
+     * Invokes getDataType on the TypeInfo containing the specified typename
+     * 
+     * @param program
+     * @param typename
+     * @return the TypeInfo structure for the typename (ex type_info, __class_type_info, etc.)
+     */
     public static Structure getDataType(Program program, String typename) {
         if (COPY_MAP.containsKey(typename)) {
             try {

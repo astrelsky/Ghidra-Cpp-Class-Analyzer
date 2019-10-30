@@ -67,6 +67,9 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
     }
 
+    /**
+     * Gets the __vmi_class_type_info datatype.
+     */
     @Override
     public Structure getDataType() {
         return getDataType(program.getDataTypeManager());
@@ -77,7 +80,9 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __vmi_class_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static Structure getDataType(DataTypeManager dtm) {
         DataType existingDt = dtm.getDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME);
@@ -181,6 +186,10 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
     }
 
+    /**
+     * Gets this __vmi_class_type_info's __base_class_type_info array.
+     * @return the BaseClassTypeInfo[] representation of the __base_class_type_info array.
+     */
     public BaseClassTypeInfoModel[] getBases() {
         if (bases != null) {
             return bases;
@@ -195,6 +204,10 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return bases;
     }
 
+    /**
+     * Gets a list of the offsets of each derived class within this class.
+     * @return a list containing the offsets of each derived class within this class.
+     */
     public List<Long> getOffsets() {
         List<Long> result = new ArrayList<>();
         for (BaseClassTypeInfoModel base : bases) {
@@ -254,12 +267,20 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
     }
 
+    /**
+     * Gets the DataType representation of the __base_class_type_info array.
+     * @return the DataType representation of the __base_class_type_info array.
+     */
     public DataType getBaseArrayDataType() {
         int baseCount = getBaseCount();
         DataType base = BaseClassTypeInfoModel.getDataType(program.getDataTypeManager());
         return new ArrayDataType(base, baseCount, base.getLength(), program.getDataTypeManager());
     }
 
+    /**
+     * Gets the address of the __base_class_type_info array.
+     * @return the address of the __base_class_type_info array.
+     */
     public Address getBaseArrayAddress() {
         return address.add(getDataType().getComponent(BASE_ARRAY_ORDINAL).getOffset());
     }

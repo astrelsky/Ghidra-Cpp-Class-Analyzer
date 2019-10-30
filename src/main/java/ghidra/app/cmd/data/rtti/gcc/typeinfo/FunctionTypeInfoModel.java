@@ -1,8 +1,12 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
+import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.FunctionDefinitionDataType;
+import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Pointer;
 import ghidra.program.model.listing.Program;
 
 
@@ -26,6 +30,9 @@ public final class FunctionTypeInfoModel extends AbstractTypeInfoModel {
         return ID_STRING;
     }
 
+    /**
+     * Gets the __function_type_info datatype.
+     */
     @Override
     public DataType getDataType() {
         if (typeInfoDataType == null) {
@@ -35,10 +42,25 @@ public final class FunctionTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __function_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);
+    }
+
+    /**
+     * Gets the function signature of the Function this __function_type_info represents.
+     * 
+     * @return the represented functions signature.
+     * @throws InvalidDataTypeException
+     */
+    public String getFunctionSignature() throws InvalidDataTypeException {
+        FunctionDefinitionDataType dataType =
+                (FunctionDefinitionDataType) ((Pointer) getRepresentedDataType()).getDataType();
+        DemangledFunctionReference method = getDemangledFunction(dataType.getPrototypeString());
+        return method.toSignature(getNamespace().getName(true));
     }
 
 }

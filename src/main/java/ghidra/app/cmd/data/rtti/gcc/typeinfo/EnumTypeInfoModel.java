@@ -32,6 +32,9 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
         return ID_STRING;
     }
 
+    /**
+     * Gets the __enum_type_info datatype.
+     */
     @Override
     public DataType getDataType() {
         if (typeInfoDataType == null) {
@@ -41,7 +44,9 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __enum_type_info datatype
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);

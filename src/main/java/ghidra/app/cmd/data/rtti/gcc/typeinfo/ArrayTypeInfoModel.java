@@ -28,6 +28,9 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
         super(program, address);
     }
 
+    /**
+     * Gets the __array_type_info datatype.
+     */
     @Override
     public DataType getDataType() {
         if (typeInfoDataType == null) {
@@ -38,7 +41,9 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
 
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __array_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);

@@ -27,6 +27,9 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
         return ID_STRING;
     }
 
+    /**
+     * Gets the __pointer_type_info datatype.
+     */
     @Override
     public DataType getDataType() {
         if (typeInfoDataType == null) {
@@ -36,7 +39,9 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel#getDataType(DataTypeManager)
+     * Gets the __pointer_type_info datatype.
+     * @param dtm
+     * @return
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType superDt = getPBase(dtm);

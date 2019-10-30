@@ -264,11 +264,14 @@ public class TypeInfoUtils {
             program, getDemangledType(typename), program.getGlobalNamespace(), false);
     }
 
+    /**
+     * @see ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory#getDataType
+     */
     public static Structure getDataType(Program program, String typename) {
         return TypeInfoFactory.getDataType(program, typename);
     }
 
-    public static DemangledType getDemangledType(String typename) {
+    private static DemangledType getDemangledType(String typename) {
         DemangledObject demangled = demangle("_ZTI"+typename);
         return demangled != null ? demangled.getNamespace() : null;
     }
@@ -292,6 +295,13 @@ public class TypeInfoUtils {
         return new DataTypePath(path, type.getName());
     }
 
+    /**
+     * Attempts to fetch the TypeInfo instance referenced by the provided relocation
+     * @param program
+     * @param reloc
+     * @return a TypeInfo instance if the relocation can be resolved
+     * @throws InvalidDataTypeException if the relocation cannot be resolved
+     */
     public static TypeInfo getExternalTypeInfo(Program program, Relocation reloc) throws
         InvalidDataTypeException {
             Program extProgram = GnuUtils.getExternalProgram(program, reloc);
