@@ -73,6 +73,7 @@ abstract public class AbstractCppClassBuilder {
             int i = 0;
             Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
             for (ClassTypeInfo parent : baseMap.keySet()) {
+                parent.validate();
                 AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
                 int offset = baseMap.get(parent);
                 if (offset == 0 && 0 < i++) {
@@ -88,6 +89,10 @@ abstract public class AbstractCppClassBuilder {
                     Union interfaces = (Union) comp.getDataType();
                     interfaces.add(parentBuilder.getSuperClassDataType(),
                                     SUPER+parent.getName(), null);
+                } else if (offset < 0) {
+                    // it is contained within another base class
+                    // or unable to resolve and already reported
+                    continue;
                 } else {
                     replaceComponent(struct, parentBuilder.getSuperClassDataType(),
                         SUPER+parent.getName(), baseMap.get(parent));

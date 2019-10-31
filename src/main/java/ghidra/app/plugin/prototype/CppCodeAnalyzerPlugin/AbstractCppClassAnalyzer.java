@@ -280,8 +280,6 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         return function;
     }
 
-    
-
     protected void analyzeVftables() throws Exception {
         List<ClassTypeInfo> namespaces = new ArrayList<>(vftables.size());
         monitor.initialize(vftables.size());

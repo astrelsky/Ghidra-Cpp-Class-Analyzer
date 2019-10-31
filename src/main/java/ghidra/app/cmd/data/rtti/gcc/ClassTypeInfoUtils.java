@@ -195,7 +195,7 @@ public class ClassTypeInfoUtils {
             DataType struct = dtm.getDataType(path, type.getName());
             struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
             DataTypePath dtPath = struct.getDataTypePath();
-            if (!dtPath.isAncestor(DWARF) && !dtPath.toString().contains(".pdb")) {
+            if (!dtPath.isAncestor(DWARF) && !(dtPath.toString().contains(".pdb") || dtPath.toString().contains(".xml"))) {
                 DataTypeManager cppDtm = getCppDataTypeManager(dtm);
                 if (cppDtm == null) {
                     cppDtm = dtm;
