@@ -8,9 +8,8 @@ Prior to building, the GHIDRA_INSTALL_DIR environment variable and the version n
 
 The target versions settings are as follows:
 
-* Ghidra_9.0.4: version=9.0.4
-* Ghidra_9.1-BETA: version=9.1-BETA
-* Ghidra_9.1-DEV: version=9.1
+* Ghidra_9.1: version=9.1
+* Ghidra_9.2-DEV: version=9.2
 
 Once the version has been correctly set, run the following command in a terminal of your choice.
 
@@ -74,7 +73,7 @@ C++ Class Analyzer.
 Compatibility
 -------------
 
-It is compatible with current builds of 9.1, 9.1-BETA as well as 9.0.4
+It is compatible with current builds of 9.2, 9.1.
 
 TODO
 ----
