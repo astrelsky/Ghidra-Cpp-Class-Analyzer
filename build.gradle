@@ -61,6 +61,6 @@ eclipse.classpath.file.whenMerged {
 	}
 }
 
-javadoc.destinationDir = file('/docs')
+javadoc.destinationDir = new File(projectDir, 'docs')
 
 buildExtension.dependsOn(javadoc)
