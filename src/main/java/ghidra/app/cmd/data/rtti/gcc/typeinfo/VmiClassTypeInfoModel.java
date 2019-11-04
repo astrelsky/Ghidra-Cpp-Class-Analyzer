@@ -128,6 +128,10 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     private List<AbstractClassTypeInfoModel> getParents() throws InvalidDataTypeException {
         List<AbstractClassTypeInfoModel> parents = new ArrayList<>();
+        if (bases == null) {
+            // this SHOULD be impossible
+            bases = getBases();
+        }
         for (BaseClassTypeInfoModel base : bases) {
             if (!base.isVirtual()) {
                 parents.add(base.getClassModel());
