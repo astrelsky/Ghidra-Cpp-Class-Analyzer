@@ -38,8 +38,6 @@ public class VtableUtils {
     // that's still a awful lot
     public static final int MAX_PTR_DIFFS = 25;
 
-    @SuppressWarnings("unused")
-    private static final VtableUtils THIS = new VtableUtils();
     private VtableUtils() {}
 
     @FunctionalInterface

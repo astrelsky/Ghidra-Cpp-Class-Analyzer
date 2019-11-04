@@ -16,8 +16,6 @@ public class VftableAnalysisUtils {
     public static final String DESTRUCTOR = "DESTRUCTOR";
     public static final String DESTRUCTOR_CHAR = "~";
 
-    private static final VftableAnalysisUtils THIS = new VftableAnalysisUtils();
-
     private VftableAnalysisUtils() {}
 
     public static boolean isDestructor(Function function) {
@@ -62,7 +60,8 @@ public class VftableAnalysisUtils {
                 if (cmd.applyTo(program)) {
                     thunkedFunction = cmd.getFunction();
                 } else {
-                    Msg.info(THIS, "Failed to create function at "+thunkedAddress);
+                    Msg.info(VftableAnalysisUtils.class,
+                             "Failed to create function at "+thunkedAddress);
                     return function;
                 }
             }

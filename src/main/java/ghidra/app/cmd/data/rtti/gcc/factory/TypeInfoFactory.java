@@ -20,8 +20,6 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 
 public class TypeInfoFactory {
 
-    // for error logging
-    private static final TypeInfoFactory THIS = new TypeInfoFactory();
     private static final String ID_FIELD = "ID_STRING";
 
     private TypeInfoFactory() {}
@@ -45,7 +43,7 @@ public class TypeInfoFactory {
                 getEntry(IosFailTypeInfoModel.class)
             );
         } catch (Exception e) {
-            Msg.error(THIS, e);
+            Msg.error(TypeInfoFactory.class, e);
             return null;
         }
     }
@@ -87,7 +85,7 @@ public class TypeInfoFactory {
                 Constructor<?> cloneContainer = getConstructor(COPY_MAP.get(baseTypeName));
                 return (TypeInfo) cloneContainer.newInstance(program, address);
             } catch (Exception e) {
-                Msg.error(THIS, "Unknown Exception", e);
+                Msg.error(TypeInfoFactory.class, "Unknown Exception", e);
                 return null;
             }
     }
@@ -129,7 +127,7 @@ public class TypeInfoFactory {
                     "getDataType", DataTypeManager.class);
                 return (Structure) dataTypeGetter.invoke(null, program.getDataTypeManager());
             } catch (Exception e) {
-                Msg.error(THIS, e);
+                Msg.error(TypeInfoFactory.class, e);
             }
         }
         return null;

@@ -62,9 +62,6 @@ public class ClassTypeInfoUtils {
     private static final String GENERIC_CPP_LIB = "generic_c++lib";
     private static final String GENERIC_CPP_LIB64 = GENERIC_CPP_LIB+"_64";
 
-    // for error logging
-    private static final ClassTypeInfoUtils THIS = new ClassTypeInfoUtils();
-
     private ClassTypeInfoUtils() {
     }
 
@@ -172,9 +169,9 @@ public class ClassTypeInfoUtils {
             return vtable;
         }
         try {
-            Msg.debug(THIS, "Unable to find vtable for "+typeinfo.getNamespace().getName(true));
+            Msg.debug(ClassTypeInfoUtils.class, "Unable to find vtable for "+typeinfo.getNamespace().getName(true));
         } catch (InvalidDataTypeException e) {
-            Msg.error(THIS, e);
+            Msg.error(ClassTypeInfoUtils.class, e);
         }
         return VtableModel.NO_VTABLE;
     }
@@ -211,14 +208,14 @@ public class ClassTypeInfoUtils {
                         struct.setCategoryPath(path);
                     } catch (DuplicateNameException e) {
                         Msg.error(
-                            THIS, "Failed to change placeholder struct "
+                            ClassTypeInfoUtils.class, "Failed to change placeholder struct "
                                   +type.getName()+"'s CategoryPath", e);
                     }
                 }
             }
             if (!struct.equals(VariableUtilities.findOrCreateClassStruct(
                     type.getGhidraClass(), dtm))) {
-                        Msg.error(THIS, "Variable Utils returned wrong class structure! "
+                        Msg.error(ClassTypeInfoUtils.class, "Variable Utils returned wrong class structure! "
                                         + type.getName());
             }
             return (Structure) struct;
@@ -304,7 +301,7 @@ public class ClassTypeInfoUtils {
             function.setCustomVariableStorage(false);
             return function;
         } catch (Exception e) {
-            Msg.error(THIS, "Failed to retrieve class function at "+address, e);
+            Msg.error(ClassTypeInfoUtils.class, "Failed to retrieve class function at "+address, e);
             return null;
         }
     }
