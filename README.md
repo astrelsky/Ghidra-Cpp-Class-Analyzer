@@ -4,14 +4,7 @@ Ghidra C++ Class and Run Time Type Information Analyzer
 Building
 --------
 
-Prior to building, the GHIDRA_INSTALL_DIR environment variable and the version number in extension.properties must be correctly set.
-
-The target versions settings are as follows:
-
-* Ghidra_9.1: version=9.1
-* Ghidra_9.2-DEV: version=9.2
-
-Once the version has been correctly set, run the following command in a terminal of your choice.
+Run the following command in a terminal of your choice.
 
 `gradle buildExtension`
 
