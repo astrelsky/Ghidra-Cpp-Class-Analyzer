@@ -26,7 +26,7 @@ public interface ClassTypeInfo extends TypeInfo {
      * Gets the corresponding Ghidra Class for this TypeInfo and
      * creates it if none exists.
      * 
-     * @return The class representation of this TypeInfo instance
+     * @return The class representation of this TypeInfo instance.
      * @throws InvalidDataTypeException
      */
     GhidraClass getGhidraClass() throws InvalidDataTypeException;
@@ -56,25 +56,27 @@ public interface ClassTypeInfo extends TypeInfo {
 
     /**
      * Determines if the represented class is an abstract base.
-     * @return true if abstract;
+     * 
+     * @return true if abstract.
      * @throws InvalidDataTypeException
      */
     boolean isAbstract() throws InvalidDataTypeException;
 
     /**
-     * Gets the TypeInfo's Vtable Model
+     * Gets the TypeInfo's Vtable Model.
      * 
-     * @param monitor the taskmonitor to be used while searching for the vtable
-     * @return The TypeInfo's Vtable Model or null if none exists
+     * @param monitor the taskmonitor to be used while searching for the vtable.
+     * 
+     * @return The TypeInfo's Vtable Model or null if none exists.
      * @throws CancelledException 
      * @throws InvalidDataTypeException
      */
     Vtable getVtable(TaskMonitor monitor) throws CancelledException, InvalidDataTypeException;
 
     /**
-     * Gets the TypeInfo's Vtable Model
+     * Gets the TypeInfo's Vtable Model.
      * 
-     * @return The TypeInfo's Vtable Model or null if none exists
+     * @return The TypeInfo's Vtable Model or null if none exists.
      * @throws InvalidDataTypeException
      */
     default Vtable getVtable() throws InvalidDataTypeException {
@@ -87,7 +89,7 @@ public interface ClassTypeInfo extends TypeInfo {
     }
 
     /**
-     * Gets the underlying structure of the class for this type_info
+     * Gets the underlying structure of the class for this type_info.
      * 
      * @return the structure datatype for this class.
      */
@@ -95,7 +97,8 @@ public interface ClassTypeInfo extends TypeInfo {
 
     /**
      * Gets a unique typename for this ClassTypeInfo instance.
-     * The resulting string should be identical across all architectures and binaries.
+     * The resulting string should be identical across all architectures and binaries
+     * for a compiler.
      * 
      * @return a unique typename string.
      */

@@ -14,12 +14,15 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataUtilities;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Listing;
+import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Structure;
 
 import javax.lang.model.element.Modifier;
 
@@ -105,7 +108,7 @@ public class TestBuilder extends GhidraScript {
             .addMethod(makeSetupMemory())
             .build();
 
-        JavaFile.builder("ghidra.app.cmd.data.rtti.builder", tester)
+        JavaFile.builder("ghidra.app.cmd.data.rtti.gcc.builder", tester)
             .skipJavaLangImports(true)
             .indent("    ")
             .build().writeTo(file);
@@ -360,9 +363,15 @@ public class TestBuilder extends GhidraScript {
     private void populateMaps() throws Exception {
         int pointerSize = currentProgram.getDefaultPointerSize();
         SymbolTable table = currentProgram.getSymbolTable();
+        Listing listing = currentProgram.getListing();
+        Memory mem = currentProgram.getMemory();
         for (Symbol symbol : table.getSymbols(TypeInfo.SYMBOL_NAME)) {
             TypeInfo type = getTypeInfo(currentProgram, symbol.getAddress());
             try {
+                if (type == null) {
+                    println("TypeInfo at "+symbol.getAddress().toString()+" is null");
+                    continue;
+                }
                 type.validate();
             } catch (InvalidDataTypeException e) {
                 printerr("TypeInfo at "+symbol.getAddress().toString()+" is invalid");
@@ -372,7 +381,20 @@ public class TestBuilder extends GhidraScript {
             Data data = DataUtilities.createData(
                 currentProgram, type.getAddress(), dt,
                 dt.getLength(), false, CLEAR_ALL_CONFLICT_DATA);
-            tiMap.put(type, data.getBytes());
+            if (data.isStructure() && ((Structure) data.getDataType()).hasFlexibleArrayComponent()) {
+                MemoryBufferImpl buf = new MemoryBufferImpl(
+                    mem, data.getAddress());
+                Data flexData = listing.getDataAt(data.getAddress().add(data.getLength()));
+                int length = data.getLength();
+                if (flexData != null) {
+                    length += flexData.getLength();
+                }
+                byte[] bytes = new byte[length];
+                buf.getBytes(bytes, 0);
+                tiMap.put(type, bytes);
+            } else {
+                tiMap.put(type, data.getBytes());
+            }
             Address nameAddress = getAbsoluteAddress(
                 currentProgram, symbol.getAddress().add(pointerSize));
             nameMap.put(type.getTypeName(), nameAddress);
@@ -383,13 +405,15 @@ public class TestBuilder extends GhidraScript {
                 try {
                     vtable.validate();
                 } catch (InvalidDataTypeException e) {
-                    printerr(type.getName()+"'s vtable is invalid");
+                    if (!table.getSymbols(VtableModel.SYMBOL_NAME, classType.getGhidraClass()).isEmpty()) {
+                        printerr(type.getNamespace().getName(true)+"'s vtable is invalid");
+                    }
                     continue;
                 }
                 CreateVtableBackgroundCmd cmd = new CreateVtableBackgroundCmd(vtable);
                 cmd.applyTo(currentProgram);
                 MemoryBufferImpl buf = new MemoryBufferImpl(
-                    currentProgram.getMemory(), vtable.getAddress());
+                    mem, vtable.getAddress());
                 byte[] bytes = new byte[vtable.getLength()];
                 buf.getBytes(bytes, 0);
                 vtableMap.put(vtable, bytes);
@@ -405,6 +429,7 @@ public class TestBuilder extends GhidraScript {
         for (Symbol symbol : table.getSymbols(VttModel.SYMBOL_NAME)) {
             VttModel vtt = new VttModel(currentProgram, symbol.getAddress());
             if (!vtt.isValid()) {
+                printerr(symbol.getParentNamespace().getName()+"'s vtt is invalid");
                 continue;
             }
             DataType dt = vtt.getDataType();
