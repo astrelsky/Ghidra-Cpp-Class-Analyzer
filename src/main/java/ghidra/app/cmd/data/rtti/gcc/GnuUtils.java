@@ -319,7 +319,7 @@ public final class GnuUtils {
             if (path == null) {
                 continue;
             }
-            Program exProgram = openProgram(null);
+            Program exProgram = openProgram(path);
             Namespace global = exProgram.getGlobalNamespace();
             if (exProgram != null) {
                 SymbolTable exTable = exProgram.getSymbolTable();
