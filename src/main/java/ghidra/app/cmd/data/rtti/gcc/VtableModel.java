@@ -119,11 +119,29 @@ public class VtableModel implements Vtable {
     }
 
     @Override
+    public int hashCode() {
+        try {
+            getTypeInfo();
+            if (type != null) {
+                return type.hashCode();
+            }
+        } catch (InvalidDataTypeException e) {}
+        return super.hashCode();
+    }
+
+    @Override
     public boolean equals(Object object) {
         if (!(object instanceof VtableModel)) {
             return false;
         }
-        return isValid ? ((VtableModel) object).getAddress().equals(address) : false;
+        try {
+            getTypeInfo();
+            ClassTypeInfo otherType = ((VtableModel) object).getTypeInfo();
+            if (type != null && otherType != null) {
+                return type.equals(otherType);
+            }
+        } catch (InvalidDataTypeException e) {}
+        return super.equals(object);
     }
 
     /**

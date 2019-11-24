@@ -70,6 +70,14 @@ public class VttModel {
     }
 
     @Override
+    public int hashCode() {
+        if (isValid()) {
+            return getAddress().hashCode();
+        }
+        return super.hashCode();
+    }
+
+    @Override
     public boolean equals(Object object) {
         if (!(object instanceof VttModel)) {
             return false;
