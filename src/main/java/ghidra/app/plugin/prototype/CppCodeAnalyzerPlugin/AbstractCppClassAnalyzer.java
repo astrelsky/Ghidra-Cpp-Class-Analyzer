@@ -80,7 +80,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     }
 
     protected abstract boolean hasVtt();
-    protected abstract List<ClassTypeInfo> getClassTypeInfoList();
+    protected abstract List<ClassTypeInfo> getClassTypeInfoList() throws CancelledException;
     protected abstract AbstractConstructorAnalysisCmd getConstructorAnalyzer();
     protected abstract boolean analyzeVftable(ClassTypeInfo type);
     protected abstract boolean analyzeConstructor(ClassTypeInfo type);
@@ -288,14 +288,15 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
             monitor.checkCanceled();
             ClassTypeInfo type = vtable.getTypeInfo();
             try {
-                type.validate();
+				type.validate();
+				namespaces.add(type);
             } catch (InvalidDataTypeException e) {
-                continue;
+				Msg.error(this, e);
             }
-            namespaces.add(type);
             monitor.incrementProgress(1);
-        }
-        ClassTypeInfoUtils.sortByMostDerived(program, namespaces);
+		}
+		monitor.setMessage("Sorting TypeInfo. Please Wait...");
+        ClassTypeInfoUtils.sortByMostDerived(program, namespaces, monitor);
         monitor.initialize(vftables.size());
         monitor.setMessage("Analyzing Vftables");
         for (ClassTypeInfo type : namespaces) {
@@ -337,4 +338,11 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         fillClassFieldsOption =
             options.getBoolean(OPTION_FILLER_ANALYSIS_NAME, OPTION_DEFAULT_FILLER_ANALYSIS);
     }
+
+	/**
+	 * @return the monitor
+	 */
+	protected TaskMonitor getMonitor() {
+		return monitor;
+	}
 }

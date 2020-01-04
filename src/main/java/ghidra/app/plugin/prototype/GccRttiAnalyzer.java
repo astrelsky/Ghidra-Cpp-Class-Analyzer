@@ -260,7 +260,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
     private void createVtables() throws Exception {
         findAndCreatePureVirtualFunction();
         monitor.setMessage("Sorting Classes...");
-        ClassTypeInfoUtils.sortByMostDerived(program, classes);
+        ClassTypeInfoUtils.sortByMostDerived(program, classes, monitor);
         Collections.reverse(classes);
         monitor.initialize(classes.size());
         monitor.setMessage("Finding vtables");

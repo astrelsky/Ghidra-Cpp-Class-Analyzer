@@ -34,7 +34,10 @@ abstract public class AbstractCppClassBuilder {
     private Program program;
     protected Structure struct;
     private CategoryPath path;
-    private ClassTypeInfo type;
+	private ClassTypeInfo type;
+	
+	// this is lazyness
+	private boolean built = false;
 
     private Map<CompositeDataTypeElementInfo, String> dtComps = Collections.emptyMap();
 
@@ -64,49 +67,82 @@ abstract public class AbstractCppClassBuilder {
     protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets() throws InvalidDataTypeException;
 
     public Structure getDataType() throws InvalidDataTypeException {
+		if (built) {
+			return struct;
+		}
         if (struct.isDeleted()) {
             struct = ClassTypeInfoUtils.getPlaceholderStruct(
                 type, program.getDataTypeManager());
         }
         stashComponents();
-        try {
-            int i = 0;
-            Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
-            for (ClassTypeInfo parent : baseMap.keySet()) {
-                parent.validate();
-                AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
-                int offset = baseMap.get(parent);
-                if (offset == 0 && 0 < i++) {
-                    // it is an empty class, interface or essentially a namespace.
-                    DataTypeComponent comp = struct.getComponent(0);
-                    if (!(comp.getDataType() instanceof Union)) {
-                        Union interfaces = new UnionDataType(
-                            path, INTERFACES, program.getDataTypeManager());
-                        interfaces.add(comp.getDataType(), comp.getFieldName(), null);
-                        replaceComponent(struct, interfaces, SUPER+INTERFACES, 0);
-                        comp = struct.getComponent(0);
-                    }
-                    Union interfaces = (Union) comp.getDataType();
-                    interfaces.add(parentBuilder.getSuperClassDataType(),
-                                    SUPER+parent.getName(), null);
-                } else if (offset < 0) {
-                    // it is contained within another base class
-                    // or unable to resolve and already reported
-                    continue;
-                } else {
-                    replaceComponent(struct, parentBuilder.getSuperClassDataType(),
-                        SUPER+parent.getName(), baseMap.get(parent));
-                }
-            }
-        } catch (InvalidDataTypeException e) {
-            try {
-                Msg.info(this, "Unable to resolve inheritance for "+type.getName());
-            } catch (InvalidDataTypeException ex) {
-                Msg.error(this, ERROR_MESSAGE);
-            }
-        }
+		int i = 0;
+		Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
+		for (ClassTypeInfo parent : baseMap.keySet()) {
+			try {
+				parent.validate();
+			} catch (InvalidDataTypeException e) {
+				try {
+					Msg.error(this, String.format(
+					"Unable to resolve %s in %s", parent.getName(), type.getName()));
+				} catch (InvalidDataTypeException e2) {
+					Msg.error(this, e);
+					continue;
+				}
+			}
+			AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
+			int offset = baseMap.get(parent);
+			if (offset == 0 && 0 < i++) {
+				// it is an empty class, interface or essentially a namespace.
+				DataTypeComponent comp;
+				if (struct.getNumComponents() > 0) {
+					comp = struct.getComponent(0);
+				} else {
+					final Union interfaces = new UnionDataType(
+						path, INTERFACES, program.getDataTypeManager());
+					struct.add(interfaces);
+					comp = struct.getComponent(0);
+				}
+				if (!(comp.getDataType() instanceof Union)) {
+					Union interfaces = new UnionDataType(
+						path, INTERFACES, program.getDataTypeManager());
+					interfaces.add(comp.getDataType(), comp.getFieldName(), null);
+					replaceComponent(struct, interfaces, SUPER+INTERFACES, 0);
+					comp = struct.getComponent(0);
+				}
+				comp = struct.getComponent(0);
+				Union interfaces = (Union) comp.getDataType();
+				try {
+					interfaces.add(parentBuilder.getSuperClassDataType(),
+									SUPER+parent.getName(), null);
+				} catch (InvalidDataTypeException e) {
+					try {
+						Msg.error(this, String.format(
+						"Unable to resolve %s in %s", parent.getName(), type.getName()));
+					} catch (InvalidDataTypeException e2) {
+						Msg.error(this, e);
+					}
+				}
+			} else if (offset < 0) {
+				// it is contained within another base class
+				// or unable to resolve and already reported
+				continue;
+			} else {
+				try {
+					replaceComponent(struct, parentBuilder.getSuperClassDataType(),
+						SUPER+parent.getName(), baseMap.get(parent));
+				} catch (InvalidDataTypeException e) {
+					try {
+						Msg.error(this, String.format(
+						"Unable to resolve %s in %s", parent.getName(), type.getName()));
+					} catch (InvalidDataTypeException e2) {
+						Msg.error(this, e);
+					}
+				}
+			}
+		}
         addVptr();
-        fixComponents();
+		fixComponents();
+		built = true;
         return resolveStruct(struct);
     }
 

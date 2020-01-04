@@ -51,7 +51,8 @@ public class VftableAnalysisUtils {
         while(true) {
             Address thunkedAddress = CreateThunkFunctionCmd.getThunkedAddr(
                 program, function.getEntryPoint(), false);
-            if (thunkedAddress == null) {
+            if (thunkedAddress == null || thunkedAddress == Address.NO_ADDRESS) {
+				// difference in ghidra versions
                 break;
             }
             Function thunkedFunction = manager.getFunctionAt(thunkedAddress);

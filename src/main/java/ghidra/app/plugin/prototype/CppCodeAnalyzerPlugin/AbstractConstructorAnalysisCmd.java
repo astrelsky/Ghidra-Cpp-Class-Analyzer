@@ -10,8 +10,10 @@ import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataTypeComponent;
+import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.Union;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
@@ -123,8 +125,9 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
         try {
             String name = destructor ? "~"+typeinfo.getName() : typeinfo.getName();
             function.setName(name, SourceType.IMPORTED);
-            function.setParentNamespace(typeinfo.getGhidraClass());
-            VftableAnalysisUtils.setConstructorDestructorTag(program, function, destructor);
+			function.setParentNamespace(typeinfo.getGhidraClass());
+			function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
+			VftableAnalysisUtils.setConstructorDestructorTag(program, function, destructor);
             // necessary due to ghidra bug.
             function.setCustomVariableStorage(true);
             function.setCustomVariableStorage(false);
@@ -164,11 +167,13 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
                     Structure struct = type.getClassDataType();
                     DataTypeComponent comp = struct.getComponentAt(offset);
                     if (comp != null) {
-                        ClassTypeInfo parent = getParentFromComponent(comp);
-                        createConstructor(parent, function.getEntryPoint());
-                        if (destructor) {
-                            setDestructor(parent, function);
-                        }
+						ClassTypeInfo parent = getParentFromComponent(comp);
+						if (parent != null) {
+							createConstructor(parent, function.getEntryPoint());
+							if (destructor) {
+								setDestructor(parent, function);
+							}
+						}
                     }
                 }
             }

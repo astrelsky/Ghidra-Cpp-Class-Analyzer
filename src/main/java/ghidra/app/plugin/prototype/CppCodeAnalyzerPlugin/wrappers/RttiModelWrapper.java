@@ -10,23 +10,35 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
+import ghidra.app.cmd.data.CreateTypeDescriptorBackgroundCmd;
 import ghidra.app.cmd.data.TypeDescriptorModel;
+import ghidra.app.cmd.data.exceptionhandling.EHCatchHandlerModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.CreateRtti2BackgroundCmd;
+import ghidra.app.cmd.data.rtti.CreateRtti3BackgroundCmd;
 import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.Rtti2Model;
 import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Rtti4Model;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.NamespaceUtils;
+import ghidra.app.util.datatype.microsoft.DataApplyOptions;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
+import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
+import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
@@ -43,38 +55,112 @@ public class RttiModelWrapper implements ClassTypeInfo {
     private static final String PURE_VIRTUAL_FUNCTION_NAME = "_purecall";
     private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 
-    private TypeDescriptorModel type;
+    private final TypeDescriptorModel type;
     private List<Rtti1Model> bases;
-    private Rtti2Model baseArray;
-    private Rtti3Model hierarchyDescriptor;
-    private Rtti4Model objectLocator;
+    private final Rtti2Model baseArray;
+    private final Rtti3Model hierarchyDescriptor;
+    private final Rtti4Model objectLocator;
     private WindowsVtableModel vtable;
-    private ClassTypeInfo[] parents;
+    private final ClassTypeInfo[] parents;
     private Map<Rtti1Model, Rtti4Model> virtualMetaData;
-    private VsCppClassBuilder builder;
+	private final VsCppClassBuilder builder;
+	
+	private RttiModelWrapper(Rtti1Model model) throws InvalidDataTypeException {
+		final Program program = model.getProgram();
+		this.type = model.getRtti0Model();
+		this.hierarchyDescriptor =
+			new Rtti3Model(program, model.getRtti3Address(), DEFAULT_OPTIONS);
+		this.baseArray = hierarchyDescriptor.getRtti2Model();
+		this.objectLocator = getRtti4Model(type);
+		this.parents = doGetParentModels();
+		this.builder = new VsCppClassBuilder(this);
+	}
 
-    public RttiModelWrapper(TypeDescriptorModel model) {
-        this(getRtti4Model(model));
-    }
+    public RttiModelWrapper(TypeDescriptorModel typeModel) {
+		Rtti3Model model = null;
+		Rtti2Model rtti2Model = null;
+		Rtti4Model rtti4Model = null;
+		ClassTypeInfo[] parentModels = null;
+		try {
+			rtti4Model = getRtti4Model(typeModel);
+			if (rtti4Model != null) {
+				rtti4Model.validate();
+			} else {
+				model = getRtti3Model(typeModel);
+			}
+		} catch (InvalidDataTypeException e) {
+			// it doesn't exist. carry on
+		}
+		try {
+			if (rtti4Model == null && model != null) {
+				typeModel = model.getRtti0Model();
+				typeModel.validate();
+				rtti2Model = model.getRtti2Model();
+				rtti2Model.validate();
+				/* If we've reached here it is then the windows RTTI Analyzer
+				   did not find and create rtti2 and rtti3 models. */
+				final Program program = typeModel.getProgram();
+				final DataApplyOptions applyOptions = new DataApplyOptions();
+				BackgroundCommand cmd =
+					new CreateTypeDescriptorBackgroundCmd(typeModel, applyOptions);
+				cmd.applyTo(program, TaskMonitor.DUMMY);
+				cmd = new CreateRtti2BackgroundCmd(
+					rtti2Model.getAddress(), model.getRtti1Count(),
+					DEFAULT_OPTIONS, applyOptions);
+				cmd.applyTo(program, TaskMonitor.DUMMY);
+				cmd = new CreateRtti3BackgroundCmd(
+					model.getAddress(), DEFAULT_OPTIONS, applyOptions);
+				cmd.applyTo(program, TaskMonitor.DUMMY);
+			} else if (rtti4Model != null) {
+				// use the ClassHierarchyDescriptor from rtti4 if available
+				typeModel = rtti4Model.getRtti0Model();
+				typeModel.validate();
+				model = rtti4Model.getRtti3Model();
+				model.validate();
+				rtti2Model = model.getRtti2Model();
+			}
+		} catch (InvalidDataTypeException e) {
+			Msg.error(this, "Input model invalid", e);
+		}
+		this.type = typeModel;
+		this.objectLocator = rtti4Model;
+		this.hierarchyDescriptor = model;
+		this.baseArray = rtti2Model;
+		if (isSetupComplete()) {
+			parentModels = doGetParentModels();
+			this.parents = parentModels;
+			builder = new VsCppClassBuilder(this);
+		} else {
+			this.parents = parentModels;
+			builder = null;
+		}
+	}
 
-    public RttiModelWrapper(Rtti1Model model) {
-        this(model.getRtti0Model());
-    }
+	private boolean isSetupComplete() {
+		return type != null && hierarchyDescriptor != null && baseArray != null;
+	}
 
-    public RttiModelWrapper(Rtti4Model model) {
-        if (model != null) {
-            try {
-                this.objectLocator = model;
-                this.type = objectLocator.getRtti0Model();
-                this.hierarchyDescriptor = objectLocator.getRtti3Model();
-                this.baseArray = hierarchyDescriptor.getRtti2Model();
-                this.parents = getParentModels();
-                builder = new VsCppClassBuilder(this);
-            } catch (InvalidDataTypeException e) {
-                Msg.error(this, "Input model invalid");
-            }
-        }
-    }
+	private static Rtti3Model getRtti3Model(TypeDescriptorModel model) {
+		final Program program = model.getProgram();
+		final Address addr = model.getAddress();
+		ReferenceFilter filter = new ReferenceFilter(program);
+		Stream<Address> addresses = GnuUtils.getDirectDataReferences(program, addr)
+											.stream()
+											.filter(filter);
+		for (Address address : (Iterable<Address>) () -> addresses.iterator()) {
+			Rtti1Model baseDescriptor = new Rtti1Model(program, address, DEFAULT_OPTIONS);
+			try {
+				baseDescriptor.validate();
+				final Address rtti3Addr = baseDescriptor.getRtti3Address();
+				Rtti3Model result = new Rtti3Model(program, rtti3Addr, DEFAULT_OPTIONS);
+				result.validate();
+				return result;
+			} catch (InvalidDataTypeException e) {
+				// continue searching
+			}
+		}
+		return null;
+	}
 
     private static Rtti4Model getRtti4Model(TypeDescriptorModel model) {
         SymbolTable table = model.getProgram().getSymbolTable();
@@ -203,37 +289,57 @@ public class RttiModelWrapper implements ClassTypeInfo {
         }
         tableAddresses.sort(null);
         return tableAddresses;
-    }
+	}
+	
+	@Override
+	public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
+		validate();
+		return parents;
+	}
 
-    @Override
-    public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
-        if (parents == null) {
-            int baseCount = hierarchyDescriptor.getRtti1Count();
+    public ClassTypeInfo[] doGetParentModels() {
+            int baseCount;
+			try {
+				baseCount = hierarchyDescriptor.getRtti1Count();
+			}
+			catch (InvalidDataTypeException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				baseCount = 0;
+			}
             Set<String> vModels = new HashSet<>();
             List<Rtti1Model> virtualModels = new ArrayList<>();
             List<Rtti1Model> modelList = new ArrayList<>(baseCount);
 
-            for (int i = 1; i < baseCount; i++) {
-                Rtti1Model model = baseArray.getRtti1Model(i);
-                if (isVirtual(model)) {
-                    String name = model.getRtti0Model().getDescriptorName();
-                    if (!vModels.contains(name)) {
-                        RttiModelWrapper parent = new RttiModelWrapper(model);
-                        parent.validate();
-                        for (Rtti1Model grandparent : parent.getVirtualModels()) {
-                            String grandparentName = grandparent.getRtti0Model().getDescriptorName();
-                            if (!vModels.contains(grandparentName)) {
-                                virtualModels.add(grandparent);
-                                vModels.add(grandparentName);
-                            }
-                        }
-                        virtualModels.add(model);
-                        vModels.add(name);
-                    }
-                } else {
-                    modelList.add(model);
-                }
-            }
+			try {
+				for (int i = 1; i < baseCount; i++) {
+					Rtti1Model model = baseArray.getRtti1Model(i);
+					if (isVirtual(model)) {
+						String name = model.getRtti0Model().getDescriptorName();
+						if (!vModels.contains(name)) {
+							try {
+								RttiModelWrapper parent = new RttiModelWrapper(model);
+								parent.validate();
+								for (Rtti1Model grandparent : parent.getVirtualModels()) {
+									String grandparentName = grandparent.getRtti0Model().getDescriptorName();
+									if (!vModels.contains(grandparentName)) {
+										virtualModels.add(grandparent);
+										vModels.add(grandparentName);
+									}
+								}
+								virtualModels.add(model);
+								vModels.add(name);
+							} catch (InvalidDataTypeException e) {
+								Msg.error(this, model.getRtti0Model().getTypeName());
+							}
+						}
+					} else {
+						modelList.add(model);
+					}
+				}
+			} catch (InvalidDataTypeException e) {
+				Msg.error(this, e);
+			}
             modelList.addAll(virtualModels);
             bases = new ArrayList<>(modelList);
             virtualMetaData = new HashMap<>(virtualModels.size());
@@ -255,12 +361,15 @@ public class RttiModelWrapper implements ClassTypeInfo {
                 }
                 virtualMetaData.put(virtualModels.get(i), model);
             }
-        }
-        parents = new ClassTypeInfo[bases.size()];
+        ClassTypeInfo[] result = new ClassTypeInfo[bases.size()];
         for (int i = 0; i < bases.size(); i++) {
-            parents[i] = new RttiModelWrapper(bases.get(i));
+			try {
+				result[i] = new RttiModelWrapper(bases.get(i));
+			} catch (Exception e) {
+				Msg.error(this, e);
+			}
         }
-        return parents;
+        return result;
     }
 
     private boolean isVirtual(Rtti1Model model) throws InvalidDataTypeException {
@@ -340,7 +449,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
         return result;
     }
 
-    protected Map<ClassTypeInfo, Integer> getBaseOffsets() {
+    protected Map<ClassTypeInfo, Integer> getBaseOffsets() throws InvalidDataTypeException {
         Map<ClassTypeInfo, Integer> map = new HashMap<>(bases.size());
         for (Rtti1Model base : bases) {
             if (!shouldIgnore(base)) {
@@ -353,5 +462,22 @@ public class RttiModelWrapper implements ClassTypeInfo {
     @Override
     public Structure getClassDataType() throws InvalidDataTypeException {
         return builder.getDataType();
-    }
+	}
+
+	private static class ReferenceFilter implements Predicate<Address> {
+
+		private final Listing listing;
+		private ReferenceFilter(Program program) {
+			this.listing = program.getListing();
+		}
+	
+		@Override
+		public boolean test(Address t) {
+			final Data data = listing.getDataContaining(t);
+			if (data != null) {
+				return !data.getDataType().getName().contains(EHCatchHandlerModel.DATA_TYPE_NAME);
+			}
+			return true;
+		}
+	}
 }

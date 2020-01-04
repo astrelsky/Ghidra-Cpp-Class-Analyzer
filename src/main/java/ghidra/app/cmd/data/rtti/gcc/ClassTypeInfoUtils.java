@@ -313,16 +313,18 @@ public class ClassTypeInfoUtils {
      * @param classes
      * @throws InvalidDataTypeException if the list contains an invalid ClassTypeInfo
      */
-    public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes)
-        throws InvalidDataTypeException {
+	public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes,
+		TaskMonitor monitor) throws CancelledException, InvalidDataTypeException {
             Set<ClassTypeInfo> classSet = new LinkedHashSet<>(classes);
             List<ClassTypeInfo> sortedClasses = new ArrayList<>(classes.size());
             Iterator<ClassTypeInfo> classIterator = classSet.iterator();
             while (classIterator.hasNext()) {
+				monitor.checkCanceled();
                 ClassTypeInfo type = classIterator.next();
                 ArrayDeque<ClassTypeInfo> stack = new ArrayDeque<>();
                 stack.push(type);
                 while(!stack.isEmpty()) {
+					monitor.checkCanceled();
                     ClassTypeInfo classType = stack.pop();
                     if (classType.hasParent() && classSet.contains(classType)) {
                         ClassTypeInfo parent = classType.getParentModels()[0];
