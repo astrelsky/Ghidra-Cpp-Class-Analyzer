@@ -54,7 +54,6 @@ public class RttiModelWrapper implements ClassTypeInfo {
     private static final String PURE_VIRTUAL_FUNCTION_NAME = "_purecall";
 	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 	private static final Pattern PATTERN = Pattern.compile("vftable(?!_meta_ptr)");
-	private static final SymbolFilter SYMBOL_FILTER = new SymbolFilter();
 
     private final TypeDescriptorModel type;
     private List<Rtti1Model> bases;
@@ -184,6 +183,10 @@ public class RttiModelWrapper implements ClassTypeInfo {
 		return null;
 	}
 
+	private static boolean filterSymbols(Symbol symbol) {
+		return symbol.getName().contains(LOCATOR_SYMBOL_NAME);
+	}
+
 	private static Rtti4Model getRtti4Model(TypeDescriptorModel model) {
         SymbolTable table = model.getProgram().getSymbolTable();
         Namespace ns = model.getDescriptorAsNamespace();
@@ -194,7 +197,7 @@ public class RttiModelWrapper implements ClassTypeInfo {
         if (ns != null && !ns.isGlobal()) {
 			Stream<Symbol> symbols =
 				StreamSupport.stream(table.getSymbols(ns).spliterator(), false)
-							 .filter(SYMBOL_FILTER);
+							 .filter(RttiModelWrapper::filterSymbols);
             for (Symbol symbol : (Iterable<Symbol>) () -> symbols.iterator()) {
                 if (symbol.getName().contains(LOCATOR_SYMBOL_NAME)) {
                     Rtti4Model locatorModel = new Rtti4Model(
@@ -458,14 +461,6 @@ public class RttiModelWrapper implements ClassTypeInfo {
 				return !data.getDataType().getName().contains(EHCatchHandlerModel.DATA_TYPE_NAME);
 			}
 			return true;
-		}
-	}
-
-	private static class SymbolFilter implements Predicate<Symbol> {
-	
-		@Override
-		public boolean test(Symbol s) {
-			return s.getName().contains(LOCATOR_SYMBOL_NAME);
 		}
 	}
 
