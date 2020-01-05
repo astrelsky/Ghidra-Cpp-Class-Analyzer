@@ -16,6 +16,7 @@ import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
+import ghidra.program.model.symbol.FlowType;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
 
@@ -178,8 +179,9 @@ public class WindowsConstructorAnalysisCmd extends AbstractConstructorAnalysisCm
         AddressSetView body = function.getBody();
         while (inst.isFallthrough() && body.contains(inst.getAddress())) {
             inst = inst.getNext();
-        }
-        if (inst.getFlowType().isUnConditional()) {
+		}
+		final FlowType flow = inst.getFlowType();
+        if (flow.isUnConditional() && !flow.isComputed()) {
             function = listing.getFunctionAt(inst.getFlows()[0]);
             if (function == null) {
                 CreateFunctionCmd cmd = new CreateFunctionCmd(inst.getFlows()[0]);

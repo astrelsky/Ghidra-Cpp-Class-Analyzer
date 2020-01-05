@@ -4,31 +4,53 @@ import java.util.List;
 import java.util.ArrayList;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.VfTableModel;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.Array;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemBuffer;
+import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBufferImpl;
+import ghidra.program.model.scalar.Scalar;
+import ghidra.util.Msg;
+
+import static ghidra.program.model.data.Undefined.isUndefined;
 
 public class WindowsVtableModel implements Vtable {
 
-    private Program program;
-    private List<VfTableModel> vftables;
-    private ClassTypeInfo type;
+	private final Program program;
+	private final List<VfTableModel> vftables;
+	private final ClassTypeInfo type;
+	private final MemBuffer vbtableBuffer;
 
-    private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
+	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 
-    public WindowsVtableModel(Program program, List<Address> addresses, ClassTypeInfo type) {
-        this.program = program;
-        this.vftables = new ArrayList<>(addresses.size());
-        this.type = type;
-        for (Address address : addresses) {
-            vftables.add(new VfTableModel(program, address, DEFAULT_OPTIONS));
-        }
-    }
+	public WindowsVtableModel(Program program, List<Address> addresses, RttiModelWrapper type) {
+		this.program = program;
+		this.vftables = new ArrayList<>(addresses.size());
+		this.type = type;
+		for (Address address : addresses) {
+			vftables.add(new VfTableModel(program, address, DEFAULT_OPTIONS));
+		}
+		this.vbtableBuffer = getVbtableBuffer();
+	}
+
+	private MemBuffer getVbtableBuffer() {
+		if (vftables.isEmpty()) {
+			return null;
+		}
+		VfTableModel vtable = vftables.get(vftables.size() - 1);
+		Array array = (Array) vtable.getDataType();
+		final Address addr = vtable.getAddress().add(array.getLength()+array.getElementLength());
+		return new MemoryBufferImpl(program.getMemory(), addr);
+	}
 
     @Override
     public ClassTypeInfo getTypeInfo() {
@@ -83,5 +105,24 @@ public class WindowsVtableModel implements Vtable {
             }
         }
         return false;
-    }
+	}
+	
+	public int getVirtualOffset(Rtti1Model model) throws InvalidDataTypeException {
+		if (vbtableBuffer != null) {
+			try {
+				final int offset = model.getVDisp();
+				final Address addr = vbtableBuffer.getAddress().add(offset);
+				final Data data = program.getListing().getDataContaining(addr);
+				if (data != null) {
+					if (!isUndefined(data.getDataType()) && !(data.getValue() instanceof Scalar)) {
+						return 0;
+					}
+				}
+				return vbtableBuffer.getInt(offset);
+			} catch (MemoryAccessException e) {
+				Msg.error(this, e);
+			}
+		}
+		return 0;
+	}
 }

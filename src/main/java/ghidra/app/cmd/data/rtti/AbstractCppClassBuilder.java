@@ -56,7 +56,7 @@ abstract public class AbstractCppClassBuilder {
 
     protected abstract AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent);
 
-    protected final ClassTypeInfo getType() {
+    protected ClassTypeInfo getType() {
         return type;
     }
 
@@ -94,23 +94,17 @@ abstract public class AbstractCppClassBuilder {
 			if (offset == 0 && 0 < i++) {
 				// it is an empty class, interface or essentially a namespace.
 				DataTypeComponent comp;
+				Union interfaces = getInterfacesUnion();
 				if (struct.getNumComponents() > 0) {
 					comp = struct.getComponent(0);
 				} else {
-					final Union interfaces = new UnionDataType(
-						path, INTERFACES, program.getDataTypeManager());
 					struct.add(interfaces);
 					comp = struct.getComponent(0);
 				}
 				if (!(comp.getDataType() instanceof Union)) {
-					Union interfaces = new UnionDataType(
-						path, INTERFACES, program.getDataTypeManager());
 					interfaces.add(comp.getDataType(), comp.getFieldName(), null);
 					replaceComponent(struct, interfaces, SUPER+INTERFACES, 0);
-					comp = struct.getComponent(0);
 				}
-				comp = struct.getComponent(0);
-				Union interfaces = (Union) comp.getDataType();
 				try {
 					interfaces.add(parentBuilder.getSuperClassDataType(),
 									SUPER+parent.getName(), null);
@@ -144,7 +138,17 @@ abstract public class AbstractCppClassBuilder {
 		fixComponents();
 		built = true;
         return resolveStruct(struct);
-    }
+	}
+	
+	private Union getInterfacesUnion() {
+		final DataTypeManager dtm = program.getDataTypeManager();
+		final DataTypePath dtPath = new DataTypePath(path, INTERFACES);
+		final DataType dt = dtm.getDataType(dtPath);
+		if (dt != null && dt instanceof Union) {
+			return (Union) dt;
+		}
+		return new UnionDataType(path, INTERFACES, dtm);
+	}
 
     protected void setSuperStructureCategoryPath(Structure parent)
         throws InvalidDataTypeException {

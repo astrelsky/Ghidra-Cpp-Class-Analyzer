@@ -2,21 +2,18 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers;
 
 import static ghidra.program.model.data.Undefined.isUndefined;
 
-import java.util.List;
 import java.util.Map;
 
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.util.datatype.microsoft.MSDataTypeUtils;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.IntegerDataType;
+import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.mem.MemBuffer;
-import ghidra.program.model.mem.MemoryAccessException;
-import ghidra.program.model.mem.MemoryBufferImpl;
-import ghidra.program.model.symbol.Symbol;
 
 public class VsCppClassBuilder extends AbstractCppClassBuilder {
 
@@ -35,81 +32,81 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
     @Override
     protected void addVptr() {
         try {    
-            addVfptr();
-            addVbptr();
+            addPointers();
         } catch (InvalidDataTypeException e) {
             return;
         }
     }
 
-    private int getVbValue() throws InvalidDataTypeException {
-        List<Symbol> symbols = getProgram().getSymbolTable().getSymbols(
-            "`vbtable'", getType().getGhidraClass());
-        if (symbols.isEmpty() || symbols.size() > 1) {
-            return -1;
-        }
-        MemBuffer buf = new MemoryBufferImpl(getProgram().getMemory(), symbols.get(0).getAddress());
-        try {
-            return buf.getInt(0);
-        } catch (MemoryAccessException e) {
-            return -1;
-        }
-    }
-
-    private void addVfptr() {
-        ClassTypeInfo type = getType();
-        try {
-            type.getVtable().validate();
-            if (getVbValue() >= 0) {
-                // we don't have one
-                return;
-            }
-        } catch (InvalidDataTypeException e) {
-            return;
-        }
-        DataType vfptr = ClassTypeInfoUtils.getVptrDataType(getProgram(), type);
-        DataTypeComponent comp = struct.getComponentAt(0);
+    private void addVfptr(int offset) {
+		final ClassTypeInfo type = getType();
+		final Program program = getProgram();
+		final DataType vfptr = ClassTypeInfoUtils.getVptrDataType(program, type);
+        DataTypeComponent comp = struct.getComponentAt(offset);
         if (comp == null || isUndefined(comp.getDataType())) {
-            if (vfptr != null) {
-                clearComponent(struct, getProgram().getDefaultPointerSize(), 0);
-                struct.insertAtOffset(0, vfptr, getProgram().getDefaultPointerSize(), VFPTR, null);
-            }
+			replaceComponent(struct, vfptr, VFPTR, offset);
         } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
-            clearComponent(struct, getProgram().getDefaultPointerSize(), 0);
-            struct.insertAtOffset(0, vfptr, getProgram().getDefaultPointerSize(), VFPTR, null);
+            replaceComponent(struct, vfptr, VFPTR, offset);
         }
-    }
+	}
 
-    private void addVbptr() throws InvalidDataTypeException {
-        RttiModelWrapper type = (RttiModelWrapper) getType();
-        if (type.getVirtualParents().isEmpty()) {
-            return;
-        }
-        Program program = getProgram();
-        int pointerSize = program.getDefaultPointerSize();
-        int offset;
-        if (getVbValue() >= 0) {
-            offset = 0;
-        } else {
-            offset = pointerSize;
-        }
-        DataType vbptr = program.getDataTypeManager().getPointer(
-            IntegerDataType.dataType, pointerSize);
-        DataTypeComponent comp = struct.getComponentAt(1);
+    private void addVbptr(int offset) throws InvalidDataTypeException {
+		final Program program = getProgram();
+		final DataTypeManager dtm = program.getDataTypeManager();
+        final int ptrSize = program.getDefaultPointerSize();
+        final DataType vbptr = dtm.getPointer(
+			MSDataTypeUtils.getPointerDisplacementDataType(program), ptrSize);
+        DataTypeComponent comp = struct.getComponentAt(offset);
         if (comp == null || isUndefined(comp.getDataType())) {
-            if (vbptr != null) {
-                clearComponent(struct, pointerSize, offset);
-                struct.insertAtOffset(offset, vbptr, pointerSize, VBPTR, null);
-            }
+			replaceComponent(struct, vbptr, VBPTR, offset);
         } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
-            clearComponent(struct, pointerSize, offset);
-            struct.insertAtOffset(offset, vbptr, pointerSize, VBPTR, null);
+			replaceComponent(struct, vbptr, VBPTR, offset);
         }
-    }
+	}
+
+	private static boolean hasVtable(RttiModelWrapper type) {
+		try {
+			type.getVtable().validate();
+			return true;
+		} catch (InvalidDataTypeException e) {
+		}
+		return false;
+	}
+	
+	private void addPointers() throws InvalidDataTypeException {
+		final int vfPtrOffset;
+		final int vbPtrOffset;
+		final int ptrSize = getProgram().getDefaultPointerSize();
+		final RttiModelWrapper type = getType();
+		final boolean hasVtable = hasVtable(type);
+		if (!type.getVirtualParents().isEmpty()) {
+			final Rtti1Model base = type.getBaseModel();
+			if (!(base.getPDisp() > 0 && base.getVDisp() > 0) || base.getPDisp() < 0) {
+				vbPtrOffset = 0;
+				vfPtrOffset = hasVtable ? ptrSize : -1;
+			} else {
+				vfPtrOffset = hasVtable ? 0 : -1;
+				vbPtrOffset = ptrSize;
+			}
+		} else {
+			vbPtrOffset = -1;
+			vfPtrOffset = hasVtable ? 0 : -1;
+		}
+		if (vbPtrOffset >= 0) {
+			addVbptr(vbPtrOffset);
+		}
+		if (vfPtrOffset >= 0) {
+			addVfptr(vfPtrOffset);
+		}
+	}
 
     @Override
     protected Map<ClassTypeInfo, Integer> getBaseOffsets() throws InvalidDataTypeException {
-        RttiModelWrapper type = (RttiModelWrapper) getType();
-        return type.getBaseOffsets();
-    }
+        return getType().getBaseOffsets();
+	}
+	
+	@Override
+	protected RttiModelWrapper getType() {
+		return (RttiModelWrapper) super.getType();
+	}
 }

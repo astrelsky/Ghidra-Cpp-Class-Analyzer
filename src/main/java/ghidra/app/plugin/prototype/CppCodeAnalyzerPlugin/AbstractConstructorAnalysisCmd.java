@@ -13,7 +13,6 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.Union;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
