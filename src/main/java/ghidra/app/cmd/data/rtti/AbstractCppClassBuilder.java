@@ -162,6 +162,9 @@ abstract public class AbstractCppClassBuilder {
     }
 
     protected Structure getSuperClassDataType() throws InvalidDataTypeException {
+		if (type.getVirtualParents().isEmpty()) {
+			return getDataType();
+		}
         DataTypeManager dtm = program.getDataTypeManager();
         DataTypePath dtPath = new DataTypePath(path, SUPER+type.getName());
         DataType dt = dtm.getDataType(dtPath);
