@@ -23,7 +23,6 @@ import ghidra.app.cmd.data.rtti.Rtti2Model;
 import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Rtti4Model;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.datatype.microsoft.DataApplyOptions;
@@ -41,6 +40,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
@@ -165,20 +165,25 @@ public class RttiModelWrapper implements ClassTypeInfo {
 		final Program program = model.getProgram();
 		final Address addr = model.getAddress();
 		ReferenceFilter filter = new ReferenceFilter(program);
-		Stream<Address> addresses = GnuUtils.getDirectDataReferences(program, addr)
-											.stream()
-											.filter(filter);
-		for (Address address : (Iterable<Address>) () -> addresses.iterator()) {
-			Rtti1Model baseDescriptor = new Rtti1Model(program, address, DEFAULT_OPTIONS);
-			try {
-				baseDescriptor.validate();
-				final Address rtti3Addr = baseDescriptor.getRtti3Address();
-				Rtti3Model result = new Rtti3Model(program, rtti3Addr, DEFAULT_OPTIONS);
-				result.validate();
-				return result;
-			} catch (InvalidDataTypeException e) {
-				// continue searching
+		try {
+			Stream<Address> addresses =
+				ProgramMemoryUtil.findImageBaseOffsets32(program, 0, addr, TaskMonitor.DUMMY)
+								.stream()
+								.filter(filter);
+			for (Address address : (Iterable<Address>) () -> addresses.iterator()) {
+				Rtti1Model baseDescriptor = new Rtti1Model(program, address, DEFAULT_OPTIONS);
+				try {
+					baseDescriptor.validate();
+					final Address rtti3Addr = baseDescriptor.getRtti3Address();
+					Rtti3Model result = new Rtti3Model(program, rtti3Addr, DEFAULT_OPTIONS);
+					result.validate();
+					return result;
+				} catch (InvalidDataTypeException e) {
+					// continue searching
+				}
 			}
+		} catch (CancelledException e) {
+			// no problem
 		}
 		return null;
 	}
