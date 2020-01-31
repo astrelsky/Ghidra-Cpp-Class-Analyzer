@@ -7,12 +7,13 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.data.IntegerDataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Program;
 
 import static ghidra.program.database.data.DataTypeUtilities.findDataType;
 
 /**
- * Model for the __enum_type_info class.
+ * Model for the {@value #STRUCTURE_NAME} class.
  */
 public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
 
@@ -22,11 +23,20 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
 
     private DataType typeInfoDataType;
 
-	public static EnumTypeInfoModel getModel(Program program, Address address) {
-		if (isValid(program, address, ID_STRING)) {
-			return new EnumTypeInfoModel(program, address);
-		}
-		return null;
+	/**
+	 * Gets a new EnumTypeInfoModel
+	 * @param program the program containing the {@value #STRUCTURE_NAME}
+	 * @param address the address of the {@value #STRUCTURE_NAME}
+	 * @return the new EnumTypeInfoModel
+	 * @throws InvalidDataTypeException if the data at the address
+	 * is not a valid {@value #STRUCTURE_NAME}
+	 */
+	public static EnumTypeInfoModel getModel(Program program, Address address)
+		throws InvalidDataTypeException {
+			if (isValid(program, address, ID_STRING)) {
+				return new EnumTypeInfoModel(program, address);
+			}
+			throw new InvalidDataTypeException(getErrorMessage(address));
 	}
 
     private EnumTypeInfoModel(Program program, Address address) {
@@ -50,9 +60,9 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     /**
-     * Gets the __enum_type_info datatype
-     * @param dtm
-     * @return
+     * Gets the {@value #STRUCTURE_NAME} datatype
+     * @param dtm the DataTypeManager
+     * @return the {@value #STRUCTURE_NAME} datatype
      */
     public static DataType getDataType(DataTypeManager dtm) {
         return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);

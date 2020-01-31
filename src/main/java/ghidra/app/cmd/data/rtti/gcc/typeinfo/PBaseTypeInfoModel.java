@@ -2,11 +2,12 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 
 /**
- * Model for the __pbase_type_info class.
+ * Model for the {@value #STRUCTURE_NAME} class.
  */
 public final class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
 
@@ -17,11 +18,20 @@ public final class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
 
     private DataType typeInfoDataType;
 
-	public static PBaseTypeInfoModel getModel(Program program, Address address) {
-		if (isValid(program, address, ID_STRING)) {
-			return new PBaseTypeInfoModel(program, address);
-		}
-		return null;
+	/**
+	 * Gets a new PBaseTypeInfoModel
+	 * @param program the program containing the {@value #STRUCTURE_NAME}
+	 * @param address the address of the {@value #STRUCTURE_NAME}
+	 * @return the new PBaseTypeInfoModel
+	 * @throws InvalidDataTypeException if the data at the address
+	 * is not a valid {@value #STRUCTURE_NAME}
+	 */
+	public static PBaseTypeInfoModel getModel(Program program, Address address)
+		throws InvalidDataTypeException {
+			if (isValid(program, address, ID_STRING)) {
+				return new PBaseTypeInfoModel(program, address);
+			}
+			throw new InvalidDataTypeException(getErrorMessage(address));
 	}
 
     private PBaseTypeInfoModel(Program program, Address address) {
@@ -45,9 +55,9 @@ public final class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
     }
 
     /**
-     * Gets the __pbase_type_info datatype.
-     * @param dtm
-     * @return
+     * Gets the {@value #STRUCTURE_NAME} datatype
+     * @param dtm the DataTypeManager
+     * @return the {@value #STRUCTURE_NAME} datatype
      */
     public static DataType getDataType(DataTypeManager dtm) {
         return getPBase(dtm);

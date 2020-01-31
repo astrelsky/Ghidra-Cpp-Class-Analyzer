@@ -170,21 +170,17 @@ public class ClassTypeInfoUtils {
     }
 
     /**
-     * Gets the placeholder struct for a ClassTypeInfo in a specified
-     * DataTypeManager.
-     * 
-     * @param type
-     * @param dtm
-     * @return the placeholder struct for a ClassTypeInfo in a specified
-     *         DataTypeManager.
-     * @throws InvalidDataTypeException
+     * Gets the placeholder struct for a ClassTypeInfo in a specified DataTypeManager
+     * @param type the ClassTypeInfo
+     * @param dtm the DataTypeManager
+     * @return the placeholder struct for a ClassTypeInfo in a specified DataTypeManager
      */
     public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm) {
 		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
 		DataType struct = dtm.getDataType(path, type.getName());
 		struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
 		DataTypePath dtPath = struct.getDataTypePath();
-		if (!dtPath.isAncestor(DWARF) && !(dtPath.toString().contains(".pdb") || dtPath.toString().contains(".xml"))) {
+		if (!isDebug(dtPath)) {
 			DataTypeManager cppDtm = getCppDataTypeManager(dtm);
 			if (cppDtm == null) {
 				cppDtm = dtm;
@@ -211,7 +207,15 @@ public class ClassTypeInfoUtils {
 									+ type.getName());
 		}
 		return (Structure) struct;
-    }
+	}
+	
+	private static boolean isDebug(DataTypePath dtPath) {
+		final String path = dtPath.toString();
+		if (path.contains(".pdb") || path.contains(".xml")) {
+			return true;
+		}
+		return dtPath.isAncestor(DWARF);
+	}
 
     private static DataTypeManager getCppDataTypeManager(DataTypeManager dtm) {
         if (dtm instanceof ProgramBasedDataTypeManager) {
@@ -299,11 +303,9 @@ public class ClassTypeInfoUtils {
     }
 
     /**
-     * Sorts a list of classes in order of most derived.
-     * 
-     * @param program
-     * @param classes
-     * @throws InvalidDataTypeException if the list contains an invalid ClassTypeInfo
+     * Sorts a list of classes in order of most derived
+     * @param program the program containing the list of ClassTypeInfo
+     * @param classes the list of ClassTypeInfo
      */
 	public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes,
 		TaskMonitor monitor) throws CancelledException {

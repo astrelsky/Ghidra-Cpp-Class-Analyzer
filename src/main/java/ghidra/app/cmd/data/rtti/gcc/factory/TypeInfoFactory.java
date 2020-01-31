@@ -1,14 +1,12 @@
 package ghidra.app.cmd.data.rtti.gcc.factory;
 
 import java.util.Map;
-import java.util.function.BiFunction;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import java.util.function.Function;
 
 import ghidra.util.Msg;
-import ghidra.util.classfinder.ClassSearcher;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
@@ -20,29 +18,74 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 
 public class TypeInfoFactory {
 
-    private static final String ID_FIELD = "ID_STRING";
-
     private TypeInfoFactory() {}
 
-	private static final Map<String, BiFunction<Program, Address, TypeInfo>> COPY_MAP =
+	private static final Map<String, MethodPair> COPY_MAP =
 		Map.ofEntries(
-			Map.entry(ArrayTypeInfoModel.ID_STRING, ArrayTypeInfoModel::getModel),
-			Map.entry(ClassTypeInfoModel.ID_STRING, ClassTypeInfoModel::getModel),
-			Map.entry(EnumTypeInfoModel.ID_STRING, EnumTypeInfoModel::getModel),
-			Map.entry(FunctionTypeInfoModel.ID_STRING, FunctionTypeInfoModel::getModel),
-			Map.entry(FundamentalTypeInfoModel.ID_STRING, FundamentalTypeInfoModel::getModel),
-			Map.entry(PBaseTypeInfoModel.ID_STRING, PBaseTypeInfoModel::getModel),
-			Map.entry(PointerToMemberTypeInfoModel.ID_STRING, PointerToMemberTypeInfoModel::getModel),
-			Map.entry(PointerTypeInfoModel.ID_STRING, PointerTypeInfoModel::getModel),
-			Map.entry(SiClassTypeInfoModel.ID_STRING, SiClassTypeInfoModel::getModel),
-			Map.entry(VmiClassTypeInfoModel.ID_STRING, VmiClassTypeInfoModel::getModel),
-			Map.entry(TypeInfoModel.ID_STRING, TypeInfoModel::getModel),
-			Map.entry(IosFailTypeInfoModel.ID_STRING, IosFailTypeInfoModel::getModel)
-		);
+			Map.entry(
+				ArrayTypeInfoModel.ID_STRING,
+				new MethodPair(
+					ArrayTypeInfoModel::getModel,
+					ArrayTypeInfoModel::getDataType)),
+			Map.entry(
+				ClassTypeInfoModel.ID_STRING,
+				new MethodPair(
+					ClassTypeInfoModel::getModel,
+					ClassTypeInfoModel::getDataType)),
+			Map.entry(
+				EnumTypeInfoModel.ID_STRING,
+				new MethodPair(
+					EnumTypeInfoModel::getModel,
+					EnumTypeInfoModel::getDataType)),
+			Map.entry(
+				FunctionTypeInfoModel.ID_STRING,
+				new MethodPair(
+					FunctionTypeInfoModel::getModel,
+					FunctionTypeInfoModel::getDataType)),
+			Map.entry(
+				FundamentalTypeInfoModel.ID_STRING,
+				new MethodPair(
+					FundamentalTypeInfoModel::getModel,
+					FundamentalTypeInfoModel::getDataType)),
+			Map.entry(
+				PBaseTypeInfoModel.ID_STRING,
+				new MethodPair(
+					PBaseTypeInfoModel::getModel,
+					PBaseTypeInfoModel::getDataType)),
+			Map.entry(
+				PointerToMemberTypeInfoModel.ID_STRING,
+				new MethodPair(
+					PointerToMemberTypeInfoModel::getModel,
+					PointerToMemberTypeInfoModel::getDataType)),
+			Map.entry(
+				PointerTypeInfoModel.ID_STRING,
+				new MethodPair(
+					PointerTypeInfoModel::getModel,
+					PointerTypeInfoModel::getDataType)),
+			Map.entry(
+				SiClassTypeInfoModel.ID_STRING,
+				new MethodPair(
+					SiClassTypeInfoModel::getModel,
+					SiClassTypeInfoModel::getDataType)),
+			Map.entry(
+				VmiClassTypeInfoModel.ID_STRING,
+				new MethodPair(
+					VmiClassTypeInfoModel::getModel,
+					VmiClassTypeInfoModel::getDataType)),
+			Map.entry(
+				TypeInfoModel.ID_STRING,
+				new MethodPair(
+					TypeInfoModel::getModel,
+					TypeInfoModel::getDataType)),
+			Map.entry(
+				IosFailTypeInfoModel.ID_STRING,
+				new MethodPair(
+					IosFailTypeInfoModel::getModel,
+					IosFailTypeInfoModel::getDataType)));
 
     /**
      * Get the TypeInfo in the buffer.
-     * @param buf
+     * @param buf the memory buffer containing the TypeInfo data
      * @return the TypeInfo at the buffers address.
      * @throws InvalidDataTypeException 
      */
@@ -63,7 +106,7 @@ public class TypeInfoFactory {
                 // invalid typeinfo
                 return null;
             } try {
-				return COPY_MAP.get(baseTypeName).apply(program, address);
+				return COPY_MAP.get(baseTypeName).modelGetter.getModel(program, address);
             } catch (Exception e) {
                 Msg.error(TypeInfoFactory.class, "Unknown Exception", e);
                 return null;
@@ -103,21 +146,28 @@ public class TypeInfoFactory {
      */
     public static Structure getDataType(Program program, String typename) {
         if (COPY_MAP.containsKey(typename)) {
-            try {
-				for (Class<? extends TypeInfo> type : ClassSearcher.getClasses(TypeInfo.class)) {
-					final Field field = type.getDeclaredField(ID_FIELD);
-					if (typename.equals((field.get(null)))) {
-						Method dataTypeGetter = type.getDeclaredMethod(
-							"getDataType", DataTypeManager.class);
-						return (Structure) dataTypeGetter.invoke(
-							null, program.getDataTypeManager());
-					}
-				}
-            } catch (Exception e) {
-                Msg.error(TypeInfoFactory.class, e);
-            }
+			final Function<DataTypeManager, DataType> getter =
+				COPY_MAP.get(typename).dataTypeGetter;
+			return (Structure) getter.apply(program.getDataTypeManager());
         }
         return null;
+	}
+
+	@FunctionalInterface
+	private interface ModelGetter {
+		public TypeInfo getModel(Program program, Address address) throws InvalidDataTypeException;
+	}
+
+	private static final class MethodPair {
+
+		final ModelGetter modelGetter;
+		final Function<DataTypeManager, DataType> dataTypeGetter;
+
+		MethodPair(ModelGetter modelGetter,
+			Function<DataTypeManager, DataType> dataTypeGetter) {
+				this.modelGetter = modelGetter;
+				this.dataTypeGetter = dataTypeGetter;
+		}
 	}
 
 }

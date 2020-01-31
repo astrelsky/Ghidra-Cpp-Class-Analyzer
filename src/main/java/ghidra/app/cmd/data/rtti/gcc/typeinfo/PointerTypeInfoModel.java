@@ -3,13 +3,14 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
 
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getCxxAbiCategoryPath;
 
 /**
- * Model for the __pointer_type_info class.
+ * Model for the {@value #STRUCTURE_NAME} class.
  */
 public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
 
@@ -18,11 +19,20 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
     private static final String DESCRIPTION = "Model for Pointer Type Info";
     private DataType typeInfoDataType;
 
-	public static PointerTypeInfoModel getModel(Program program, Address address) {
-		if (isValid(program, address, ID_STRING)) {
-			return new PointerTypeInfoModel(program, address);
-		}
-		return null;
+	/**
+	 * Gets a new PointerTypeInfoModel
+	 * @param program the program containing the {@value #STRUCTURE_NAME}
+	 * @param address the address of the {@value #STRUCTURE_NAME}
+	 * @return the new PointerTypeInfoModel
+	 * @throws InvalidDataTypeException if the data at the address
+	 * is not a valid {@value #STRUCTURE_NAME}
+	 */
+	public static PointerTypeInfoModel getModel(Program program, Address address)
+		throws InvalidDataTypeException {
+			if (isValid(program, address, ID_STRING)) {
+				return new PointerTypeInfoModel(program, address);
+			}
+			throw new InvalidDataTypeException(getErrorMessage(address));
 	}
 
     private PointerTypeInfoModel(Program program, Address address) {
@@ -46,9 +56,9 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
     }
 
     /**
-     * Gets the __pointer_type_info datatype.
-     * @param dtm
-     * @return
+     * Gets the {@value #STRUCTURE_NAME} datatype
+     * @param dtm the DataTypeManager
+     * @return the {@value #STRUCTURE_NAME} datatype
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType superDt = getPBase(dtm);

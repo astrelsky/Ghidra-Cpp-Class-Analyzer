@@ -17,7 +17,6 @@ import ghidra.util.task.TaskMonitor;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypePath;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.TerminatedStringDataType;
 import ghidra.program.model.data.Undefined;
@@ -273,11 +272,10 @@ public class TypeInfoUtils {
     }
 
     /**
-     * Retrieves the DataTypePath for the represented datatype.
+     * Retrieves the DataTypePath for the represented datatype
      * 
-     * @param type
-     * @return the TypeInfo represented datatype's DataTypePath.
-     * @throws InvalidDataTypeException
+     * @param type the TypeInfo
+     * @return the TypeInfo represented datatype's DataTypePath
      */
     public static DataTypePath getDataTypePath(TypeInfo type) {
         Namespace ns = type.getNamespace().getParentNamespace();

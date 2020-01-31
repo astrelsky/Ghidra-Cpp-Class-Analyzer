@@ -4,11 +4,12 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StructureDataType;
 
 /**
- * Model for the __si_class_type_info class.
+ * Model for the {@value #STRUCTURE_NAME} class.
  */
 public final class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
 
@@ -18,11 +19,20 @@ public final class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
     public static final String ID_STRING = "N10__cxxabiv120__si_class_type_infoE";
     private DataType typeInfoDataType;
 
-	public static SiClassTypeInfoModel getModel(Program program, Address address) {
-		if (isValid(program, address, ID_STRING)) {
-			return new SiClassTypeInfoModel(program, address);
-		}
-		return null;
+	/**
+	 * Gets a new SiClassTypeInfoModel
+	 * @param program the program containing the {@value #STRUCTURE_NAME}
+	 * @param address the address of the {@value #STRUCTURE_NAME}
+	 * @return the new SiClassTypeInfoModel
+	 * @throws InvalidDataTypeException if the data at the address
+	 * is not a valid {@value #STRUCTURE_NAME}
+	 */
+	public static SiClassTypeInfoModel getModel(Program program, Address address)
+		throws InvalidDataTypeException {
+			if (isValid(program, address, ID_STRING)) {
+				return new SiClassTypeInfoModel(program, address);
+			}
+			throw new InvalidDataTypeException(getErrorMessage(address));
 	}
 
     private SiClassTypeInfoModel(Program program, Address address) {
@@ -46,9 +56,9 @@ public final class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
     }
 
     /**
-     * Gets the __si_class_type_info datatype.
-     * @param dtm
-     * @return
+     * Gets the {@value #STRUCTURE_NAME} datatype
+     * @param dtm the DataTypeManager
+     * @return the {@value #STRUCTURE_NAME} datatype
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType superDt = ClassTypeInfoModel.getDataType(dtm);

@@ -3,6 +3,7 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.data.StructureDataType;
@@ -10,7 +11,7 @@ import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.listing.Program;
 
 /**
- * Model for the type_info class.
+ * Model for the {@value #STRUCTURE_NAME} class.
  */
 public final class TypeInfoModel extends AbstractTypeInfoModel {
 
@@ -21,11 +22,20 @@ public final class TypeInfoModel extends AbstractTypeInfoModel {
 
     public static final String ID_STRING = "St9type_info";
 
-	public static TypeInfoModel getModel(Program program, Address address) {
-		if (isValid(program, address, ID_STRING)) {
-			return new TypeInfoModel(program, address);
-		}
-		return null;
+	/**
+	 * Gets a new TypeInfoModel
+	 * @param program the program containing the {@value #STRUCTURE_NAME}
+	 * @param address the address of the {@value #STRUCTURE_NAME}
+	 * @return the new TypeInfoModel
+	 * @throws InvalidDataTypeException if the data at the address
+	 * is not a valid {@value #STRUCTURE_NAME}
+	 */
+	public static TypeInfoModel getModel(Program program, Address address)
+		throws InvalidDataTypeException {
+			if (isValid(program, address, ID_STRING)) {
+				return new TypeInfoModel(program, address);
+			}
+			throw new InvalidDataTypeException(getErrorMessage(address));
 	}
 
     private TypeInfoModel(Program program, Address address) {
@@ -38,9 +48,9 @@ public final class TypeInfoModel extends AbstractTypeInfoModel {
     }
 
     /**
-     * Gets the type_info datatype.
-     * 
-     * @return the DataType for the model in memory.
+     * Gets the {@value #STRUCTURE_NAME} datatype
+     * @param dtm the DataTypeManager
+     * @return the {@value #STRUCTURE_NAME} datatype
      */
     public static DataType getDataType(DataTypeManager dtm) {
         DataType existingDt = dtm.getDataType(STD_PATH, STRUCTURE_NAME);

@@ -13,6 +13,7 @@ import ghidra.util.Msg;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.data.IntegerDataType;
+import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
@@ -26,12 +27,13 @@ import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getCxxAbiCategoryPath;
 
 /**
- * Model for the __vmi_class_type_info class.
+ * Model for the {@value #STRUCTURE_NAME} class.
  */
 public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     public static final String STRUCTURE_NAME = "__vmi_class_type_info";
-    private static final String DESCRIPTION = "Model for Virtual Multiple Inheritance Class Type Info";
+	private static final String DESCRIPTION =
+		"Model for Virtual Multiple Inheritance Class Type Info";
 
     public static final String ID_STRING = "N10__cxxabiv121__vmi_class_type_infoE";
 
@@ -46,7 +48,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     private static final int BASE_COUNT_ORDINAL = 2;
     private static final int BASE_ARRAY_ORDINAL = 3;
 
-    protected static final CategoryPath SUB_PATH = new CategoryPath(getCxxAbiCategoryPath(), STRUCTURE_NAME);
+	protected static final CategoryPath SUB_PATH =
+		new CategoryPath(getCxxAbiCategoryPath(), STRUCTURE_NAME);
 
     public static enum Flags {
         NON_DIAMOND,
@@ -59,11 +62,12 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     private BaseClassTypeInfoModel[] bases;
 	private Flags flags;
 	
-	public static VmiClassTypeInfoModel getModel(Program program, Address address) {
-		if (isValid(program, address, ID_STRING)) {
-			return new VmiClassTypeInfoModel(program, address);
-		}
-		return null;
+	public static VmiClassTypeInfoModel getModel(Program program, Address address)
+		throws InvalidDataTypeException {
+			if (isValid(program, address, ID_STRING)) {
+				return new VmiClassTypeInfoModel(program, address);
+			}
+			throw new InvalidDataTypeException(getErrorMessage(address));
 	}
 
     private VmiClassTypeInfoModel(Program program, Address address) {
@@ -75,7 +79,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets the __vmi_class_type_info datatype.
+     * Gets the {@value #STRUCTURE_NAME} datatype.
      */
     @Override
     public Structure getDataType() {
@@ -87,9 +91,9 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets the __vmi_class_type_info datatype.
-     * @param dtm
-     * @return
+     * Gets the {@value #STRUCTURE_NAME} datatype
+     * @param dtm the DataTypeManager
+     * @return the {@value #STRUCTURE_NAME} datatype
      */
     public static Structure getDataType(DataTypeManager dtm) {
         DataType existingDt = dtm.getDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME);
@@ -197,8 +201,9 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets this __vmi_class_type_info's __base_class_type_info array.
-     * @return the BaseClassTypeInfo[] representation of the __base_class_type_info array.
+     * Gets this {@value #STRUCTURE_NAME}'s {@value BaseClassTypeInfoModel#STRUCTURE_NAME} array
+     * @return the BaseClassTypeInfo[] representation of 
+	 * the {@value BaseClassTypeInfoModel#STRUCTURE_NAME} array.
      */
     public BaseClassTypeInfoModel[] getBases() {
         if (bases != null) {
