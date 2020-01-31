@@ -17,7 +17,14 @@ public final class FundamentalTypeInfoModel extends AbstractTypeInfoModel {
 
     private DataType typeInfoDataType;
 
-    public FundamentalTypeInfoModel(Program program, Address address) {
+	public static FundamentalTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new FundamentalTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private FundamentalTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

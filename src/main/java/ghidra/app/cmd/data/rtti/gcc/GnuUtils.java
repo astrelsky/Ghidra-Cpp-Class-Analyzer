@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import docking.Tool;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.LongLongDataType;
 import ghidra.app.util.demangler.DemangledDataType;
@@ -13,7 +14,6 @@ import ghidra.app.util.demangler.DemangledObject;
 import ghidra.framework.main.AppInfo;
 import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.Project;
-import ghidra.framework.model.Tool;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.mem.MemBuffer;

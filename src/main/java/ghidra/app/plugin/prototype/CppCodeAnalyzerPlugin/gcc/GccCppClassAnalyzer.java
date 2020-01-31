@@ -48,10 +48,7 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
         for (Symbol symbol : table.getSymbols(TypeInfo.SYMBOL_NAME)) {
             TypeInfo type = TypeInfoFactory.getTypeInfo(program, symbol.getAddress());
             if (type instanceof ClassTypeInfo) {
-                try {
-                    type.validate();
-                    classes.add((ClassTypeInfo) type);
-                } catch (InvalidDataTypeException e) {}
+                classes.add((ClassTypeInfo) type);
             }
         }
         return classes;
@@ -78,7 +75,6 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
     protected boolean analyzeConstructor(ClassTypeInfo type) {
         try {
             VtableModel vtable = (VtableModel) type.getVtable();
-            vtable.validate();
             VttModel vtt = VtableUtils.getVttModel(program, vtable);
             if (vtt.isValid()) {
                 ((GccConstructorAnalysisCmd) constructorAnalyzer).setVtt(vtt);

@@ -10,7 +10,6 @@ import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.Ppc64TypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.InvalidDataTypeException;
 
 import org.junit.Test;
 
@@ -18,7 +17,7 @@ public class VtableModelTest extends GenericGccRttiTest {
 
     private void validationTest(AbstractTypeInfoProgramBuilder builder) throws Exception {
         for (VtableModel vtable : builder.getVtableList()) {
-            vtable.validate();
+            assert Vtable.isValid(vtable);
         }
     }
 
@@ -27,10 +26,9 @@ public class VtableModelTest extends GenericGccRttiTest {
         for (TypeInfo type : builder.getTypeInfoList()) {
             if (type instanceof ClassTypeInfo) {
                 Vtable vtable = ((ClassTypeInfo) type).getVtable();
-                try {
-                    vtable.validate();
-                    addresses.add(((VtableModel) vtable).getAddress());
-                } catch (InvalidDataTypeException e) {}
+                if (Vtable.isValid(vtable)) {
+					addresses.add(((VtableModel) vtable).getAddress());
+				}
             }
         }
         for (VtableModel vtable : builder.getVtableList()) {

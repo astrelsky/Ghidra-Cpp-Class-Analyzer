@@ -7,7 +7,6 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Program;
 
 /**
@@ -22,9 +21,16 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
     private static final Pattern ARRAY_PATTERN = Pattern.compile(".*A(\\d*)_(.*)");
     
     private DataType dataType;
-    private DataType typeInfoDataType;
+	private DataType typeInfoDataType;
+	
+	public static ArrayTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new ArrayTypeInfoModel(program, address);
+		}
+		return null;
+	}
 
-    public ArrayTypeInfoModel(Program program, Address address) {
+    private ArrayTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 
@@ -55,8 +61,7 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     @Override
-    public DataType getRepresentedDataType() throws InvalidDataTypeException {
-        validate();
+    public DataType getRepresentedDataType() {
         if (dataType == null) {
             Matcher matcher = ARRAY_PATTERN.matcher(getTypeName());
             if (matcher.matches()) {

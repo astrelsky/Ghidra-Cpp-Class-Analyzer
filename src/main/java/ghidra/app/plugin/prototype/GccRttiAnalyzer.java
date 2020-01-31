@@ -2,6 +2,7 @@ package ghidra.app.plugin.prototype;
 
 import java.util.Set;
 import java.util.List;
+import java.util.Optional;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -177,24 +178,32 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
             return functionTables[0][2].equals(functionTables[0][3]);
         }
         return false;
-    }
+	}
+	
+	private static boolean isPureVirtualType(ClassTypeInfo type) {
+		return type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING);
+	}
 
-    private Function getPureVirtualFunction() throws CancelledException,
-        InvalidDataTypeException {
-            for (ClassTypeInfo type : classes) {
-                if (type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING)) {
-                    Vtable vtable = type.getVtable(dummy);
-                    try {
-                        vtable.validate();
-                    } catch (InvalidDataTypeException e) {
-                        continue;
-                    }
-                    Function[][] functionTables = vtable.getFunctionTables();
-                    if (checkTableAddresses(functionTables)) {
-                        return functionTables[0][2];
-                    }
-                }
-            }
+    private Function getPureVirtualFunction() throws CancelledException {
+		try {
+			final Optional<Function[][]> function =
+				classes.stream()
+					   .filter(GccRttiAnalyzer::isPureVirtualType)
+					   .map(ClassTypeInfo::getVtable)
+					   .filter(Vtable::isValid)
+					   .map(Vtable::getFunctionTables)
+					   .filter(this::checkTableAddresses)
+					   .findFirst();
+			if (function.isPresent()) {
+				// pre checked
+				return function.get()[0][2];
+			}
+		} catch (RuntimeException e) {
+			if (e.getCause() instanceof CancelledException) {
+				throw (CancelledException) e.getCause();
+			}
+			throw e;
+		}
             return null;
     }
 
@@ -267,17 +276,10 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
         for (ClassTypeInfo type : classes) {
             monitor.checkCanceled();
             VtableModel vtable = (VtableModel) type.getVtable();
-            if (vtable == null) {
-                monitor.incrementProgress(1);
-                continue;
+            if (Vtable.isValid(vtable)) {
+				createVtable(vtable);
             }
-            try {
-                vtable.validate();
-            } catch (InvalidDataTypeException e) {
-                monitor.incrementProgress(1);
-                continue;
-            }
-            createVtable(vtable);
+            monitor.incrementProgress(1);
         }
     }
 
@@ -288,7 +290,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
             Vtable vtable = typeinfo.getVtable(dummy);
             return GnuUtils.getDirectDataReferences(
                 program, vtable.getTableAddresses()[0], dummy);
-        } catch (NullPointerException | InvalidDataTypeException e) {
+        } catch (NullPointerException e) {
             return Collections.emptySet();
         }
     }
@@ -354,17 +356,14 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
                 monitor.incrementProgress(1);
                 continue;
             }
-            try {
-                type.validate();
-                if (isClass) {
-                    ClassTypeInfo classType = ((ClassTypeInfo) type);
-                    classType.getGhidraClass();
-                    classes.add(classType);
-                }
-                CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
-                cmd.applyTo(program, dummy);
-                markDataAsConstant(type.getAddress());
-            } catch (InvalidDataTypeException e) {}
+			if (isClass) {
+				ClassTypeInfo classType = ((ClassTypeInfo) type);
+				classType.getGhidraClass();
+				classes.add(classType);
+			}
+			CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
+			cmd.applyTo(program, dummy);
+			markDataAsConstant(type.getAddress());
             monitor.incrementProgress(1);
         }
     }

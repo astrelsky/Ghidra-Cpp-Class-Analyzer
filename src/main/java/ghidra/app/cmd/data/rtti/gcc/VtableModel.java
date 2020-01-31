@@ -28,7 +28,7 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
 /**
  * Model for GNU Vtables
  */
-public class VtableModel implements Vtable {
+public final class VtableModel implements Vtable {
 
     public static final String SYMBOL_NAME = "vtable";
     public static final String CONSTRUCTION_SYMBOL_NAME = "construction-"+SYMBOL_NAME;
@@ -36,7 +36,6 @@ public class VtableModel implements Vtable {
     public static final String MANGLED_PREFIX = "_ZTV";
 
     private Program program;
-    private boolean isValid = true;
     private Address address;
     private static final int FUNCTION_TABLE_ORDINAL = 2;
     private static final int MAX_PREFIX_ELEMENTS = 3;
@@ -47,31 +46,44 @@ public class VtableModel implements Vtable {
     private long[] offsets;
     private List<VtablePrefixModel> vtablePrefixes;
 
-    public static final VtableModel NO_VTABLE = new VtableModel();
+	public static final VtableModel NO_VTABLE = new VtableModel();
+
+	public static VtableModel getVtable(Program program, Address address) {
+		return getVtable(program, address, null);
+	}
+	
+	public static VtableModel getVtable(Program program, Address address, ClassTypeInfo type) {
+		try {
+			return new VtableModel(program, address, type);
+		} catch (InvalidDataTypeException e) {
+			return NO_VTABLE;
+		}
+	}
 
     private VtableModel() {
-        isValid = false;
-    }
-
-    public VtableModel(Program program, Address address, ClassTypeInfo type) {
-        this(program, address, type, -1, false);
-    }
-
-    public VtableModel(Program program, Address address) {
+	}
+	
+	VtableModel(Program program, Address address) throws InvalidDataTypeException {
         this(program, address, null, -1, false);
+    }
+
+    VtableModel(Program program, Address address, ClassTypeInfo type)
+		throws InvalidDataTypeException {
+        	this(program, address, type, -1, false);
     }
     
     /**
-     * Constructs a new VtableModel
-     * 
-     * @param program      program the vtable is in.
-     * @param address      starting address of the vtable or the first typeinfo pointer.
-     * @param type         the ClassTypeInfo this vtable belongs to.
-     * @param arrayCount   the maximum vtable table count, if known.
-     * @param construction true if this should be a construction vtable.
-     */
-    public VtableModel(Program program, Address address, ClassTypeInfo type,
-        int arrayCount, boolean construction) {
+	 * Constructs a new VtableModel
+	 * 
+	 * @param program      program the vtable is in.
+	 * @param address      starting address of the vtable or the first typeinfo pointer.
+	 * @param type         the ClassTypeInfo this vtable belongs to.
+	 * @param arrayCount   the maximum vtable table count, if known.
+	 * @param construction true if this should be a construction vtable.
+	 * @throws InvalidDataTypeException
+	 */
+	VtableModel(Program program, Address address, ClassTypeInfo type,
+			int arrayCount, boolean construction) throws InvalidDataTypeException {
             this.program = program;
             this.address = address;
             this.type = type;
@@ -89,17 +101,14 @@ public class VtableModel implements Vtable {
                 Address typeAddress = getAbsoluteAddress(program, typePointerAddress);
                 this.type = (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, typeAddress);
             }
-            try {
-                setupVtablePrefixes();
-                this.isValid = !vtablePrefixes.isEmpty();
-            } catch (InvalidDataTypeException e) {
-                this.isValid = false;
-            }
-    }
+			setupVtablePrefixes();
+			if (vtablePrefixes.isEmpty()) {
+				throw new InvalidDataTypeException("Vtable is empty");
+			}
+	}
 
     @Override
-    public ClassTypeInfo getTypeInfo() throws InvalidDataTypeException {
-        validate();
+    public ClassTypeInfo getTypeInfo() {
         if (type == null) {
             type = VtableUtils.getTypeInfo(program, address);
         }
@@ -107,25 +116,11 @@ public class VtableModel implements Vtable {
     }
 
     @Override
-    
-    public void validate() throws InvalidDataTypeException {
-        if (!isValid) {
-            if (address != null) {
-                throw new InvalidDataTypeException(
-                    "Vtable at "+address.toString()+" is not valid.");
-            } throw new InvalidDataTypeException(
-                "Invalid Vtable.");
-        }
-    }
-
-    @Override
     public int hashCode() {
-        try {
-            getTypeInfo();
-            if (type != null) {
-                return type.hashCode();
-            }
-        } catch (InvalidDataTypeException e) {}
+		getTypeInfo();
+		if (type != null) {
+			return type.hashCode();
+		}
         return super.hashCode();
     }
 
@@ -134,13 +129,11 @@ public class VtableModel implements Vtable {
         if (!(object instanceof VtableModel)) {
             return false;
         }
-        try {
-            getTypeInfo();
-            ClassTypeInfo otherType = ((VtableModel) object).getTypeInfo();
-            if (type != null && otherType != null) {
-                return type.equals(otherType);
-            }
-        } catch (InvalidDataTypeException e) {}
+		getTypeInfo();
+		ClassTypeInfo otherType = ((VtableModel) object).getTypeInfo();
+		if (type != null && otherType != null) {
+			return type.equals(otherType);
+		}
         return super.equals(object);
     }
 
@@ -154,8 +147,7 @@ public class VtableModel implements Vtable {
     }
 
     @Override
-    public Address[] getTableAddresses() throws InvalidDataTypeException {
-        validate();
+    public Address[] getTableAddresses() {
         Address[] result = new Address[vtablePrefixes.size()];
         for (int i = 0; i < result.length; i++) {
             try {
@@ -169,9 +161,7 @@ public class VtableModel implements Vtable {
     }
 
     @Override
-    
-    public Function[][] getFunctionTables() throws InvalidDataTypeException {
-        validate();
+    public Function[][] getFunctionTables() {
         Address[] tableAddresses = getTableAddresses();
         if (tableAddresses.length == 0) {
             return new Function[0][];
@@ -183,8 +173,7 @@ public class VtableModel implements Vtable {
     }
 
     @Override
-    
-    public boolean containsFunction(Function function) throws InvalidDataTypeException {
+    public boolean containsFunction(Function function) {
         if (functions.isEmpty()) {
             getFunctionTables();
         } return functions.contains(function);
@@ -192,18 +181,18 @@ public class VtableModel implements Vtable {
 
     /**
      * @see ghidra.program.model.data.DataType#getLength()
-     * @return
+     * @return the vtable length
      */
     public int getLength() {
-        if (!isValid) {
-            return 0;
-        }
-        int size = 0;
-        for (VtablePrefixModel prefix : vtablePrefixes) {
-            size += prefix.getPrefixSize();
-        }
-        return size;
-    }
+		if (Vtable.isValid(this)) {
+			int size = 0;
+			for (VtablePrefixModel prefix : vtablePrefixes) {
+				size += prefix.getPrefixSize();
+			}
+			return size;
+		}
+		return 0;
+	}
     
     /**
      * Gets the ptrdiff_t value within the base offset array.
@@ -211,10 +200,8 @@ public class VtableModel implements Vtable {
      * @param index the index in the vtable_prefix array.
      * @param ordinal the offset ordinal.
      * @return the offset value.
-     * @throws InvalidDataTypeException 
      */
-    public long getOffset(int index, int ordinal) throws InvalidDataTypeException {
-        validate();
+    public long getOffset(int index, int ordinal) {
         if (ordinal >= getElementCount()) {
             return Long.MAX_VALUE;
         }
@@ -225,10 +212,8 @@ public class VtableModel implements Vtable {
      * Gets the whole ptrdiff_t array.
      * 
      * @return the whole ptrdiff_t array.
-     * @throws InvalidDataTypeException
      */
-    public long[] getBaseOffsetArray() throws InvalidDataTypeException {
-        validate();
+    public long[] getBaseOffsetArray() {
         if (offsets == null) {
             offsets = vtablePrefixes.get(0).getBaseOffsets();
         }
@@ -239,10 +224,8 @@ public class VtableModel implements Vtable {
      * Gets the number of vtable_prefix's in this vtable.
      * 
      * @return the number of vtable_prefix's in this vtable.
-     * @throws InvalidDataTypeException 
      */
-    public int getElementCount() throws InvalidDataTypeException {
-        validate();
+    public int getElementCount() {
         return vtablePrefixes.size();
     }
 
@@ -262,7 +245,7 @@ public class VtableModel implements Vtable {
         return result;
     }
 
-    private void setupVtablePrefixes() throws InvalidDataTypeException {
+    private void setupVtablePrefixes() {
         vtablePrefixes = new ArrayList<>();
         int count = construction ? 2 : type.getVirtualParents().size()+1;
         VtablePrefixModel prefix = new VtablePrefixModel(getNextPrefixAddress(), count);

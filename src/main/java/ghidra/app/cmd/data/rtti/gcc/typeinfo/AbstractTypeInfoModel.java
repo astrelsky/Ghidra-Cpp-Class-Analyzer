@@ -17,7 +17,6 @@ import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
@@ -28,9 +27,9 @@ import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 
 /**
- * Base Model for Type Info and its derivatives.
+ * Base Model for type_info and its derivatives.
  */
-public abstract class AbstractTypeInfoModel implements TypeInfo {
+abstract class AbstractTypeInfoModel implements TypeInfo {
 
     protected static final String DEFAULT_TYPENAME = "";
 
@@ -58,21 +57,16 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
         this.namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
     }
 
-    @Override
-    public void validate() throws InvalidDataTypeException {
-        if (!TypeInfoUtils.getIDString(program, address).equals(getIdentifier())) {
-            throw new InvalidDataTypeException(
-                "Invalid "+getIdentifier()+" instance at "+address.toString());
+	protected static boolean isValid(Program program, Address address, String id) {
+        if (!TypeInfoUtils.getIDString(program, address).equals(id)) {
+            return false;
         }
-        if (typeName.equals(DEFAULT_TYPENAME)) {
-            throw new InvalidDataTypeException(
-                getIdentifier()+" at "+address.toString()+" is a relocation");
-        }
+        if (TypeInfoUtils.getTypeName(program, address).equals(DEFAULT_TYPENAME)) {
+            return false;
+		}
+		return true;
     }
 
-    /**
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
     @Override
     public final boolean equals(Object object) {
         if (!(object instanceof TypeInfo)) {
@@ -90,7 +84,7 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
     }
 
     @Override
-    public Namespace getNamespace() throws InvalidDataTypeException {
+    public Namespace getNamespace() {
         return namespace;
     }
 
@@ -106,7 +100,7 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
     }
 
     @Override
-    public final String getName() throws InvalidDataTypeException {
+    public final String getName() {
         return namespace.getName();
     }
 
@@ -131,14 +125,12 @@ public abstract class AbstractTypeInfoModel implements TypeInfo {
     }
 
     @Override
-    public String getTypeName() throws InvalidDataTypeException {
-        validate();
+    public String getTypeName() {
         return typeName;
     }
 
     @Override
-    public DataType getRepresentedDataType() throws InvalidDataTypeException {
-        validate();
+    public DataType getRepresentedDataType() {
         if (dataType == null) {
             dataType = parseDataType(typeName);
         }

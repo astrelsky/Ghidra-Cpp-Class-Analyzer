@@ -14,7 +14,6 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.Union;
 import ghidra.program.model.data.UnionDataType;
@@ -28,7 +27,6 @@ import ghidra.util.exception.DuplicateNameException;
 abstract public class AbstractCppClassBuilder {
 
     protected static final String SUPER = "super_";
-    private static final String ERROR_MESSAGE = "Invalid ClassTypeInfo. Class cannot be built";
     private static final String INTERFACES = "interfaces";
 
     private Program program;
@@ -43,15 +41,11 @@ abstract public class AbstractCppClassBuilder {
 
     protected AbstractCppClassBuilder(ClassTypeInfo type) {
         this.type = type;
-        try {
-            GhidraClass gc = type.getGhidraClass();
-            this.program = gc.getSymbol().getProgram();
-            this.struct = ClassTypeInfoUtils.getPlaceholderStruct(
-                type, program.getDataTypeManager());
-            this.path = new CategoryPath(struct.getCategoryPath(), type.getName());
-        } catch (InvalidDataTypeException e) {
-            Msg.error(this, ERROR_MESSAGE);
-        }
+		GhidraClass gc = type.getGhidraClass();
+		this.program = gc.getSymbol().getProgram();
+		this.struct = ClassTypeInfoUtils.getPlaceholderStruct(
+			type, program.getDataTypeManager());
+		this.path = new CategoryPath(struct.getCategoryPath(), type.getName());
     }
 
     protected abstract AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent);
@@ -64,9 +58,9 @@ abstract public class AbstractCppClassBuilder {
         return program;
     }
 
-    protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets() throws InvalidDataTypeException;
+    protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
 
-    public Structure getDataType() throws InvalidDataTypeException {
+    public Structure getDataType() {
 		if (built) {
 			return struct;
 		}
@@ -78,17 +72,6 @@ abstract public class AbstractCppClassBuilder {
 		int i = 0;
 		Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
 		for (ClassTypeInfo parent : baseMap.keySet()) {
-			try {
-				parent.validate();
-			} catch (InvalidDataTypeException e) {
-				try {
-					Msg.error(this, String.format(
-					"Unable to resolve %s in %s", parent.getName(), type.getName()));
-				} catch (InvalidDataTypeException e2) {
-					Msg.error(this, e);
-					continue;
-				}
-			}
 			AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
 			int offset = baseMap.get(parent);
 			if (offset == 0 && 0 < i++) {
@@ -105,33 +88,15 @@ abstract public class AbstractCppClassBuilder {
 					interfaces.add(comp.getDataType(), comp.getFieldName(), null);
 					replaceComponent(struct, interfaces, SUPER+INTERFACES, 0);
 				}
-				try {
-					interfaces.add(parentBuilder.getSuperClassDataType(),
-									SUPER+parent.getName(), null);
-				} catch (InvalidDataTypeException e) {
-					try {
-						Msg.error(this, String.format(
-						"Unable to resolve %s in %s", parent.getName(), type.getName()));
-					} catch (InvalidDataTypeException e2) {
-						Msg.error(this, e);
-					}
-				}
+				interfaces.add(parentBuilder.getSuperClassDataType(),
+								SUPER+parent.getName(), null);
 			} else if (offset < 0) {
 				// it is contained within another base class
 				// or unable to resolve and already reported
 				continue;
 			} else {
-				try {
-					replaceComponent(struct, parentBuilder.getSuperClassDataType(),
-						SUPER+parent.getName(), baseMap.get(parent));
-				} catch (InvalidDataTypeException e) {
-					try {
-						Msg.error(this, String.format(
-						"Unable to resolve %s in %s", parent.getName(), type.getName()));
-					} catch (InvalidDataTypeException e2) {
-						Msg.error(this, e);
-					}
-				}
+				replaceComponent(struct, parentBuilder.getSuperClassDataType(),
+					SUPER+parent.getName(), baseMap.get(parent));
 			}
 		}
         addVptr();
@@ -150,18 +115,17 @@ abstract public class AbstractCppClassBuilder {
 		return new UnionDataType(path, INTERFACES, dtm);
 	}
 
-    protected void setSuperStructureCategoryPath(Structure parent)
-        throws InvalidDataTypeException {
-            try {
-                parent.setCategoryPath(path);
-                parent.setName(SUPER+parent.getName());
-            } catch (InvalidNameException | DuplicateNameException e) {
-                Msg.error(
-                    this, "Failed to change placeholder struct "+type.getName()+"'s CategoryPath", e);
-            }
+    protected void setSuperStructureCategoryPath(Structure parent) {
+		try {
+			parent.setCategoryPath(path);
+			parent.setName(SUPER+parent.getName());
+		} catch (InvalidNameException | DuplicateNameException e) {
+			Msg.error(
+				this, "Failed to change placeholder struct "+type.getName()+"'s CategoryPath", e);
+		}
     }
 
-    protected Structure getSuperClassDataType() throws InvalidDataTypeException {
+    protected Structure getSuperClassDataType() {
 		if (type.getVirtualParents().isEmpty()) {
 			return getDataType();
 		}
@@ -217,7 +181,7 @@ abstract public class AbstractCppClassBuilder {
         return (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
     }
 
-    protected void deleteVirtualComponents(Structure superStruct) throws InvalidDataTypeException {
+    protected void deleteVirtualComponents(Structure superStruct) {
         Set<Structure> parents = new HashSet<>();
         for (ClassTypeInfo parent : type.getVirtualParents()) {
             Structure parentStruct = getParentBuilder(parent).getSuperClassDataType();

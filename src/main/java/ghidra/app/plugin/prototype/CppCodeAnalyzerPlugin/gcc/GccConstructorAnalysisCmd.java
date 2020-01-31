@@ -44,11 +44,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
     public GccConstructorAnalysisCmd(VttModel vtt) {
         this();
         this.vtt = vtt;
-        try {
-            this.type = vtt.getVtableModel(0).getTypeInfo();
-        } catch (InvalidDataTypeException e) {
-            Msg.error(this, e);
-        }
+        this.type = vtt.getVtableModel(0).getTypeInfo();
     }
 
     public GccConstructorAnalysisCmd(ClassTypeInfo typeinfo) {
@@ -64,11 +60,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
     public void setVtt(VttModel vtt) {
         this.vtt = vtt;
-        try {
-            this.type = vtt.getVtableModel(0).getTypeInfo();
-        } catch (InvalidDataTypeException e) {
-            Msg.error(this, e);
-        }
+        this.type = vtt.getVtableModel(0).getTypeInfo();
     }
 
     private Address getCalledFunctionAddress(Address fromAddress) {
@@ -114,12 +106,10 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
     private void addAddresses(Set<Address> addresses, Collection<ClassTypeInfo> parents) {
         for (ClassTypeInfo parent : parents) {
-            try {
-                addAddresses(addresses, Arrays.asList(parent.getParentModels()));
-                addAddresses(addresses, parent.getVirtualParents());
-                Vtable parentVtable = parent.getVtable();
-                addresses.addAll(Arrays.asList(parentVtable.getTableAddresses()));
-            } catch (InvalidDataTypeException e) {}
+			addAddresses(addresses, Arrays.asList(parent.getParentModels()));
+			addAddresses(addresses, parent.getVirtualParents());
+			Vtable parentVtable = parent.getVtable();
+			addresses.addAll(Arrays.asList(parentVtable.getTableAddresses()));
         }
     }
 

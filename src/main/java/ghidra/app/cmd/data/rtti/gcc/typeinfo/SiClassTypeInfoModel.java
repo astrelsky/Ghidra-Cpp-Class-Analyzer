@@ -10,7 +10,7 @@ import ghidra.program.model.data.StructureDataType;
 /**
  * Model for the __si_class_type_info class.
  */
-public class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
+public final class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
 
     public static final String STRUCTURE_NAME = "__si_class_type_info";
     private static final String DESCRIPTION = "Model for Single Inheritance Class Type Info";
@@ -18,7 +18,14 @@ public class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
     public static final String ID_STRING = "N10__cxxabiv120__si_class_type_infoE";
     private DataType typeInfoDataType;
 
-    public SiClassTypeInfoModel(Program program, Address address) {
+	public static SiClassTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new SiClassTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private SiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

@@ -1,8 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.util.Msg;
 
 public class CreateVtableBackgroundCmd extends AbstractCreateVtableBackgroundCmd {
 
@@ -14,11 +12,7 @@ public class CreateVtableBackgroundCmd extends AbstractCreateVtableBackgroundCmd
 
     public CreateVtableBackgroundCmd(VtableModel vtable) {
         super(vtable, NAME);
-        try {
-            this.type = vtable.getTypeInfo();
-        } catch (InvalidDataTypeException e) {
-            Msg.error(this, e);
-        }
+        this.type = vtable.getTypeInfo();
     }
 
     @Override
@@ -27,7 +21,7 @@ public class CreateVtableBackgroundCmd extends AbstractCreateVtableBackgroundCmd
     }
 
     @Override
-    protected String getMangledString() throws InvalidDataTypeException {
+    protected String getMangledString() {
         return VtableModel.MANGLED_PREFIX+type.getTypeName();
     }
 }

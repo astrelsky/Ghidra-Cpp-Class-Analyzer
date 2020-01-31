@@ -18,7 +18,14 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
     private static final String DESCRIPTION = "Model for Pointer Type Info";
     private DataType typeInfoDataType;
 
-    public PointerTypeInfoModel(Program program, Address address) {
+	public static PointerTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new PointerTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private PointerTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

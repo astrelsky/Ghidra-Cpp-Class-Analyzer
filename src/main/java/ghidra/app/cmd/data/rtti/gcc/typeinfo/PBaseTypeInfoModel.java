@@ -8,7 +8,7 @@ import ghidra.program.model.listing.Program;
 /**
  * Model for the __pbase_type_info class.
  */
-public class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
+public final class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
 
     public static final String STRUCTURE_NAME = "__pbase_type_info";
     public static final String DESCRIPTION = "Model for Pointer Base Type Info";
@@ -17,7 +17,14 @@ public class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
 
     private DataType typeInfoDataType;
 
-    public PBaseTypeInfoModel(Program program, Address address) {
+	public static PBaseTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new PBaseTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private PBaseTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

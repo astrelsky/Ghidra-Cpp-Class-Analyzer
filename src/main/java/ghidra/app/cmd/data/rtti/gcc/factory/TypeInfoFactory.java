@@ -1,12 +1,12 @@
 package ghidra.app.cmd.data.rtti.gcc.factory;
 
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.AbstractMap;
-import java.lang.reflect.Constructor;
+import java.util.function.BiFunction;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import ghidra.util.Msg;
+import ghidra.util.classfinder.ClassSearcher;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.data.DataTypeManager;
@@ -24,40 +24,21 @@ public class TypeInfoFactory {
 
     private TypeInfoFactory() {}
 
-    private static final Map<String, Class<? extends TypeInfo>> COPY_MAP = getMap();
-
-    private static Map<String, Class<? extends TypeInfo>> getMap() {
-        try {
-            return Map.ofEntries(
-                getEntry(ArrayTypeInfoModel.class),
-                getEntry(ClassTypeInfoModel.class),
-                getEntry(EnumTypeInfoModel.class),
-                getEntry(FunctionTypeInfoModel.class),
-                getEntry(FundamentalTypeInfoModel.class),
-                getEntry(PBaseTypeInfoModel.class),
-                getEntry(PointerToMemberTypeInfoModel.class),
-                getEntry(PointerTypeInfoModel.class),
-                getEntry(SiClassTypeInfoModel.class),
-                getEntry(VmiClassTypeInfoModel.class),
-                getEntry(TypeInfoModel.class),
-                getEntry(IosFailTypeInfoModel.class)
-            );
-        } catch (Exception e) {
-            Msg.error(TypeInfoFactory.class, e);
-            return null;
-        }
-    }
-
-    private static Entry<String, Class<? extends TypeInfo>> getEntry(
-        Class<? extends TypeInfo> type) throws Exception {
-            String key = (String) type.getField(ID_FIELD).get(null);
-            return new AbstractMap.SimpleEntry<>(key, type);
-        }
-
-    private static Constructor<? extends TypeInfo> getConstructor(Class<? extends TypeInfo> type)
-        throws NoSuchMethodException {
-            return type.getConstructor(Program.class, Address.class);
-    }
+	private static final Map<String, BiFunction<Program, Address, TypeInfo>> COPY_MAP =
+		Map.ofEntries(
+			Map.entry(ArrayTypeInfoModel.ID_STRING, ArrayTypeInfoModel::getModel),
+			Map.entry(ClassTypeInfoModel.ID_STRING, ClassTypeInfoModel::getModel),
+			Map.entry(EnumTypeInfoModel.ID_STRING, EnumTypeInfoModel::getModel),
+			Map.entry(FunctionTypeInfoModel.ID_STRING, FunctionTypeInfoModel::getModel),
+			Map.entry(FundamentalTypeInfoModel.ID_STRING, FundamentalTypeInfoModel::getModel),
+			Map.entry(PBaseTypeInfoModel.ID_STRING, PBaseTypeInfoModel::getModel),
+			Map.entry(PointerToMemberTypeInfoModel.ID_STRING, PointerToMemberTypeInfoModel::getModel),
+			Map.entry(PointerTypeInfoModel.ID_STRING, PointerTypeInfoModel::getModel),
+			Map.entry(SiClassTypeInfoModel.ID_STRING, SiClassTypeInfoModel::getModel),
+			Map.entry(VmiClassTypeInfoModel.ID_STRING, VmiClassTypeInfoModel::getModel),
+			Map.entry(TypeInfoModel.ID_STRING, TypeInfoModel::getModel),
+			Map.entry(IosFailTypeInfoModel.ID_STRING, IosFailTypeInfoModel::getModel)
+		);
 
     /**
      * Get the TypeInfo in the buffer.
@@ -82,8 +63,7 @@ public class TypeInfoFactory {
                 // invalid typeinfo
                 return null;
             } try {
-                Constructor<?> cloneContainer = getConstructor(COPY_MAP.get(baseTypeName));
-                return (TypeInfo) cloneContainer.newInstance(program, address);
+				return COPY_MAP.get(baseTypeName).apply(program, address);
             } catch (Exception e) {
                 Msg.error(TypeInfoFactory.class, "Unknown Exception", e);
                 return null;
@@ -118,18 +98,26 @@ public class TypeInfoFactory {
      * 
      * @param program
      * @param typename
-     * @return the TypeInfo structure for the typename (ex type_info, __class_type_info, etc.)
+     * @return the TypeInfo structure for the typename
+	 * @see TypeInfoModel#getDataType()
      */
     public static Structure getDataType(Program program, String typename) {
         if (COPY_MAP.containsKey(typename)) {
             try {
-                Method dataTypeGetter = COPY_MAP.get(typename).getDeclaredMethod(
-                    "getDataType", DataTypeManager.class);
-                return (Structure) dataTypeGetter.invoke(null, program.getDataTypeManager());
+				for (Class<? extends TypeInfo> type : ClassSearcher.getClasses(TypeInfo.class)) {
+					final Field field = type.getDeclaredField(ID_FIELD);
+					if (typename.equals((field.get(null)))) {
+						Method dataTypeGetter = type.getDeclaredMethod(
+							"getDataType", DataTypeManager.class);
+						return (Structure) dataTypeGetter.invoke(
+							null, program.getDataTypeManager());
+					}
+				}
             } catch (Exception e) {
                 Msg.error(TypeInfoFactory.class, e);
             }
         }
         return null;
-    }
+	}
+
 }

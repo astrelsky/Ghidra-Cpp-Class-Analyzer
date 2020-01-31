@@ -24,7 +24,14 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
     private static final int CONTEXT_ORDINAL = 1;
     private DataType typeInfoDataType;
 
-    public PointerToMemberTypeInfoModel(Program program, Address address) {
+	public static PointerToMemberTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new PointerToMemberTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private PointerToMemberTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

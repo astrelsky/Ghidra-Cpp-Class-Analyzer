@@ -11,14 +11,21 @@ import ghidra.program.model.data.PointerDataType;
 /**
  * Model for the __class_type_info class.
  */
-public class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
+public final class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     public static final String STRUCTURE_NAME = "__class_type_info";
     private static final String DESCRIPTION = "Model for Class Type Info";
 
     public static final String ID_STRING = "N10__cxxabiv117__class_type_infoE";
 
-    public ClassTypeInfoModel(Program program, Address address) {
+	public static ClassTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new ClassTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private ClassTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

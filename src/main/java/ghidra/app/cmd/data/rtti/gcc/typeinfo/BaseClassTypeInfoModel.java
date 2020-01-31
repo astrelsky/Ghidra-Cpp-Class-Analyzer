@@ -4,7 +4,6 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.mem.DumbMemBufferImpl;
@@ -112,7 +111,7 @@ final class BaseClassTypeInfoModel {
         return (Address) pointer.getValue(buf, pointer.getDefaultSettings(), -1);
     }
 
-    protected AbstractClassTypeInfoModel getClassModel() throws InvalidDataTypeException {
+    protected AbstractClassTypeInfoModel getClassModel() {
         Address classAddress = getClassAddress();
         if (program.getMemory().getBlock(classAddress).isInitialized()) {
             return (AbstractClassTypeInfoModel) getTypeInfo(program, classAddress);
@@ -124,7 +123,7 @@ final class BaseClassTypeInfoModel {
         return null;
     }
 
-    protected String getName() throws InvalidDataTypeException {
+    protected String getName() {
         return getClassModel().getName();
     }
 

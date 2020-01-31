@@ -94,18 +94,15 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 				monitor.incrementProgress(1);
 				continue;
 			}
-			try {
-				ClassTypeInfo type = new RttiModelWrapper(descriptor);
-				type.validate();
-				if (type.getNamespace() != null) {
-					classes.add(type);
-				}
-			} catch (InvalidDataTypeException e) {
+			ClassTypeInfo type = RttiModelWrapper.getWrapper(descriptor);
+			if (type == null) {
 				try {
 					Msg.debug(WindowsCppClassAnalyzer.class, descriptor.getTypeName());
 				} catch (InvalidDataTypeException e2) {
 					// I really hate this exception
 				}
+			} else if (type.getNamespace() != null) {
+					classes.add(type);
 			}
 			monitor.incrementProgress(1);
         }

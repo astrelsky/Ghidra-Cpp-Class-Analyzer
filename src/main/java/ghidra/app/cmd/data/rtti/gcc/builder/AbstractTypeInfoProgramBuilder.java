@@ -104,7 +104,7 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
         Program program = getProgram();
         for (Long offset : vtableMap.keySet()) {
             ClassTypeInfo type = VtableUtils.getTypeInfo(program, addr(offset));
-            list.add(new VtableModel(program, addr(offset), type));
+            list.add(VtableModel.getVtable(program, addr(offset), type));
         }
         return list;
     }

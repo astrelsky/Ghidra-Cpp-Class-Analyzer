@@ -74,22 +74,18 @@ public class ClassTypeInfoUtils {
      * @return The TypeInfo's Vtable Model or null if none exists
      */
     public static Vtable findVtable(Program program, Address address, TaskMonitor monitor)
-        throws CancelledException, InvalidDataTypeException {
+        throws CancelledException {
             SymbolTable table = program.getSymbolTable();
             Listing listing = program.getListing();
             TypeInfo typeinfo = TypeInfoFactory.getTypeInfo(program, address);
-            typeinfo.validate();
             if (!(typeinfo instanceof ClassTypeInfo)) {
-                throw new InvalidDataTypeException(
-                    "Invalid ClassTypeInfo at "+address.toString());
+                return Vtable.NO_VTABLE;
             }
             ClassTypeInfo type = (ClassTypeInfo) typeinfo;
             for (Symbol symbol : table.getChildren(typeinfo.getNamespace().getSymbol())) {
                 if (symbol.getName().equals(VtableModel.SYMBOL_NAME)) {
-                    VtableModel vtable = new VtableModel(program, symbol.getAddress());
                     try {
-                        vtable.validate();
-                        return vtable;
+                        return new VtableModel(program, symbol.getAddress());
                     } catch (InvalidDataTypeException e) {
                         break;
                     }
@@ -141,9 +137,9 @@ public class ClassTypeInfoUtils {
             if (invalidData(data)) {
                 continue;
             }
-            VtableModel vtable = new VtableModel(program, reference, typeinfo);
             try {
-                Function[][] functionTables = vtable.getFunctionTables();
+				final VtableModel vtable = new VtableModel(program, reference, typeinfo);
+                final Function[][] functionTables = vtable.getFunctionTables();
                 if (functionTables.length > 0) {
                     if (functionTables[0].length > 0) {
                         if (functionTables[0][0] == null) {
@@ -162,17 +158,14 @@ public class ClassTypeInfoUtils {
                             continue;
                         }
                     }
-                }
+				}
+				return vtable;
             } catch (InvalidDataTypeException e) {
                 continue;
             }
-            return vtable;
         }
-        try {
-            Msg.debug(ClassTypeInfoUtils.class, "Unable to find vtable for "+typeinfo.getNamespace().getName(true));
-        } catch (InvalidDataTypeException e) {
-            Msg.error(ClassTypeInfoUtils.class, e);
-        }
+		Msg.trace(ClassTypeInfoUtils.class,
+			"Unable to find vtable for "+typeinfo.getNamespace().getName(true));
         return VtableModel.NO_VTABLE;
     }
 
@@ -186,39 +179,38 @@ public class ClassTypeInfoUtils {
      *         DataTypeManager.
      * @throws InvalidDataTypeException
      */
-    public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm)
-        throws InvalidDataTypeException {
-            CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
-            DataType struct = dtm.getDataType(path, type.getName());
-            struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
-            DataTypePath dtPath = struct.getDataTypePath();
-            if (!dtPath.isAncestor(DWARF) && !(dtPath.toString().contains(".pdb") || dtPath.toString().contains(".xml"))) {
-                DataTypeManager cppDtm = getCppDataTypeManager(dtm);
-                if (cppDtm == null) {
-                    cppDtm = dtm;
-                }
-                struct = VariableUtilities.findExistingClassStruct(type.getGhidraClass(), cppDtm);
-                if (struct != null && path.isAncestorOrSelf(struct.getCategoryPath())) {
-                    struct = dtm.addDataType(struct, DataTypeConflictHandler.REPLACE_HANDLER);
-                } else {
-                    struct = new StructureDataType(path, type.getName(), 0, dtm);
-                    dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
-                    try {
-                        struct.setDescription(PLACEHOLDER_DESCRIPTION);
-                        struct.setCategoryPath(path);
-                    } catch (DuplicateNameException e) {
-                        Msg.error(
-                            ClassTypeInfoUtils.class, "Failed to change placeholder struct "
-                                  +type.getName()+"'s CategoryPath", e);
-                    }
-                }
-            }
-            if (!struct.equals(VariableUtilities.findOrCreateClassStruct(
-                    type.getGhidraClass(), dtm))) {
-                        Msg.error(ClassTypeInfoUtils.class, "Variable Utils returned wrong class structure! "
-                                        + type.getName());
-            }
-            return (Structure) struct;
+    public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm) {
+		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
+		DataType struct = dtm.getDataType(path, type.getName());
+		struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
+		DataTypePath dtPath = struct.getDataTypePath();
+		if (!dtPath.isAncestor(DWARF) && !(dtPath.toString().contains(".pdb") || dtPath.toString().contains(".xml"))) {
+			DataTypeManager cppDtm = getCppDataTypeManager(dtm);
+			if (cppDtm == null) {
+				cppDtm = dtm;
+			}
+			struct = VariableUtilities.findExistingClassStruct(type.getGhidraClass(), cppDtm);
+			if (struct != null && path.isAncestorOrSelf(struct.getCategoryPath())) {
+				struct = dtm.addDataType(struct, DataTypeConflictHandler.REPLACE_HANDLER);
+			} else {
+				struct = new StructureDataType(path, type.getName(), 0, dtm);
+				dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
+				try {
+					struct.setDescription(PLACEHOLDER_DESCRIPTION);
+					struct.setCategoryPath(path);
+				} catch (DuplicateNameException e) {
+					Msg.error(
+						ClassTypeInfoUtils.class, "Failed to change placeholder struct "
+								+type.getName()+"'s CategoryPath", e);
+				}
+			}
+		}
+		if (!struct.equals(VariableUtilities.findOrCreateClassStruct(
+				type.getGhidraClass(), dtm))) {
+					Msg.trace(ClassTypeInfoUtils.class, "Variable Utils returned wrong class structure! "
+									+ type.getName());
+		}
+		return (Structure) struct;
     }
 
     private static DataTypeManager getCppDataTypeManager(DataTypeManager dtm) {
@@ -314,7 +306,7 @@ public class ClassTypeInfoUtils {
      * @throws InvalidDataTypeException if the list contains an invalid ClassTypeInfo
      */
 	public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes,
-		TaskMonitor monitor) throws CancelledException, InvalidDataTypeException {
+		TaskMonitor monitor) throws CancelledException {
             Set<ClassTypeInfo> classSet = new LinkedHashSet<>(classes);
             List<ClassTypeInfo> sortedClasses = new ArrayList<>(classes.size());
             Iterator<ClassTypeInfo> classIterator = classSet.iterator();
@@ -399,7 +391,7 @@ public class ClassTypeInfoUtils {
             }
             struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
             return dtm.getPointer(struct, program.getDefaultPointerSize());
-        } catch (InvalidDataTypeException | DuplicateNameException e) {
+        } catch (DuplicateNameException e) {
             return null;
         }
     }

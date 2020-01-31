@@ -11,7 +11,6 @@ import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.GenericCallingConvention;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
@@ -91,13 +90,9 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
     protected Function createConstructor(ClassTypeInfo typeinfo, Address address) throws Exception {
         Function function = fManager.getFunctionContaining(address);
         if (function != null && VftableAnalysisUtils.isProcessedFunction(function)) {
-            try {
-                if (function.getName().equals(typeinfo.getName())) {
-                    return function;
-                }
-            } catch (InvalidDataTypeException e) {
-                Msg.error(this, "createConstructor", e);
-            }
+			if (function.getName().equals(typeinfo.getName())) {
+				return function;
+			}
         } else if (function != null) {
             function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, function.getEntryPoint());
         } else {
@@ -110,13 +105,9 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 
     protected boolean isConstructor(ClassTypeInfo typeinfo, Address address) {
         Function function = fManager.getFunctionContaining(address);
-        try {
-            if (function != null && function.getName().equals(typeinfo.getName())) {
-                return true;
-            }
-        } catch (InvalidDataTypeException e) {
-            Msg.error(this, "isConstructor", e);
-        }
+		if (function != null && function.getName().equals(typeinfo.getName())) {
+			return true;
+		}
         return false;
     }
 
@@ -187,9 +178,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
         throws CancelledException {
             Parameter auto = function.getParameter(0);
             if (!auto.isStackVariable()) {
-                try {
-                    symProp.setRegister(type.getVtable().getTableAddresses()[0], auto.getRegister());
-                } catch (InvalidDataTypeException e) {}
+                symProp.setRegister(type.getVtable().getTableAddresses()[0], auto.getRegister());
                 ConstantPropagationContextEvaluator eval =
                         new ConstantPropagationContextEvaluator(true);
                 symProp.flowConstants(
@@ -202,15 +191,11 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
         String name = comp.getFieldName();
         if (name != null && name.contains("super_")) {
             name = name.replace("super_", "");
-            try {
-                for (ClassTypeInfo parent : type.getParentModels()) {
-                    if (parent.getName().equals(name)) {
-                        return parent;
-                    }
-                }
-            } catch (InvalidDataTypeException e) {
-                Msg.error(this, e);
-            }
+			for (ClassTypeInfo parent : type.getParentModels()) {
+				if (parent.getName().equals(name)) {
+					return parent;
+				}
+			}
         }
         return null;
     }

@@ -130,13 +130,9 @@ public class TypeInfoUtils {
                 if (typeinfo == null) {
                     continue;
                 }
-                try {
-                    if (typeinfo.getTypeName().equals(typename)) {
-                        return typeinfo;
-                    }
-                } catch (InvalidDataTypeException e) {
-                    continue;
-                }
+				if (typeinfo.getTypeName().equals(typename)) {
+					return typeinfo;
+				}
             } return null;
     }
 
@@ -283,7 +279,7 @@ public class TypeInfoUtils {
      * @return the TypeInfo represented datatype's DataTypePath.
      * @throws InvalidDataTypeException
      */
-    public static DataTypePath getDataTypePath(TypeInfo type) throws InvalidDataTypeException {
+    public static DataTypePath getDataTypePath(TypeInfo type) {
         Namespace ns = type.getNamespace().getParentNamespace();
         String path;
         if (ns.isGlobal()) {
@@ -300,33 +296,31 @@ public class TypeInfoUtils {
      * @param program
      * @param reloc
      * @return a TypeInfo instance if the relocation can be resolved
-     * @throws InvalidDataTypeException if the relocation cannot be resolved
      */
-    public static TypeInfo getExternalTypeInfo(Program program, Relocation reloc) throws
-        InvalidDataTypeException {
-            Program extProgram = GnuUtils.getExternalProgram(program, reloc);
-            if (extProgram != null) {
-                SymbolTable table = extProgram.getSymbolTable();
-                for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
-                    if (TypeInfoFactory.isTypeInfo(extProgram, symbol.getAddress())) {
-                        return TypeInfoFactory.getTypeInfo(extProgram, symbol.getAddress());
-                    }
-                }
-            }
-            String name = reloc.getSymbolName();
-            StringBuilder msg = new StringBuilder("External TypeInfo symbol ");
-            if (name != null) {
-                DemangledObject demangled = demangle(name);
-                if (demangled != null) {
-                    msg.append(demangled.getSignature(true));
-                } else {
-                    msg.append(name);   
-                }
-            }
-            msg.append(" at ")
-            .append(reloc.getAddress().toString())
-            .append(" could not be resolved");
-            throw new InvalidDataTypeException(msg.toString());
+    public static TypeInfo getExternalTypeInfo(Program program, Relocation reloc) {
+		Program extProgram = GnuUtils.getExternalProgram(program, reloc);
+		if (extProgram != null) {
+			SymbolTable table = extProgram.getSymbolTable();
+			for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
+				if (TypeInfoFactory.isTypeInfo(extProgram, symbol.getAddress())) {
+					return TypeInfoFactory.getTypeInfo(extProgram, symbol.getAddress());
+				}
+			}
+		}
+		String name = reloc.getSymbolName();
+		StringBuilder msg = new StringBuilder("External TypeInfo symbol ");
+		if (name != null) {
+			DemangledObject demangled = demangle(name);
+			if (demangled != null) {
+				msg.append(demangled.getSignature(true));
+			} else {
+				msg.append(name);   
+			}
+		}
+		msg.append(" at ")
+		.append(reloc.getAddress().toString())
+		.append(" could not be resolved");
+		return null;
     }
 
 }

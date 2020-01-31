@@ -7,7 +7,6 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Enum;
 import ghidra.program.model.data.EnumDataType;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
@@ -26,7 +25,7 @@ import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 /**
  * Base Model for __pbase_type_info and its derivatives.
  */
-public abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
+abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
 
     private static final CategoryPath FLAGS_PATH = new CategoryPath(
         getCxxAbiCategoryPath(), PBaseTypeInfoModel.STRUCTURE_NAME);
@@ -179,10 +178,8 @@ public abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
     /**
      * Gets the TypeInfo base being pointed to.
      * @return the TypeInfo being pointed to.
-     * @throws InvalidDataTypeException
      */
-    public TypeInfo getPointee() throws InvalidDataTypeException {
-        validate();
+    public TypeInfo getPointee() {
         Structure struct = (Structure) getDataType();
         DataTypeComponent comp;
         if (this instanceof PBaseTypeInfoModel) {
@@ -196,8 +193,7 @@ public abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     @Override
-    public DataType getRepresentedDataType() throws InvalidDataTypeException {
-        validate();
+    public DataType getRepresentedDataType() {
         if (dataType == null) {
             DataType pointeeType = parseDataType(getPointee().getTypeName());
             dataType = program.getDataTypeManager().getPointer(pointeeType);

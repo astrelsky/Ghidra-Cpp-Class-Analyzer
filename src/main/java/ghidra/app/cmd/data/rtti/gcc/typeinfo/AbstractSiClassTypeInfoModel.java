@@ -3,7 +3,6 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 import java.util.Set;
 
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
@@ -17,7 +16,7 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
 /**
  * Base Model for __si_class_type_info and its derivatives.
  */
-public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
+abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     protected AbstractSiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
@@ -34,8 +33,7 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
     }
 
     @Override
-    public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
-        validate();
+    public ClassTypeInfo[] getParentModels() {
         Address baseAddress = getBaseTypeAddress(program, address);
         if (baseAddress != null && program.getMemory().getBlock(baseAddress).isInitialized()) {
             TypeInfo parent = TypeInfoFactory.getTypeInfo(program, baseAddress);
@@ -60,8 +58,7 @@ public abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfo
     }
 
     @Override
-    public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
-        validate();
+    public Set<ClassTypeInfo> getVirtualParents() {
         ClassTypeInfo[] parents = getParentModels();
         return parents[0].getVirtualParents();
     }

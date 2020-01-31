@@ -12,7 +12,6 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.data.DataUtilities;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.app.cmd.data.rtti.TypeInfo;
@@ -52,18 +51,14 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
             }
             program = (Program) obj;
             monitor = taskMonitor;
-            typeInfo.validate();
             return doApplyTo();
         } catch (CancelledException e) {
             setStatusMsg("User cancelled " + getName() + ".");
-            return false;
-        } catch (InvalidDataTypeException e) {
-            setStatusMsg(e.getMessage());
-            return false;
-        }
+		}
+		return false;
     }
 
-    private boolean doApplyTo() throws CancelledException, InvalidDataTypeException {
+    private boolean doApplyTo() throws CancelledException {
         try {
             monitor.checkCanceled();
             Data data = createData(typeInfo.getAddress(), typeInfo.getDataType());
@@ -84,7 +79,7 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
         return DataUtilities.createData(program, address, dt, 0, false, CLEAR_ALL_CONFLICT_DATA);
     }
 
-    private boolean applyTypeInfoSymbols() throws InvalidDataTypeException {
+    private boolean applyTypeInfoSymbols() {
         SymbolTable table = program.getSymbolTable();
         Namespace ns = typeInfo.getNamespace();
         Address typenameAddress = getAbsoluteAddress(

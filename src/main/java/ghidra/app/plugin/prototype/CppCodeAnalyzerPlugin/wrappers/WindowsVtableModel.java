@@ -58,13 +58,6 @@ public class WindowsVtableModel implements Vtable {
     }
 
     @Override
-    public void validate() throws InvalidDataTypeException {
-        for (VfTableModel vftable : vftables) {
-            vftable.validate();
-        }
-    }
-
-    @Override
     public Address[] getTableAddresses() {
         Address[] addresses = new Address[vftables.size()];
         for (int i = 0; i < addresses.length; i++) {

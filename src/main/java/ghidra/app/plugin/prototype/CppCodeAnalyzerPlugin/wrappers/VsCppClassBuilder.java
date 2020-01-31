@@ -7,6 +7,7 @@ import java.util.Map;
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Rtti1Model;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.util.datatype.microsoft.MSDataTypeUtils;
 import ghidra.program.model.data.DataType;
@@ -65,12 +66,7 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 	}
 
 	private static boolean hasVtable(RttiModelWrapper type) {
-		try {
-			type.getVtable().validate();
-			return true;
-		} catch (InvalidDataTypeException e) {
-		}
-		return false;
+		return Vtable.isValid(type.getVtable());
 	}
 	
 	private void addPointers() throws InvalidDataTypeException {
@@ -101,7 +97,7 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 	}
 
     @Override
-    protected Map<ClassTypeInfo, Integer> getBaseOffsets() throws InvalidDataTypeException {
+    protected Map<ClassTypeInfo, Integer> getBaseOffsets() {
         return getType().getBaseOffsets();
 	}
 	

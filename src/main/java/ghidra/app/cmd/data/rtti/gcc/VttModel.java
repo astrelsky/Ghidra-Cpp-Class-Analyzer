@@ -12,7 +12,6 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.listing.Program;
-import ghidra.util.Msg;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
@@ -55,14 +54,10 @@ public class VttModel {
                     elementCount = 0;
                 }
                 validAddresses = new HashSet<>();
-                try {
-                    for (ClassTypeInfo base : typeinfo.getParentModels()) {
-                        validAddresses.add(base.getAddress());
-                    }
-                    validAddresses.add(typeinfo.getAddress());
-                } catch (InvalidDataTypeException e) {
-                    Msg.error(this, "Error fething base parent models.", e);
-                }
+				for (ClassTypeInfo base : typeinfo.getParentModels()) {
+					validAddresses.add(base.getAddress());
+				}
+				validAddresses.add(typeinfo.getAddress());
             }
         } else {
             elementCount = 0;
@@ -149,14 +144,10 @@ public class VttModel {
                 return vtable;
             }
         }
-        try {
-            VtableModel vtable = (VtableModel) typeinfo.getVtable();
-            if (vtableContainsAddress(vtable, a)) {
-                return vtable;
-            }
-        } catch (InvalidDataTypeException e) {
-            Msg.error(this, e);
-        }
+		VtableModel vtable = (VtableModel) typeinfo.getVtable();
+		if (vtableContainsAddress(vtable, a)) {
+			return vtable;
+		}
         return null;
     }
 
@@ -208,24 +199,20 @@ public class VttModel {
         } return i;
     }
 
-    private int getVTTableCount() {
+    private int getVTTableCount() throws InvalidDataTypeException {
         int tableSize = 0;
         Address currentAddress = address;
         Set<ClassTypeInfo> validTypes;
-        try {
-            validTypes = new HashSet<>(Arrays.asList(typeinfo.getParentModels()));
-            Set<ClassTypeInfo> vParents = typeinfo.getVirtualParents();
-            if (!validTypes.containsAll(vParents)) {
-                for (ClassTypeInfo parent : new HashSet<>(validTypes)) {
-                    validTypes.addAll(Arrays.asList(parent.getParentModels()));
-                }
-                validTypes.addAll(vParents);
-            }
-            validTypes.add(typeinfo);
-            validTypes.forEach((a) -> validAddresses.add(a.getAddress()));
-        } catch (InvalidDataTypeException e) {
-            return 0;
-        }
+		validTypes = new HashSet<>(Arrays.asList(typeinfo.getParentModels()));
+		Set<ClassTypeInfo> vParents = typeinfo.getVirtualParents();
+		if (!validTypes.containsAll(vParents)) {
+			for (ClassTypeInfo parent : new HashSet<>(validTypes)) {
+				validTypes.addAll(Arrays.asList(parent.getParentModels()));
+			}
+			validTypes.addAll(vParents);
+		}
+		validTypes.add(typeinfo);
+		validTypes.forEach((a) -> validAddresses.add(a.getAddress()));
         constructionModels = new ArrayList<>();
         while (true) {
             if (!GnuUtils.isValidPointer(program, currentAddress)) {
@@ -261,7 +248,11 @@ public class VttModel {
 	 */
 	public int getElementCount() {
         if (elementCount == -1) {
-            elementCount = getVTTableCount();
+			try {
+				elementCount = getVTTableCount();
+			} catch (InvalidDataTypeException e) {
+				elementCount = 0;
+			}
         }
 		return elementCount;
 	}

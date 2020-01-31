@@ -13,11 +13,11 @@ import ghidra.util.Msg;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.data.IntegerDataType;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 
@@ -28,7 +28,7 @@ import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getCxxAbiCategoryPath;
 /**
  * Model for the __vmi_class_type_info class.
  */
-public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
+public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     public static final String STRUCTURE_NAME = "__vmi_class_type_info";
     private static final String DESCRIPTION = "Model for Virtual Multiple Inheritance Class Type Info";
@@ -48,7 +48,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     protected static final CategoryPath SUB_PATH = new CategoryPath(getCxxAbiCategoryPath(), STRUCTURE_NAME);
 
-    public enum Flags {
+    public static enum Flags {
         NON_DIAMOND,
         DIAMOND,
         NON_PUBLIC,
@@ -57,9 +57,16 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     private BaseClassTypeInfoModel[] bases;
-    private Flags flags;
+	private Flags flags;
+	
+	public static VmiClassTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new VmiClassTypeInfoModel(program, address);
+		}
+		return null;
+	}
 
-    public VmiClassTypeInfoModel(Program program, Address address) {
+    private VmiClassTypeInfoModel(Program program, Address address) {
         super(program, address);
         if (!typeName.equals(DEFAULT_TYPENAME)) {
             this.bases = getBases();
@@ -126,7 +133,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         return true;
     }
 
-    private List<AbstractClassTypeInfoModel> getParents() throws InvalidDataTypeException {
+    private List<AbstractClassTypeInfoModel> getParents() {
         List<AbstractClassTypeInfoModel> parents = new ArrayList<>();
         if (bases == null) {
             // this SHOULD be impossible
@@ -146,14 +153,13 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     @Override
-    public ClassTypeInfo[] getParentModels() throws InvalidDataTypeException {
-        validate();
+    public ClassTypeInfo[] getParentModels() {
         List<AbstractClassTypeInfoModel> parents = getParents();
         return parents.toArray(new ClassTypeInfo[parents.size()]);
     }
 
     @Override
-    public Set<ClassTypeInfo> getVirtualParents() throws InvalidDataTypeException {
+    public Set<ClassTypeInfo> getVirtualParents() {
         Set<ClassTypeInfo> result = new LinkedHashSet<>();
         for (BaseClassTypeInfoModel base : bases) {
             ClassTypeInfo parent = base.getClassModel();
@@ -166,7 +172,7 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     private Set<AbstractClassTypeInfoModel> getInheritableVirtualParents()
-        throws InvalidDataTypeException {
+        {
             Set<AbstractClassTypeInfoModel> result = new LinkedHashSet<>();
             for (BaseClassTypeInfoModel base : bases) {
                 AbstractClassTypeInfoModel parent = base.getClassModel();
@@ -213,20 +219,23 @@ public class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
      * @return a list containing the offsets of each derived class within this class.
      */
     public List<Long> getOffsets() {
-        List<Long> result = new ArrayList<>();
-        for (BaseClassTypeInfoModel base : bases) {
-            if(!base.isVirtual()) {
-                result.add((long) base.getOffset());
-            }
-        }
-        try {
-            long[] offsets = ((VtableModel) getVtable()).getBaseOffsetArray();
-            Arrays.sort(offsets);
-            for (int i = 1; i < offsets.length; i++) {
-                result.add(offsets[i]);
-            }
-        } catch (InvalidDataTypeException e) {}
-        return result;
+		if (Vtable.isValid(getVtable())) {
+			final List<Long> result = new ArrayList<>();
+			for (BaseClassTypeInfoModel base : bases) {
+				if(!base.isVirtual()) {
+					result.add((long) base.getOffset());
+				}
+			}
+			long[] offsets = ((VtableModel) getVtable()).getBaseOffsetArray();
+			if (offsets.length > 0) {
+				Arrays.sort(offsets);
+				for (int i = 1; i < offsets.length; i++) {
+					result.add(offsets[i]);
+				}
+				return result;
+			}
+		}
+		return Collections.emptyList();
     }
 
     private static DataType getFlags(DataTypeManager dtm, CategoryPath path) {

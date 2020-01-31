@@ -21,7 +21,14 @@ public final class FunctionTypeInfoModel extends AbstractTypeInfoModel {
 
     private DataType typeInfoDataType;
 
-    public FunctionTypeInfoModel(Program program, Address address) {
+	public static FunctionTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new FunctionTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private FunctionTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

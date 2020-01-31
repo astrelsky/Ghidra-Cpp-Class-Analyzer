@@ -18,7 +18,14 @@ public final class IosFailTypeInfoModel extends AbstractSiClassTypeInfoModel {
 
     private DataType typeInfoDataType;
 
-    public IosFailTypeInfoModel(Program program, Address address) {
+	public static IosFailTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new IosFailTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private IosFailTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 

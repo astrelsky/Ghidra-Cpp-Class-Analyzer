@@ -131,10 +131,9 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         for (ClassTypeInfo type : classes) {
             monitor.checkCanceled();
             Vtable vftable = type.getVtable();
-            try {
-                vftable.validate();
+            if (Vtable.isValid(vftable)) {
                 vftables.add(vftable);
-            } catch (InvalidDataTypeException e) {}
+            }
             monitor.incrementProgress(1);
         }
     }
@@ -152,8 +151,6 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                 type.getClassDataType();
             } catch (IndexOutOfBoundsException e) {
                 Msg.trace(this, e);
-            } catch (InvalidDataTypeException e) {
-                Msg.info(this, "Unable to resolve inheritance model for "+type.getName());
             }
             monitor.incrementProgress(1);
         }
@@ -212,16 +209,17 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     private void propagateConstants(Function function, ClassTypeInfo type) 
         throws CancelledException {
             Parameter auto = function.getParameter(0);
-            if (!auto.isStackVariable()) {
-                try {
-                    symProp.setRegister(type.getVtable().getTableAddresses()[0], auto.getRegister());
-                } catch (InvalidDataTypeException e) {}
-                ConstantPropagationContextEvaluator eval =
-                        new ConstantPropagationContextEvaluator(true);
-                symProp.flowConstants(
-                    function.getEntryPoint(), function.getBody(), eval, false, monitor);
+            if (auto != null && !auto.isStackVariable()) {
+				final Vtable vtable = type.getVtable();
+				if (Vtable.isValid(vtable)) {
+					symProp.setRegister(vtable.getTableAddresses()[0], auto.getRegister());
+					ConstantPropagationContextEvaluator eval =
+							new ConstantPropagationContextEvaluator(true);
+					symProp.flowConstants(
+						function.getEntryPoint(), function.getBody(), eval, false, monitor);
+				}
             }
-            // TODO figure out what to do for stack variable
+            // TODO await stack variable support in SymbolicPropogator
     }
 
     private void analyzeDestructor(ClassTypeInfo type, Function destructor) throws Exception {
@@ -287,12 +285,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         for (Vtable vtable : vftables) {
             monitor.checkCanceled();
             ClassTypeInfo type = vtable.getTypeInfo();
-            try {
-				type.validate();
-				namespaces.add(type);
-            } catch (InvalidDataTypeException e) {
-				Msg.error(this, e);
-            }
+			namespaces.add(type);
             monitor.incrementProgress(1);
 		}
 		monitor.setMessage("Sorting TypeInfo. Please Wait...");

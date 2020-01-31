@@ -7,7 +7,6 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.data.IntegerDataType;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Program;
 
 import static ghidra.program.database.data.DataTypeUtilities.findDataType;
@@ -23,7 +22,14 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
 
     private DataType typeInfoDataType;
 
-    public EnumTypeInfoModel(Program program, Address address) {
+	public static EnumTypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new EnumTypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private EnumTypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 
@@ -53,7 +59,7 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     @Override
-    public DataType getRepresentedDataType() throws InvalidDataTypeException {
+    public DataType getRepresentedDataType() {
         // __enum_type_info does not provide any information regarding the type.
         DataTypeManager dtm = program.getDataTypeManager();
         DataType result = findDataType(dtm, getNamespace(), getName(), null);

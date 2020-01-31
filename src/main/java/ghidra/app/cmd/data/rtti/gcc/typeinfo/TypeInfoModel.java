@@ -12,7 +12,7 @@ import ghidra.program.model.listing.Program;
 /**
  * Model for the type_info class.
  */
-public class TypeInfoModel extends AbstractTypeInfoModel {
+public final class TypeInfoModel extends AbstractTypeInfoModel {
 
     public static final String STRUCTURE_NAME = "type_info";
     private static final String DESCRIPTION = "Model for the base Type Info";
@@ -21,7 +21,14 @@ public class TypeInfoModel extends AbstractTypeInfoModel {
 
     public static final String ID_STRING = "St9type_info";
 
-    public TypeInfoModel(Program program, Address address) {
+	public static TypeInfoModel getModel(Program program, Address address) {
+		if (isValid(program, address, ID_STRING)) {
+			return new TypeInfoModel(program, address);
+		}
+		return null;
+	}
+
+    private TypeInfoModel(Program program, Address address) {
         super(program, address);
     }
 
