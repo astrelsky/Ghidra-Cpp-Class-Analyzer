@@ -62,16 +62,15 @@ public final class GnuUtils {
     }
 
     /**
-     * Gets the __cxxabiv1 CategoryPath.
-     * 
-     * @return the __cxxabiv1 CategoryPath.
+     * Gets the {@value #CXXABI} CategoryPath
+     * @return the {@value #CXXABI} CategoryPath
      */
     public static CategoryPath getCxxAbiCategoryPath() {
         return CXXABI_PATH;
     }
 
     /**
-     * @param dtm the programs datatype manager.
+     * @param dtm the programs datatype manager
      * @return true if LLP64 was defined
      */
     public static boolean isLLP64(DataTypeManager dtm) {
@@ -101,8 +100,7 @@ public final class GnuUtils {
 
     /**
      * Gets the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
-     * 
-     * @param dtm the programs datatype manager.
+     * @param dtm the programs datatype manager
      * @return the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
      */
     public static DataType getPtrDiff_t(DataTypeManager dtm) {
@@ -115,8 +113,7 @@ public final class GnuUtils {
 
     /**
      * Gets the size in bytes of __PTRDIFF_TYPE__
-     * 
-     * @param dtm the programs datatype manager.
+     * @param dtm the programs datatype manager
      * @return the size in bytes of __PTRDIFF_TYPE__
      */
     public static int getPtrDiffSize(DataTypeManager dtm) {
@@ -124,9 +121,9 @@ public final class GnuUtils {
     }
 
     /**
-     * Gets all MemoryBlocks in a Program which hold non-volatile data.
-     * @param program the program to be searched.
-     * @return A list of all memory blocks whose name contains "data" with non-volatile data.
+     * Gets all MemoryBlocks in a Program which hold non-volatile data
+     * @param program the program to be searched
+     * @return A list of all memory blocks whose name contains "data" with non-volatile data
      */
     public static List<MemoryBlock> getAllDataBlocks(Program program) {
         MemoryBlock[] blocks = program.getMemory().getBlocks();
@@ -142,20 +139,18 @@ public final class GnuUtils {
     }
 
     /**
-     * Returns true if this MemoryBlock has non-volatile data.
-     * 
-     * @param block
-     * @return true if this MemoryBlock has non-volatile data.
+     * Returns true if this MemoryBlock has non-volatile data
+     * @param block the memory block to test
+     * @return true if this MemoryBlock has non-volatile data
      */
     public static boolean isDataBlock(MemoryBlock block) {
         return block != null ? block.isRead() || block.isWrite() : false;
     }
 
     /**
-     * Checks if a Program's language is PowerPC64.
-     * 
-     * @param program
-     * @return true if the program's language is PowerPC64.
+     * Checks if a Program's language is PowerPC64
+     * @param program the program to test
+     * @return true if the program's language is PowerPC64
      */
     public static boolean hasFunctionDescriptors(Program program) {
         Processor processor = program.getLanguage().getProcessor();
@@ -164,17 +159,21 @@ public final class GnuUtils {
         } return isLLP64(program.getDataTypeManager());
     }
 
+	/**
+	 * Checks if the Program was compiled by a GNU variant
+	 * @param program the program to check
+	 * @return true if compiled by a GNU variant
+	 */
     public static boolean isGnuCompiler(Program program) {
         String id = program.getCompilerSpec().getCompilerSpecID().getIdAsString().toLowerCase();
         return COMPILER_NAMES.contains(id);
     }
 
     /**
-     * Checks if a function pointer is located at the specified address.
-     * 
-     * @param program
-     * @param address
-     * @return true if a function pointer is located at the specified address.
+     * Checks if a function pointer is located at the specified address
+     * @param program the program containing the data
+     * @param address the address of the data
+     * @return true if a function pointer is located at the specified address
      */
     public static boolean isFunctionPointer(Program program, Address address) {
         RelocationTable table = program.getRelocationTable();
@@ -209,21 +208,19 @@ public final class GnuUtils {
     }
 
     /**
-     * Checks if a null pointer is located at the specified address.
-     * 
-     * @param program
-     * @param address
-     * @return true if a null pointer is located at the specified address.
+     * Checks if a null pointer is located at the specified address
+     * @param program the program containing the data
+     * @param address the address of the data
+     * @return true if a null pointer is located at the specified address
      */
     public static boolean isNullPointer(Program program, Address address) {
         return isNullPointer(new MemoryBufferImpl(program.getMemory(), address));
     }
 
     /**
-     * Checks if a null pointer is located at the specified address.
-     * 
-     * @param buf
-     * @return true if a null pointer is located at the specified address.
+     * Checks if a null pointer is located at the specified address
+     * @param buf the memory buffer containing the data
+     * @return true if a null pointer is located at the specified address
      */
     public static boolean isNullPointer(MemBuffer buf) {
         try {
@@ -235,11 +232,10 @@ public final class GnuUtils {
     }
 
     /**
-     * Checks if a valid pointer is located at the specified address.
-     * 
-     * @param program
-     * @param address
-     * @return true if a valid pointer is located at the specified address.
+     * Checks if a valid pointer is located at the specified address
+     * @param program the program containing the data
+     * @param address the address of the data
+     * @return true if a valid pointer is located at the specified address
      */
     public static boolean isValidPointer(Program program, Address address) {
         Address pointee = getAbsoluteAddress(program, address);
@@ -249,10 +245,9 @@ public final class GnuUtils {
     }
 
     /**
-     * Checks if a valid pointer is located at the specified address.
-     * 
-     * @param buf
-     * @return true if a valid pointer is located at the specified address.
+     * Checks if a valid pointer is located at the specified address
+	 * @param buf the memory buffer containing the data
+     * @return true if a valid pointer is located at the specified address
      */
     public static boolean isValidPointer(MemBuffer buf) {
         return buf != null ?
@@ -260,11 +255,10 @@ public final class GnuUtils {
     }
 
     /**
-     * Gets all direct data references to the specified address.
-     * 
-     * @param program
-     * @param address
-     * @return a set of all direct data references to the specified address.
+     * Gets all direct data references to the specified address
+     * @param program the program containing the data
+     * @param address the address of the data
+     * @return a set of all direct data references to the specified address
      */
     public static Set<Address> getDirectDataReferences(Program program, Address address) {
         try {
@@ -275,29 +269,29 @@ public final class GnuUtils {
     }
 
     /**
-     * Gets all direct data references to the specified address.
-     * @param program
-     * @param dataAddress
-     * @param monitor
-     * @return a set of all direct data references to the specified address.
-     * @throws CancelledException
+     * Gets all direct data references to the specified address
+     * @param program the program containing the data
+     * @param address the address of the data
+     * @param monitor the task monitor
+     * @return a set of all direct data references to the specified address
+     * @throws CancelledException if the search is cancelled
      */
-    public static Set<Address> getDirectDataReferences(Program program, Address dataAddress,
+    public static Set<Address> getDirectDataReferences(Program program, Address address,
         TaskMonitor monitor) throws CancelledException {
-            if (dataAddress == null)
+            if (address == null)
                 return Collections.emptySet();
             List<MemoryBlock> dataBlocks = getAllDataBlocks(program);
             int pointerAlignment =
                 program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
             return ProgramMemoryUtil.findDirectReferences(program, dataBlocks,
-                pointerAlignment, dataAddress, monitor);
+                pointerAlignment, address, monitor);
     }
 
     /**
-     * Attempts to get the Program containing the data for the relocation.
+     * Attempts to get the Program containing the data for the relocation
      * @param program the program containing the relocation
      * @param reloc the relocation
-     * @return
+     * @return the external program or null if not resolved
      */
     public static Program getExternalProgram(Program program, Relocation reloc) {
         ExternalManager manager = program.getExternalManager();

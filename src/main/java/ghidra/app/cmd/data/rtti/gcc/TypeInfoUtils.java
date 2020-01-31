@@ -51,14 +51,13 @@ public class TypeInfoUtils {
     }
 
     /**
-     * Gets the typename for the __type_info at the specified address.
-     * 
-     * @param program the program to be searched.
-     * @param address the address of the TypeInfo Model's DataType.
-     * @return The TypeInfo's typename string or "" if invalid.
+     * Gets the typename for the {@value TypeInfoModel#STRUCTURE_NAME} at the specified address
+     * @param program the program to be searched
+     * @param address the address of the TypeInfo Model's DataType
+     * @return the TypeInfo's typename string or "" if invalid
      */
     public static String getTypeName(Program program, Address address) {
-        int pointerSize = program.getDefaultPointerSize();
+		int pointerSize = program.getDefaultPointerSize();
         Address nameAddress = getAbsoluteAddress(program, address.add(pointerSize));
         if (nameAddress == null) {
             return "";
@@ -84,14 +83,13 @@ public class TypeInfoUtils {
     }
 
     /**
-     * Locates the TypeInfo with the specified typeString.
-     * 
-     * @param program  the program to be searched.
-     * @param typename the typename of the typeinfo to search for.
-     * @param monitor  the active task monitor.
-     * @return the TypeInfo with the corresponding typename or invalid if it doesn't
-     *         exist.
-     * @throws CancelledException
+     * Locates the TypeInfo with the specified ID_STRING
+     * @param program  the program to be searched
+     * @param typename the typename of the typeinfo to search for
+     * @param monitor  the active task monitor
+     * @return the TypeInfo with the corresponding typename or invalid if it doesn't exist
+     * @throws CancelledException if the search is cancelled
+	 * @see TypeInfoModel#ID_STRING
      */
     public static TypeInfo findTypeInfo(Program program, String typename, TaskMonitor monitor)
         throws CancelledException {
@@ -100,15 +98,13 @@ public class TypeInfoUtils {
     }
 
     /**
-     * Locates the TypeInfo with the specified typename.
-     * 
-     * @param program  the program to be searched.
-     * @param set      the address set to be searched.
-     * @param typename the typename to search for.
-     * @param monitor  the active task monitor.
-     * @return the TypeInfo with the corresponding typename or null if it doesn't
-     *         exist.
-     * @throws CancelledException
+     * Locates the TypeInfo with the specified typename
+     * @param program the program to be searched
+     * @param set the address set to be searched
+     * @param typename the typename to search for
+     * @param monitor the active task monitor
+     * @return the TypeInfo with the corresponding typename or null if it doesn't exist
+     * @throws CancelledException if the search is cancelled
      */
     public static TypeInfo findTypeInfo(Program program, AddressSetView set, String typename,
         TaskMonitor monitor) throws CancelledException {
@@ -157,11 +153,12 @@ public class TypeInfoUtils {
     }
 
     /**
-     * Gets the identifier string for the __type_info at the specified address.
-     * 
-     * @param program the program to be searched.
-     * @param address the address of the TypeInfo Model's DataType.
-     * @return The TypeInfo's identifier string or "" if invalid.
+     * Gets the identifier string for the {@value TypeInfoModel#STRUCTURE_NAME}
+	 * at the specified address.
+     * @param program the program to be searched
+     * @param address the address of the TypeInfo Model's DataType
+     * @return The TypeInfo's identifier string or "" if invalid
+	 * @see TypeInfoModel#ID_STRING
      */
     public static String getIDString(Program program, Address address) {
         RelocationTable table = program.getRelocationTable();
@@ -207,11 +204,10 @@ public class TypeInfoUtils {
     }
 
     /**
-     * Checks if a typeinfo* is located at the specified address.
-     * 
-     * @param program the program to be searched.
+     * Checks if a typeinfo* is located at the specified address
+     * @param program the program to be searched
      * @param address the address of the suspected pointer
-     * @return true if a typeinfo* is present at the address.
+     * @return true if a typeinfo* is present at the address
      */
     public static boolean isTypeInfoPointer(Program program, Address address) {
         Address pointee = getAbsoluteAddress(program, address);
@@ -222,10 +218,9 @@ public class TypeInfoUtils {
     }
 
     /**
-     * Checks if a typeinfo* is present at the buffer's address.
-     * 
-     * @param buf
-     * @return true if a typeinfo* is present at the buffer's address.
+     * Checks if a typeinfo* is present at the buffer's address
+     * @param buf the buffer containing the data
+     * @return true if a typeinfo* is present at the buffer's address
      */
     public static boolean isTypeInfoPointer(MemBuffer buf) {
         return buf != null ?
@@ -233,7 +228,11 @@ public class TypeInfoUtils {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory#isTypeInfo
+     * Checks if a valid TypeInfo is located at the address in the program.
+     * @param program the program containing the TypeInfo
+     * @param address the address of the TypeInfo
+     * @return true if the buffer contains a valid TypeInfo
+     * @see TypeInfoFactory#isTypeInfo
      */
     public static boolean isTypeInfo(Program program, Address address) {
         /* Makes more sense to have it in this utility, but more convient to check 
@@ -242,17 +241,20 @@ public class TypeInfoUtils {
     }
     
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory#isTypeInfo
+     * Checks if a valid TypeInfo is located at the start of the buffer
+     * @param buf the memory buffer containing the TypeInfo data
+	 * @return true if the buffer contains a valid TypeInfo
+     * @see TypeInfoFactory#isTypeInfo
      */
     public static boolean isTypeInfo(MemBuffer buf) {
         return TypeInfoFactory.isTypeInfo(buf);
     }
 
     /**
-     * Gets the Namespace for the corresponding typename.
-     * @param program
-     * @param typename
-     * @return the Namespace for the corresponding typename.
+     * Gets the Namespace for the corresponding typename
+     * @param program the program containing the namespace
+     * @param typename the typename corresponding to the namespace
+     * @return the Namespace for the corresponding typename
      */
     public static Namespace getNamespaceFromTypeName(Program program, String typename) {
         return DemangledObject.createNamespace(
@@ -260,7 +262,11 @@ public class TypeInfoUtils {
     }
 
     /**
-     * @see ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory#getDataType
+     * Invokes getDataType on the TypeInfo containing the specified typename
+     * @param program the program containing the TypeInfo
+     * @param typename the type_info class's typename
+     * @return the TypeInfo structure for the typename
+     * @see TypeInfoFactory#getDataType
      */
     public static Structure getDataType(Program program, String typename) {
         return TypeInfoFactory.getDataType(program, typename);
@@ -273,9 +279,8 @@ public class TypeInfoUtils {
 
     /**
      * Retrieves the DataTypePath for the represented datatype
-     * 
      * @param type the TypeInfo
-     * @return the TypeInfo represented datatype's DataTypePath
+     * @return the TypeInfo's datatype DataTypePath
      */
     public static DataTypePath getDataTypePath(TypeInfo type) {
         Namespace ns = type.getNamespace().getParentNamespace();
@@ -291,8 +296,8 @@ public class TypeInfoUtils {
 
     /**
      * Attempts to fetch the TypeInfo instance referenced by the provided relocation
-     * @param program
-     * @param reloc
+     * @param program the program containing the relocation
+     * @param reloc the relocation
      * @return a TypeInfo instance if the relocation can be resolved
      */
     public static TypeInfo getExternalTypeInfo(Program program, Relocation reloc) {

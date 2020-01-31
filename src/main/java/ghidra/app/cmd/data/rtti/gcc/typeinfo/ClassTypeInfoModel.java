@@ -57,9 +57,9 @@ public final class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets a pointer to a __class_type_info datatype.
-     * @param dtm
-     * @return __class_type_info *
+     * Gets a pointer to a __class_type_info datatype
+     * @param dtm the datatype manager
+     * @return {@value #STRUCTURE_NAME}*
      */
     public static Pointer getPointer(DataTypeManager dtm) {
         return PointerDataType.getPointer(getDataType(dtm), dtm);

@@ -79,7 +79,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets the {@value #STRUCTURE_NAME} datatype.
+     * Gets the {@value #STRUCTURE_NAME} datatype
      */
     @Override
     public Structure getDataType() {
@@ -145,7 +145,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         }
         for (BaseClassTypeInfoModel base : bases) {
             if (!base.isVirtual()) {
-                parents.add(base.getClassModel());
+                parents.add((AbstractClassTypeInfoModel) base.getClassModel());
             }
         }
         try {
@@ -179,7 +179,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         {
             Set<AbstractClassTypeInfoModel> result = new LinkedHashSet<>();
             for (BaseClassTypeInfoModel base : bases) {
-                AbstractClassTypeInfoModel parent = base.getClassModel();
+				AbstractClassTypeInfoModel parent =
+					(AbstractClassTypeInfoModel) base.getClassModel();
                 if (base.isVirtual()) {
                     result.add(parent);
                 }
@@ -220,8 +221,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets a list of the offsets of each derived class within this class.
-     * @return a list containing the offsets of each derived class within this class.
+     * Gets a list of the offsets of each derived class within this class
+     * @return a list containing the offsets of each derived class within this class
      */
     public List<Long> getOffsets() {
 		if (Vtable.isValid(getVtable())) {
@@ -259,7 +260,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     /**
      * Gets the value of this datatypes's __flags_mask
-     * @param buf
+     * @param buf the buffer containing the {@value #STRUCTURE_NAME}
      * @return the value of this datatypes's __flags_mask
      */
     public Flags getFlags(MemBuffer buf) {
@@ -286,8 +287,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets the DataType representation of the __base_class_type_info array.
-     * @return the DataType representation of the __base_class_type_info array.
+     * Gets the DataType representation of the __base_class_type_info array
+     * @return the DataType representation of the __base_class_type_info array
      */
     public DataType getBaseArrayDataType() {
         int baseCount = getBaseCount();
@@ -296,8 +297,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     }
 
     /**
-     * Gets the address of the __base_class_type_info array.
-     * @return the address of the __base_class_type_info array.
+     * Gets the address of the __base_class_type_info array
+     * @return the address of the __base_class_type_info array
      */
     public Address getBaseArrayAddress() {
         return address.add(getDataType().getComponent(BASE_ARRAY_ORDINAL).getOffset());

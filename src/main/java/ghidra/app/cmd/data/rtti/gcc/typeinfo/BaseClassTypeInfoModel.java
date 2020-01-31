@@ -18,12 +18,13 @@ import static ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory.getTypeInfo;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 
 /**
  * Model for the {@value #STRUCTURE_NAME} helper class.
  */
-final class BaseClassTypeInfoModel {
+public final class BaseClassTypeInfoModel {
 
     private static final String DESCRIPTION =
         "Helper data type for the __base_class_type_info array";
@@ -41,8 +42,8 @@ final class BaseClassTypeInfoModel {
     }
 
     /**
-     * Checks if this base class is inherited virtually.
-     * @return true if this base class is inherited virtually.
+     * Checks if this base class is inherited virtually
+     * @return true if this base class is inherited virtually
      */
     public boolean isVirtual() {
         Structure struct = (Structure) getDataType();
@@ -52,8 +53,8 @@ final class BaseClassTypeInfoModel {
     }
 
     /**
-     * Checks if this base class is inherited publically.
-     * @return true if this base class is inherited publically.
+     * Checks if this base class is inherited publically
+     * @return true if this base class is inherited publically
      */
     public boolean isPublic() {
         Structure struct = (Structure) getDataType();
@@ -63,18 +64,26 @@ final class BaseClassTypeInfoModel {
     }
 
     /**
-     * Gets the value of this base class's offset.
-     * @return the value of this base class's offset.
+     * Gets the value of this base class's offset
+     * @return the value of this base class's offset
      */
     public int getOffset() {
         return (int) getFlags().getOffset();
     }
 
+	/**
+	 * Gets the {@value #STRUCTURE_NAME} datatype
+	 * @return the {@value #STRUCTURE_NAME} datatype
+	 */
     public DataType getDataType() {
         return getDataType(dtm);
     }
 
-    Address getAddress() {
+	/**
+	 * Gets the address of this {@value #STRUCTURE_NAME}
+	 * @return the address of this {@value #STRUCTURE_NAME}
+	 */
+    public Address getAddress() {
         return buf.getAddress();
     }
 
@@ -106,25 +115,39 @@ final class BaseClassTypeInfoModel {
         return result.getLength() <= 1 ? dtm.resolve(struct, REPLACE_HANDLER) : result;
     }
 
-    Address getClassAddress() {
-        Pointer pointer = ClassTypeInfoModel.getPointer(dtm);
-        return (Address) pointer.getValue(buf, pointer.getDefaultSettings(), -1);
-    }
-
-    AbstractClassTypeInfoModel getClassModel() {
+	/**
+	 * Gets the ClassTypeInfo model for this base class
+	 * @return the ClassTypeInfo
+	 */
+    public ClassTypeInfo getClassModel() {
         Address classAddress = getClassAddress();
         if (program.getMemory().getBlock(classAddress).isInitialized()) {
-            return (AbstractClassTypeInfoModel) getTypeInfo(program, classAddress);
+            return (ClassTypeInfo) getTypeInfo(program, classAddress);
         }
         Relocation reloc = program.getRelocationTable().getRelocation(getAddress());
         if (reloc != null && reloc.getSymbolName() != null) {
-            return (AbstractClassTypeInfoModel) TypeInfoUtils.getExternalTypeInfo(program, reloc);
+            return (ClassTypeInfo) TypeInfoUtils.getExternalTypeInfo(program, reloc);
         }
         return null;
     }
 
-    String getName() {
+	/**
+	 * Gets the base ClassTypeInfo's name
+	 * @return the base ClassTypeInfo's name
+	 * @see ClassTypeInfo#getName()
+	 */
+    public String getName() {
         return getClassModel().getName();
+	}
+	
+	/**
+	 * Gets the base ClassTypeInfo's address
+	 * @return the base ClassTypeInfo's address
+	 * @see ClassTypeInfo#getAddress()
+	 */
+	public Address getClassAddress() {
+        Pointer pointer = ClassTypeInfoModel.getPointer(dtm);
+        return (Address) pointer.getValue(buf, pointer.getDefaultSettings(), -1);
     }
 
     void advance() {

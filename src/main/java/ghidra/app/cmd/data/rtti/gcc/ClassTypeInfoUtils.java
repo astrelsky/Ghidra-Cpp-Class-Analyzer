@@ -72,6 +72,7 @@ public class ClassTypeInfoUtils {
      * @param address the address of the TypeInfo Model's DataType.
      * @param monitor the taskmonitor to be used while searching for the vtable
      * @return The TypeInfo's Vtable Model or null if none exists
+	 * @throws CancelledException if the search is cancelled
      */
     public static Vtable findVtable(Program program, Address address, TaskMonitor monitor)
         throws CancelledException {
@@ -306,6 +307,8 @@ public class ClassTypeInfoUtils {
      * Sorts a list of classes in order of most derived
      * @param program the program containing the list of ClassTypeInfo
      * @param classes the list of ClassTypeInfo
+	 * @param monitor the task monitor
+	 * @throws CancelledException is the operation is cancelled
      */
 	public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes,
 		TaskMonitor monitor) throws CancelledException {
@@ -338,10 +341,9 @@ public class ClassTypeInfoUtils {
 
     /**
      * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
-     * 
-     * @param program
-     * @param type
-     * @return
+     * @param program the program containing the ClassTypeInfo
+     * @param type the ClassTypeInfo
+     * @return the ClassTypeInfo's _vptr DataType
      */
     public static DataType getVptrDataType(Program program, ClassTypeInfo type) {
         return getVptrDataType(program, type, null);
@@ -349,11 +351,10 @@ public class ClassTypeInfoUtils {
 
     /**
      * Gets the DataType representation of the _vptr for the specified ClassTypeInfo. 
-     * 
-     * @param program
-     * @param type
+     * @param program the program containing the ClassTypeInfo
+     * @param type the ClassTypeInfo
      * @param path The category path to place the datatype in.
-     * @return
+     * @return the ClassTypeInfo's _vptr DataType
      */
     public static DataType getVptrDataType(Program program, ClassTypeInfo type, CategoryPath path) {
         try {

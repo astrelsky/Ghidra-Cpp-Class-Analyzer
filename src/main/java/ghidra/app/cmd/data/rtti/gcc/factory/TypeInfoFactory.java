@@ -84,19 +84,18 @@ public class TypeInfoFactory {
 					IosFailTypeInfoModel::getDataType)));
 
     /**
-     * Get the TypeInfo in the buffer.
+     * Get the TypeInfo in the buffer
      * @param buf the memory buffer containing the TypeInfo data
-     * @return the TypeInfo at the buffers address.
-     * @throws InvalidDataTypeException 
+     * @return the TypeInfo at the buffers address
      */
-    public static TypeInfo getTypeInfo(MemBuffer buf) throws InvalidDataTypeException {
+    public static TypeInfo getTypeInfo(MemBuffer buf) {
         return getTypeInfo(buf.getMemory().getProgram(), buf.getAddress());
     }
 
     /**
      * Get the TypeInfo at the address
-     * @param program
-     * @param address
+     * @param program the program containing the TypeInfo
+     * @param address the address of the TypeInfo
      * @return the TypeInfo at the specified address in the specified program
      * or null if none exists.
      */
@@ -115,7 +114,7 @@ public class TypeInfoFactory {
 
     /**
      * Checks if a valid TypeInfo is located at the start of the buffer
-     * @param buf
+     * @param buf the memory buffer containing the TypeInfo data
      * @return true if the buffer contains a valid TypeInfo
      */
     public static boolean isTypeInfo(MemBuffer buf) {
@@ -124,9 +123,9 @@ public class TypeInfoFactory {
 
     /**
      * Checks if a valid TypeInfo is located at the address in the program.
-     * @param program
-     * @param address
-     * @return true if the buffer contains a valid TypeInfo
+     * @param program the program containing the TypeInfo
+     * @param address the address of the TypeInfo
+     * @return true if the data is a valid TypeInfo
      */
     public static boolean isTypeInfo(Program program, Address address) {
         try {
@@ -138,9 +137,8 @@ public class TypeInfoFactory {
 
     /**
      * Invokes getDataType on the TypeInfo containing the specified typename
-     * 
-     * @param program
-     * @param typename
+     * @param program the program containing the TypeInfo
+     * @param typename the type_info class's typename
      * @return the TypeInfo structure for the typename
 	 * @see TypeInfoModel#getDataType()
      */

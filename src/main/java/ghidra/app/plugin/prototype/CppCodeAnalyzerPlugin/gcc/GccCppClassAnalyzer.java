@@ -12,7 +12,6 @@ import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.app.plugin.prototype.GccRttiAnalyzer;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
@@ -73,17 +72,13 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
     @Override
     protected boolean analyzeConstructor(ClassTypeInfo type) {
-        try {
-            VtableModel vtable = (VtableModel) type.getVtable();
-            VttModel vtt = VtableUtils.getVttModel(program, vtable);
-            if (vtt.isValid()) {
-                ((GccConstructorAnalysisCmd) constructorAnalyzer).setVtt(vtt);
-            } else {
-                constructorAnalyzer.setTypeInfo(type);
-            }
-        } catch (InvalidDataTypeException e) {
-            constructorAnalyzer.setTypeInfo(type);
-        }
+		VtableModel vtable = (VtableModel) type.getVtable();
+		VttModel vtt = VtableUtils.getVttModel(program, vtable);
+		if (vtt.isValid()) {
+			((GccConstructorAnalysisCmd) constructorAnalyzer).setVtt(vtt);
+		} else {
+			constructorAnalyzer.setTypeInfo(type);
+		}
         return constructorAnalyzer.applyTo(program);
     }
 }

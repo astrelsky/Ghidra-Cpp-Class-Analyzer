@@ -23,7 +23,7 @@ import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
 /**
- * Base Model for __pbase_type_info and its derivatives.
+ * Base Model for {@value PBaseTypeInfoModel#STRUCTURE_NAME} and its derivatives
  */
 abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
 
@@ -52,7 +52,7 @@ abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
 
     /**
      * Gets the DataType for the __qualifier_masks
-     * @param dtm
+     * @param dtm the datatype manager
      * @return the __qualifier_masks DataType
      */
     public static DataType getFlags(DataTypeManager dtm) {
@@ -120,47 +120,47 @@ abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     /**
-     * Returns true if the pointed to datatype is const.
-     * @return true if the pointed to datatype is const.
+     * Checks if the pointed to datatype is const
+     * @return true if the pointed to datatype is const
      */
     public boolean isConst() {
         return testFlags(Mask.CONSTANT);
     }
 
     /**
-     * Returns true if the pointed to datatype is volatile.
-     * @return true if the pointed to datatype is volatile.
+     * Checks if the pointed to datatype is volatile
+     * @return true if the pointed to datatype is volatile
      */
     public boolean isVolatile() {
         return testFlags(Mask.VOLATILE);
     }
 
     /**
-     * Returns true if the pointed to datatype is restrict.
-     * @return true if the pointed to datatype is restrict.
+     * Checks if the pointed to datatype is restrict
+     * @return true if the pointed to datatype is restrict
      */
     public boolean isRestrict() {
         return testFlags(Mask.RESTRICT);
     }
 
     /**
-     * Returns true if the pointed to datatype is incomplete.
-     * @return true if the pointed to datatype is incomplete.
+     * Checks if the pointed to datatype is incomplete
+     * @return true if the pointed to datatype is incomplete
      */
     public boolean isIncomplete() {
         return testFlags(Mask.INCOMPLETE);
     }
 
     /**
-     * Returns true if the pointed to datatype is an incomplete class.
-     * @return true if the pointed to datatype is an incomplete class.
+     * Checks if the pointed to datatype is an incomplete class
+     * @return true if the pointed to datatype is an incomplete class
      */
     public boolean isIncompleteClass() {
         return testFlags(Mask.INCOMPLETE_CLASS);
     }
 
     /**
-     * Returns true if the pointed to datatype is transaction_safe (synchronized)
+     * Checks if the pointed to datatype is transaction_safe (synchronized)
      * @return true if the pointed to datatype is transaction_safe (synchronized)
      */
     public boolean isTransactionSafe() {
@@ -168,16 +168,16 @@ abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
     }
 
     /**
-     * Returns true if the pointed to datatype is specified as noexcept.
-     * @return true if the pointed to datatype is specified as noexcept.
+     * Checks if the pointed to datatype is specified as noexcept
+     * @return true if the pointed to datatype is specified as noexcept
      */
     public boolean isNoExcept() {
         return testFlags(Mask.NO_EXCEPT);
     }
 
     /**
-     * Gets the TypeInfo base being pointed to.
-     * @return the TypeInfo being pointed to.
+     * Gets the TypeInfo base being pointed to
+     * @return the TypeInfo being pointed to
      */
     public TypeInfo getPointee() {
         Structure struct = (Structure) getDataType();

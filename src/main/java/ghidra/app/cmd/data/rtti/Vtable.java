@@ -13,31 +13,27 @@ public interface Vtable {
 	}
 
     /**
-     * Returns the TypeInfo Model this vtable points to.
-     * 
-     * @return the pointed to TypeInfo Model.
+     * Returns the TypeInfo Model this vtable points to
+     * @return the pointed to TypeInfo Model
      */
     public ClassTypeInfo getTypeInfo();
 
     /**
-     * Gets the addresses of this vtable's function tables.
-     * 
-     * @return the addresses of this vtable's function tables.
+     * Gets the addresses of this vtable's function tables
+     * @return the addresses of this vtable's function tables
      */
     public Address[] getTableAddresses();
 
     /**
-     * Gets the function tables in this vtable.
-     * 
-     * @return this vtable's function tables.
+     * Gets the function tables in this vtable
+     * @return this vtable's function tables
      */
     public Function[][] getFunctionTables();
 
     /**
-     * Checks if this vtable contains the specified function.
-     * 
-     * @param function
-     * @return true if this vtable contains the specified function.
+     * Checks if this vtable contains the specified function
+     * @param function the function to check for
+     * @return true if this vtable contains the specified function
      */
     public boolean containsFunction(Function function);
 }

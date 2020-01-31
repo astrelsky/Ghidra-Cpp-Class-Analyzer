@@ -39,6 +39,11 @@ public class VttModel {
         this.elementCount = 0;
     }
 
+	/**
+	 * Constructs a new VttModel
+	 * @param program the program containing the VttModel
+	 * @param address the address of the VttModel
+	 */
     public VttModel(Program program, Address address) {
         this.program = program;
         this.address = address;
@@ -81,18 +86,16 @@ public class VttModel {
     }
 
     /**
-     * Gets the address of this VttModel.
-     * 
-     * @return the address of this VttModel.
+     * Gets the address of this VttModel
+     * @return the address of this VttModel
      */
     public Address getAddress() {
         return address;
     }
 
     /**
-     * Checks if this VttModel is valid.
-     * 
-     * @return true if valid.
+     * Checks if this VttModel is valid
+     * @return true if valid
      */
     public boolean isValid() {
         int count = getElementCount();
@@ -100,10 +103,9 @@ public class VttModel {
     }
 
     /**
-     * Gets the VtableModel at the specified ordinal.
-     * 
-     * @param ordinal
-     * @return the VtableModel at the specified ordinal.
+     * Gets the Vtable at the specified ordinal
+     * @param ordinal the ordinal of the Vtable
+     * @return the Vtable at the specified ordinal
      */
     public Vtable getVtableModel(int ordinal) {
         Address pointee = getElementPointee(ordinal);
@@ -111,9 +113,10 @@ public class VttModel {
     }
 
     /**
-     * Gets the ClassTypeInfo at the specified ordinal.
-     * @param ordinal
-     * @return the ClassTypeInfo at the specified ordinal or null if none exists.
+     * Gets the ClassTypeInfo at the specified ordinal
+     * @param ordinal the ordinal of the Vtable containing the ClassTypeInfo pointer
+     * @return the ClassTypeInfo at the specified ordinal or null if none exists
+	 * @see Vtable#getTypeInfo()
      */
     public ClassTypeInfo getTypeInfo(int ordinal) {
         Address pointee = getElementPointee(ordinal);
@@ -152,9 +155,8 @@ public class VttModel {
     }
 
     /**
-     * Gets the construction vtable models in this VttModel.
-     * 
-     * @return the construction vtable models in this VttModel.
+     * Gets the construction vtable models in this VttModel
+     * @return the construction vtable models in this VttModel
      */
     public VtableModel[] getConstructionVtableModels() {
         if (!isValid()) {
@@ -242,9 +244,8 @@ public class VttModel {
     }
     
     /**
-	 * Gets the number of elements in this VttModel.
-     * 
-	 * @return the number of VTable Table elements or 0 if invalid.
+	 * Gets the number of elements in this VttModel
+	 * @return the number of VTable Table elements or 0 if invalid
 	 */
 	public int getElementCount() {
         if (elementCount == -1) {
@@ -258,9 +259,8 @@ public class VttModel {
 	}
 
     /**
-     * Gets the DataType for this VttModel.
-     * 
-     * @return the DataType for this VttModel.
+     * Gets the DataType for this VttModel
+     * @return the DataType for this VttModel
      */
     public DataType getDataType() {
         if (dataType == null) {

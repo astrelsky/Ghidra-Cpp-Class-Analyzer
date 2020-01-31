@@ -23,53 +23,45 @@ public interface ClassTypeInfo extends TypeInfo {
     /**
      * Gets the corresponding Ghidra Class for this TypeInfo and
      * creates it if none exists.
-     * 
-     * @return The class representation of this TypeInfo instance.
+     * @return The class representation of this TypeInfo instance
      */
     GhidraClass getGhidraClass();
 
     /**
-     * Checks if this ClassTypeInfo is a subclass of another type.
-     * 
-     * @return true if this is a subclass.
+     * Checks if this ClassTypeInfo is a subclass of another type
+     * @return true if this is a subclass
      */
     boolean hasParent();
 
     /**
-	 * Retrieves the Models of this ClassTypeInfo classes base classes.
-     * 
-     * @return the parent models.
+	 * Retrieves the Models of this ClassTypeInfo classes base classes
+     * @return the parent models
      */ 
     ClassTypeInfo[] getParentModels();
 
     /**
-     * Retrieves an ordered set of all virtually inherited base classes.
-     * 
-     * @return the set of virtual bases.
+     * Retrieves an ordered set of all virtually inherited base classes
+     * @return the set of virtual bases
      */
     public Set<ClassTypeInfo> getVirtualParents();
 
     /**
-     * Determines if the represented class is an abstract base.
-     * 
-     * @return true if abstract.
+     * Determines if the represented class is an abstract base
+     * @return true if abstract
      */
     boolean isAbstract();
 
     /**
-     * Gets the TypeInfo's Vtable Model.
-     * 
-     * @param monitor the taskmonitor to be used while searching for the vtable.
-     * 
-     * @return The TypeInfo's Vtable Model or null if none exists.
-     * @throws CancelledException
+     * Gets the TypeInfo's Vtable Model
+     * @param monitor the task monitor to be used while searching for the vtable
+     * @return The TypeInfo's Vtable Model or {@link Vtable#NO_VTABLE} if none exists
+     * @throws CancelledException if the search is cancelled
      */
     Vtable getVtable(TaskMonitor monitor) throws CancelledException;
 
     /**
-     * Gets the TypeInfo's Vtable Model.
-     * 
-     * @return The TypeInfo's Vtable Model or null if none exists.
+     * Gets the TypeInfo's Vtable Model
+     * @return The TypeInfo's Vtable Model or {@link Vtable#NO_VTABLE} if none exists
      */
     default Vtable getVtable() {
         try {
@@ -81,18 +73,16 @@ public interface ClassTypeInfo extends TypeInfo {
     }
 
     /**
-     * Gets the underlying structure of the class for this type_info.
-     * 
-     * @return the structure datatype for this class.
+     * Gets the underlying structure of the class for this ClassTypeInfo
+     * @return the structure datatype for this class
      */
     Structure getClassDataType();
 
     /**
-     * Gets a unique typename for this ClassTypeInfo instance.
+     * Gets a unique typename for this ClassTypeInfo instance
      * The resulting string should be identical across all architectures and binaries
      * for a compiler.
-     * 
-     * @return a unique typename string.
+     * @return a unique typename string
      */
     String getUniqueTypeName();
     

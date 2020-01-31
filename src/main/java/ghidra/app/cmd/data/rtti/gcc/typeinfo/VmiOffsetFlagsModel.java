@@ -22,35 +22,47 @@ import ghidra.program.model.listing.Program;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
 /**
- * Model for the __offset_flags in the __base_class_type_info helper class.
+ * Model for the {@value #DATA_TYPE_NAME} in the __base_class_type_info helper class
  */
-final class VmiOffsetFlagsModel {
+public final class VmiOffsetFlagsModel {
 
     private static final String DATA_TYPE_NAME = "__offset_flags";
     private static final String DESCRIPTION = "Model for the vmi offset flags";
 
-    protected static final int VIRTUAL_MASK = 1;
-    protected static final int PUBLIC_MASK = 2;
+    static final int VIRTUAL_MASK = 1;
+    static final int PUBLIC_MASK = 2;
 
     private Program program;
     private Address address;
 
-    protected VmiOffsetFlagsModel(Program program, Address address) {
+    VmiOffsetFlagsModel(Program program, Address address) {
         this.program = program;
         this.address = address;
     }
 
-    protected boolean isVirtual() {
+	/**
+	 * Checks if the virtual bit is set
+	 * @return true if the virtual bit is set
+	 */
+    public boolean isVirtual() {
         MemBuffer buf = new MemoryBufferImpl(program.getMemory(), address);
         return isVirtual(buf, program.getDataTypeManager());
     }
 
-    protected boolean isPublic() {
+	/**
+	 * Checks if the public bit is set
+	 * @return true if the public bit is set
+	 */
+    public boolean isPublic() {
         MemBuffer buf = new MemoryBufferImpl(program.getMemory(), address);
         return isPublic(buf, program.getDataTypeManager());
     }
 
-    protected long getOffset() {
+	/**
+	 * Gets the base class offset
+	 * @return the base class offset
+	 */
+    public long getOffset() {
         MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), address);
         DataTypeManager dtm = program.getDataTypeManager();
         Structure struct = (Structure) getDataType(dtm);
@@ -67,7 +79,7 @@ final class VmiOffsetFlagsModel {
         }
     }
 
-    protected static boolean isVirtual(MemBuffer buf, DataTypeManager dtm) {
+    static boolean isVirtual(MemBuffer buf, DataTypeManager dtm) {
         Structure struct = (Structure) getDataType(dtm);
         DataTypeComponent flagsComponent;
         if (dtm.getDataOrganization().isBigEndian()) {
@@ -80,7 +92,7 @@ final class VmiOffsetFlagsModel {
         return value.testBit(0);
     }
 
-    protected static boolean isPublic(MemBuffer buf, DataTypeManager dtm) {
+    static boolean isPublic(MemBuffer buf, DataTypeManager dtm) {
         Structure struct = (Structure) getDataType(dtm);
         DataTypeComponent flagsComponent;
         if (dtm.getDataOrganization().isBigEndian()) {
@@ -93,7 +105,7 @@ final class VmiOffsetFlagsModel {
         return value.testBit(1);
     }
 
-    protected static DataType getDataType(DataTypeManager dtm) {
+    static DataType getDataType(DataTypeManager dtm) {
         StructureDataType struct = new StructureDataType(VmiClassTypeInfoModel.SUB_PATH, DATA_TYPE_NAME, 0, dtm);
         if (dtm.getDataOrganization().isBigEndian()) {
             struct.add(getOffsetFlags(dtm), "__offset", null);

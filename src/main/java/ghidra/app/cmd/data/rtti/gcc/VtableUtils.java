@@ -1,5 +1,10 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.address.AddressRange;
@@ -8,7 +13,6 @@ import ghidra.program.model.data.Array;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DefaultDataType;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.Undefined;
 import ghidra.program.model.listing.Data;
@@ -18,18 +22,12 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
+import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
@@ -46,33 +44,33 @@ public class VtableUtils {
     }
 
     /**
-     * Gets the number of ptrdiff_t's in the vtable_prefix at the address.
-     * 
-     * @param program
-     * @param address
-     * @return the number of ptrdiff_t's in the vtable_prefix at the address.
+     * Gets the number of ptrdiff_t's in the vtable_prefix at the address
+     * @param program the program containing the vtable_prefix
+     * @param address the address of the vtable_prefix
+     * @return the number of ptrdiff_t's in the vtable_prefix at the address
      */
     public static int getNumPtrDiffs(Program program, Address address) {
         return getNumPtrDiffs(program, address, -1);
     }
 
-    /* This is not pretty. The rules I have found are as follows.
-       Positive values may only repeate when going down.
-       Negative values and 0 may repeate.
-       Values may not go from negative/positive and then back or vise-versa.
-       AddressOverflowException and MemoryAccessException may only occur when
-       counting upwards from the typeinfo pointer.
-       Most classes within libstdc++ contain no more than 2 ptrdiff_t's,
-       however this was written to be able to withstand large inheritance chains. */
     /**
-     * Gets the size of the ptrdiff_t array at the start of a vtable_prefix.
-     * 
-     * @param program
-     * @param address
-     * @param maxLength
-     * @return the number of ptrdiff_t's in the array or 0 if invalid.
+     * Gets the size of the ptrdiff_t array at the start of a vtable_prefix
+     * @param program the program containing the ptrdiff_t array
+     * @param address the address of the ptrdiff_t array
+     * @param maxLength the max length for the ptrdiff_t array
+     * @return the number of ptrdiff_t's in the array or 0 if invalid
      */
     public static int getNumPtrDiffs(Program program, Address address, int maxLength) {
+		/**
+		 * This is not pretty. The rules I have found are as follows.
+		 * Positive values may only repeate when going down.
+		 * Negative values and 0 may repeate.
+		 * Values may not go from negative/positive and then back or vise-versa.
+		 * AddressOverflowException and MemoryAccessException may only occur when
+		 * counting upwards from the typeinfo pointer.
+		 * Most classes within libstdc++ contain no more than 2 ptrdiff_t's,
+		 * however this was written to be able to withstand large inheritance chains.
+		 */
         if (maxLength < 0) {
             maxLength = MAX_PTR_DIFFS;
         }
@@ -185,11 +183,10 @@ public class VtableUtils {
     }
 
     /**
-     * Returns the TypeInfo Model this vtable points to.
-     * 
-     * @param program program the vtable is in.
-     * @param address address of the start of the vtable.
-     * @return the pointed to TypeInfo Model or null if none found.
+     * Returns the TypeInfo Model this vtable points to
+     * @param program program the vtable is in
+     * @param address address of the start of the vtable
+     * @return the pointed to TypeInfo Model or null if not found
      */
     public static ClassTypeInfo getTypeInfo(Program program, Address address) {
         DataTypeManager dtm = program.getDataTypeManager();
@@ -203,11 +200,10 @@ public class VtableUtils {
     }
 
     /**
-     * Gets the number of elements in the vtable_prefix's function table.
-     * 
-     * @param program
-     * @param address
-     * @return the number of elements in the vtable_prefix's function table.
+     * Gets the number of elements in the vtable_prefix's function table
+     * @param program the program containing the function table
+     * @param address the address of the function table
+     * @return the number of elements in the vtable_prefix's function table
      */
     public static int getFunctionTableLength(Program program, Address address) {
         int tableSize = 0;
@@ -243,8 +239,8 @@ public class VtableUtils {
 
     /**
      * Gets the function table at the specified address.
-     * @param program
-     * @param address
+     * @param program the program containing the function table
+     * @param address the address of the function table
      * @return a Function[] representing the function table.
      */
     public static Function[] getFunctionTable(Program program, Address address) {
@@ -290,41 +286,38 @@ public class VtableUtils {
     }
 
     /**
-     * Gets the VttModel for the specified VtableModel if one exists.
-     * 
-     * @param program
-     * @param vtable
-     * @return the VttModel or invalid if none.
-     * @throws InvalidDataTypeException
+     * Gets the VttModel for the specified VtableModel if one exists
+     * @param program the program containing the vtable
+     * @param vtable the vtable
+     * @return the VttModel or {@link VttModel#INVALID} if none
      */
-    public static VttModel getVttModel(Program program, VtableModel vtable)
-        throws InvalidDataTypeException {
-            if (vtable.getTypeInfo().getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
-                return VttModel.INVALID;
-            }
-            Address[] tableAddresses = vtable.getTableAddresses();
-            if (tableAddresses.length == 0) {
-                return VttModel.INVALID;
-            }
-            Set<Address> references = GnuUtils.getDirectDataReferences(program, tableAddresses[0]);
-            if (references.isEmpty()) {
-                return VttModel.INVALID;
-            }
-            // VTT typically follows the vtable
-            Address address = vtable.getAddress().add(vtable.getLength());
-            if (references.contains(address)) {
-                VttModel vtt = new VttModel(program, address);
-                if (vtt.isValid()) {
-                    return vtt;
-                }
-            }
-            Iterator<Address> refIterator = references.iterator();
-            while (refIterator.hasNext()) {
-                VttModel vtt = new VttModel(program, refIterator.next());
-                if (vtt.isValid()) {
-                    return vtt;
-                }
-            }
-            return VttModel.INVALID;
+    public static VttModel getVttModel(Program program, VtableModel vtable) {
+		if (vtable.getTypeInfo().getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
+			return VttModel.INVALID;
+		}
+		Address[] tableAddresses = vtable.getTableAddresses();
+		if (tableAddresses.length == 0) {
+			return VttModel.INVALID;
+		}
+		Set<Address> references = GnuUtils.getDirectDataReferences(program, tableAddresses[0]);
+		if (references.isEmpty()) {
+			return VttModel.INVALID;
+		}
+		// VTT typically follows the vtable
+		Address address = vtable.getAddress().add(vtable.getLength());
+		if (references.contains(address)) {
+			VttModel vtt = new VttModel(program, address);
+			if (vtt.isValid()) {
+				return vtt;
+			}
+		}
+		Iterator<Address> refIterator = references.iterator();
+		while (refIterator.hasNext()) {
+			VttModel vtt = new VttModel(program, refIterator.next());
+			if (vtt.isValid()) {
+				return vtt;
+			}
+		}
+		return VttModel.INVALID;
     }
 }
