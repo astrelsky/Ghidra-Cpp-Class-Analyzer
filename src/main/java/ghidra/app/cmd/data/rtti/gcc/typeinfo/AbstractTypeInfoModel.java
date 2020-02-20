@@ -5,7 +5,6 @@ import java.util.regex.Matcher;
 
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.app.util.demangler.DemangledObject;
@@ -67,7 +66,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 		}
 		return true;
 	}
-	
+
 	protected static String getErrorMessage(Address address) {
 		return String.format(ERROR_MESSAGE, address);
 	}

@@ -10,8 +10,6 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows.WindowsConstructorAnalysisCmd;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows.WindowsVftableAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
@@ -149,5 +147,5 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
     protected boolean isDestructor(Function function) {
         return function.getName().contains("destructor");
     }
-    
+
 }

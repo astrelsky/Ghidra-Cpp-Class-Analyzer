@@ -20,7 +20,6 @@ import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.util.Msg;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -51,7 +50,7 @@ public final class VtableModel implements Vtable {
 	public static VtableModel getVtable(Program program, Address address) {
 		return getVtable(program, address, null);
 	}
-	
+
 	public static VtableModel getVtable(Program program, Address address, ClassTypeInfo type) {
 		try {
 			return new VtableModel(program, address, type);
@@ -62,7 +61,7 @@ public final class VtableModel implements Vtable {
 
     private VtableModel() {
 	}
-	
+
 	VtableModel(Program program, Address address) throws InvalidDataTypeException {
         this(program, address, null, -1, false);
     }
@@ -71,10 +70,10 @@ public final class VtableModel implements Vtable {
 		throws InvalidDataTypeException {
         	this(program, address, type, -1, false);
     }
-    
+
     /**
 	 * Constructs a new VtableModel
-	 * 
+	 *
 	 * @param program      program the vtable is in.
 	 * @param address      starting address of the vtable or the first typeinfo pointer.
 	 * @param type         the ClassTypeInfo this vtable belongs to.
@@ -139,7 +138,7 @@ public final class VtableModel implements Vtable {
 
     /**
      * Gets the corrected start address of the vtable.
-     * 
+     *
      * @return the correct start address or NO_ADDRESS if invalid.
      */
     public Address getAddress() {
@@ -193,10 +192,10 @@ public final class VtableModel implements Vtable {
 		}
 		return 0;
 	}
-    
+
     /**
      * Gets the ptrdiff_t value within the base offset array.
-     * 
+     *
      * @param index the index in the vtable_prefix array.
      * @param ordinal the offset ordinal.
      * @return the offset value.
@@ -210,7 +209,7 @@ public final class VtableModel implements Vtable {
 
     /**
      * Gets the whole ptrdiff_t array.
-     * 
+     *
      * @return the whole ptrdiff_t array.
      */
     public long[] getBaseOffsetArray() {
@@ -222,7 +221,7 @@ public final class VtableModel implements Vtable {
 
     /**
      * Gets the number of vtable_prefix's in this vtable.
-     * 
+     *
      * @return the number of vtable_prefix's in this vtable.
      */
     public int getElementCount() {

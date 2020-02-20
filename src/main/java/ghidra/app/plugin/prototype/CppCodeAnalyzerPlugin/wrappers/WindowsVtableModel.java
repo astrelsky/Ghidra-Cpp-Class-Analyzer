@@ -67,9 +67,9 @@ public class WindowsVtableModel implements Vtable {
     }
 
     private Function[] getFunctions(VfTableModel vftable) {
-        Function[] functions = new Function[vftable.getElementCount()];
+        Function[] functions = new Function[vftable.getCount()];
         FunctionManager manager = program.getFunctionManager();
-        for (int i = 0; i < vftable.getElementCount(); i++) {
+        for (int i = 0; i < vftable.getCount(); i++) {
             functions[i] = manager.getFunctionAt(vftable.getVirtualFunctionPointer(i));
         }
         return functions;
@@ -99,7 +99,7 @@ public class WindowsVtableModel implements Vtable {
         }
         return false;
 	}
-	
+
 	public int getVirtualOffset(Rtti1Model model) throws InvalidDataTypeException {
 		if (vbtableBuffer != null) {
 			try {
