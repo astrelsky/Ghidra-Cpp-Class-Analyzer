@@ -30,6 +30,7 @@ import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.ImageBaseOffset32DataType;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Data;
@@ -67,7 +68,7 @@ public final class RttiModelWrapper implements ClassTypeInfo {
 	private final List<String> baseTypes;
 	private final Set<ClassTypeInfo> virtualParents;
 	private final Map<ClassTypeInfo, Integer> baseOffsets;
-	
+
 	private RttiModelWrapper(Rtti1Model model) throws InvalidDataTypeException {
 		this.baseModel = model;
 		final Program program = model.getProgram();
@@ -181,12 +182,13 @@ public final class RttiModelWrapper implements ClassTypeInfo {
 		}
 		final Program program = model.getProgram();
 		final Address addr = model.getAddress();
+		int alignment = new ImageBaseOffset32DataType(program.getDataTypeManager()).getAlignment();
 		ReferenceFilter filter = new ReferenceFilter(program);
 		try {
-			Stream<Address> addresses =
-				ProgramMemoryUtil.findImageBaseOffsets32(program, 0, addr, TaskMonitor.DUMMY)
-								.stream()
-								.filter(filter);
+			Stream<Address> addresses = ProgramMemoryUtil
+				.findImageBaseOffsets32(program, alignment, addr, TaskMonitor.DUMMY)
+				.stream()
+				.filter(filter);
 			for (Address address : (Iterable<Address>) () -> addresses.iterator()) {
 				Rtti1Model baseDescriptor = new Rtti1Model(program, address, DEFAULT_OPTIONS);
 				try {
@@ -310,7 +312,7 @@ public final class RttiModelWrapper implements ClassTypeInfo {
 				 .sorted()
 				 .collect(Collectors.toList());
 	}
-	
+
 	@Override
 	public ClassTypeInfo[] getParentModels() {
 		return parents;
@@ -365,7 +367,7 @@ public final class RttiModelWrapper implements ClassTypeInfo {
         }
         return false;
 	}
-	
+
 	private Vtable doGetVtable() {
 		final List<Address> addresses = getVftableAddresses();
 		if (!addresses.isEmpty()) {
@@ -378,7 +380,7 @@ public final class RttiModelWrapper implements ClassTypeInfo {
     public Vtable getVtable(TaskMonitor monitor) throws CancelledException {
         return vtable;
 	}
-	
+
 	private int getVirtualOffset(Rtti1Model model) {
 		if (Vtable.isValid(vtable)) {
 			try {
@@ -423,14 +425,14 @@ public final class RttiModelWrapper implements ClassTypeInfo {
 
     @Override
     public String getUniqueTypeName() {
-        
+
         StringBuilder builder = new StringBuilder();
         for (String name : baseTypes) {
             builder.append(name);
         }
         return builder.toString();
 	}
-	
+
 	@Override
     public Set<ClassTypeInfo> getVirtualParents() {
         return virtualParents;
@@ -453,7 +455,7 @@ public final class RttiModelWrapper implements ClassTypeInfo {
     protected Map<ClassTypeInfo, Integer> getBaseOffsets() {
         return baseOffsets;
 	}
-	
+
 	private Map<ClassTypeInfo, Integer> doGetBaseOffsets() throws InvalidDataTypeException {
         Map<ClassTypeInfo, Integer> map = new HashMap<>(bases.size());
         for (Rtti1Model base : bases) {
@@ -476,7 +478,7 @@ public final class RttiModelWrapper implements ClassTypeInfo {
 		private ReferenceFilter(Program program) {
 			this.listing = program.getListing();
 		}
-	
+
 		@Override
 		public boolean test(Address t) {
 			final Data data = listing.getDataContaining(t);
