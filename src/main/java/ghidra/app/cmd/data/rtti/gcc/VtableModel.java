@@ -127,7 +127,10 @@ public final class VtableModel implements Vtable {
     public boolean equals(Object object) {
         if (!(object instanceof VtableModel)) {
             return false;
-        }
+		}
+		if (this == NO_VTABLE || object == NO_VTABLE) {
+			return this == object;
+		}
 		getTypeInfo();
 		ClassTypeInfo otherType = ((VtableModel) object).getTypeInfo();
 		if (type != null && otherType != null) {

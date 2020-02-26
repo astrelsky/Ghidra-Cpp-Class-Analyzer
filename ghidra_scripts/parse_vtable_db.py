@@ -1,4 +1,4 @@
-#@category VtableDatabase
+#@category CppClassAnalyzer
 import json
 from ghidra.util.task.TaskMonitor import DUMMY
 from ghidra.program.model.data import InvalidDataTypeException
@@ -64,11 +64,7 @@ def validate_typeinfo(symbol):
 def validate_vtable(ti):
     if not isinstance(ti, ClassTypeInfo):
         return False
-    try:
-        ti.getVtable().validate()
-        return True
-    except InvalidDataTypeException:
-        return False
+    return ti.getVtable() != VtableModel.NO_VTABLE
 
 def populate_database(symbol_table, vtables):
     db = {}
@@ -174,5 +170,5 @@ if __name__ == '__main__':
                 if demangled:
                     address = symbol.getAddress()
                     removeFunction(getFunctionAt(address))
-                    demangled.applyTo(currentProgram, address, options, DUMMY)      
+                    demangled.applyTo(currentProgram, address, options, DUMMY)
             break

@@ -1,4 +1,4 @@
-#@category VtableDatabase
+#@category CppClassAnalyzer
 import json
 from ghidra.app.cmd.data.rtti.gcc import VtableModel
 from ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory import getTypeInfo, isTypeInfo
@@ -62,16 +62,12 @@ def validate_typeinfo(symbol):
 
 @monitored
 def validate_vtable(ti):
-    try:
-        ti.getVtable().validate()
-        return True
-    except InvalidDataTypeException:
-        return False
+    return ti.getVtable() != VtableModel.NO_VTABLE
 
 def populate_database(symbol_table, vtables):
     db = {}
-    monitor.initialize(len(vtables))
     monitor.setMessage("dumping vtables")
+    monitor.initialize(len(vtables))
     for vtable in vtables:
         key = vtable.getTypeInfo().getUniqueTypeName()
         if key in db:
