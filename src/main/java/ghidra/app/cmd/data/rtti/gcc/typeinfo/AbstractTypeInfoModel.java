@@ -149,11 +149,11 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
             int index = demangled.indexOf(" ");
             demangled = demangled.substring(0, index);
         }
-        return new DemangledDataType(demangled);
+        return new DemangledDataType(null, demangled, demangled);
     }
 
     protected DemangledFunctionReference getDemangledFunction(String signature) {
-        DemangledFunctionReference method = new DemangledFunctionReference();
+        DemangledFunctionReference method = new DemangledFunctionReference("_Z"+typeName, signature);
         Matcher matcher = FUNCTION_PATTERN.matcher(signature);
         if (matcher.matches()) {
             method.setReturnType(getDemangledType(matcher.group(1)));
@@ -168,6 +168,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
         return method;
     }
 
+	// TODO this needs to be retested or improved
     protected DataType parseDataType(String dataTypeName) {
         DemangledObject demangled = demangle("_Z1_"+dataTypeName);
         if (demangled != null) {
@@ -179,7 +180,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
                     DemangledFunctionReference method = getDemangledFunction(matcher.group(1));
                     return ((Pointer) method.getDataType(dtm)).getDataType();
                 }
-                DemangledDataType dt = new DemangledDataType(matcher.group(1));
+                DemangledDataType dt = new DemangledDataType(null, matcher.group(1), matcher.group(1));
                 return dt.getDataType(dtm);
             }
         } return null;

@@ -1,5 +1,8 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
+import java.util.List;
+import java.util.Set;
+
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
@@ -8,33 +11,25 @@ import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
-import ghidra.program.model.symbol.Namespace;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.symbol.*;
 import ghidra.program.model.util.CodeUnitInsertionException;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
-import ghidra.program.model.data.CategoryPath;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypePath;
-import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.TerminatedStringDataType;
-import ghidra.program.model.data.Undefined;
+import ghidra.program.model.data.*;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.program.model.data.DataUtilities.ClearDataMode;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
+import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.demangler.DemangledObject;
-import ghidra.app.util.demangler.DemangledType;
 
-import static ghidra.program.model.data.DataUtilities.createData;
-
-import java.util.List;
-import java.util.Set;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.app.util.demangler.DemanglerUtil.demangle;
+import static ghidra.program.model.data.DataUtilities.createData;
 
 public class TypeInfoUtils {
 
@@ -235,11 +230,11 @@ public class TypeInfoUtils {
      * @see TypeInfoFactory#isTypeInfo
      */
     public static boolean isTypeInfo(Program program, Address address) {
-        /* Makes more sense to have it in this utility, but more convient to check 
+        /* Makes more sense to have it in this utility, but more convient to check
            if it is valid or not within the factory */
         return TypeInfoFactory.isTypeInfo(program, address);
     }
-    
+
     /**
      * Checks if a valid TypeInfo is located at the start of the buffer
      * @param buf the memory buffer containing the TypeInfo data
@@ -257,8 +252,17 @@ public class TypeInfoUtils {
      * @return the Namespace for the corresponding typename
      */
     public static Namespace getNamespaceFromTypeName(Program program, String typename) {
-        return DemangledObject.createNamespace(
-            program, getDemangledType(typename), program.getGlobalNamespace(), false);
+		DemangledObject demangled = demangle("_ZTI"+typename);
+		if (demangled != null) {
+			try {
+				return NamespaceUtils.createNamespaceHierarchy(
+					demangled.getNamespaceString(), null, program, SourceType.ANALYSIS);
+			} catch (InvalidInputException e) {
+				// unexpected
+				throw new AssertException(e);
+			}
+		}
+		return null;
     }
 
     /**
@@ -270,11 +274,6 @@ public class TypeInfoUtils {
      */
     public static Structure getDataType(Program program, String typename) {
         return TypeInfoFactory.getDataType(program, typename);
-    }
-
-    private static DemangledType getDemangledType(String typename) {
-        DemangledObject demangled = demangle("_ZTI"+typename);
-        return demangled != null ? demangled.getNamespace() : null;
     }
 
     /**
@@ -317,7 +316,7 @@ public class TypeInfoUtils {
 			if (demangled != null) {
 				msg.append(demangled.getSignature(true));
 			} else {
-				msg.append(name);   
+				msg.append(name);
 			}
 		}
 		msg.append(" at ")
