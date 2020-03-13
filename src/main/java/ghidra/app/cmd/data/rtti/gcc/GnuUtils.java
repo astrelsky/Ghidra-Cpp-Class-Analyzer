@@ -7,8 +7,6 @@ import java.util.Collections;
 
 import docking.Tool;
 import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.LongLongDataType;
-import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunction;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.framework.main.AppInfo;
@@ -28,11 +26,10 @@ import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.listing.Library;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.data.AbstractIntegerDataType;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataOrganization;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.IntegerDataType;
-import ghidra.program.model.data.LongDataType;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
@@ -77,24 +74,9 @@ public final class GnuUtils {
         return dtm.getDataOrganization().getPointerSize() == 8;
     }
 
-    private static DataType getPointerSizedInteger(DataTypeManager dtm) {
-        DataOrganization org = dtm.getDataOrganization();
-        String dtName = org.getIntegerCTypeApproximation(org.getPointerSize(), true);
-        switch(dtName) {
-            case DemangledDataType.LONG_LONG:
-                return LongLongDataType.dataType;
-            case DemangledDataType.LONG:
-                return LongDataType.dataType;
-            case DemangledDataType.INT:
-                return IntegerDataType.dataType;
-            default:
-                DemangledDataType dt = new DemangledDataType(dtName);
-                return dt.getDataType(null);
-        }
-    }
-
     private static DataType createPtrDiff(DataTypeManager dtm) {
-        DataType dataType = getPointerSizedInteger(dtm);
+		DataOrganization org = dtm.getDataOrganization();
+        DataType dataType = AbstractIntegerDataType.getSignedDataType(org.getPointerSize(), dtm);
         return new TypedefDataType(CategoryPath.ROOT, PTRDIFF, dataType, dtm);
     }
 
@@ -228,7 +210,7 @@ public final class GnuUtils {
                 0, buf.getMemory().getProgram().getDefaultPointerSize(), false).longValue() == 0;
         } catch (MemoryAccessException e) {
             return false;
-        }  
+        }
     }
 
     /**
