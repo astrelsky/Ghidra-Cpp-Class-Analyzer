@@ -38,7 +38,7 @@ def get_mangled_symbol(table, address):
 
 def get_types(symbol_table):
     if not isGnuCompiler(currentProgram):
-        return getClassTypeInfoList(currentProgram)
+        return getClassTypeInfoList(currentProgram, monitor)
     type_symbols = [symbol for symbol in symbol_table.getAllSymbols(False)
                     if SYMBOL_NAME in symbol.getName()]
     types = []
