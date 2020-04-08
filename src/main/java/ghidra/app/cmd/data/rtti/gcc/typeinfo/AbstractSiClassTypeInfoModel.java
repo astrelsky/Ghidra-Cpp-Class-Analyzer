@@ -6,6 +6,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
+import ghidra.util.exception.AssertException;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
@@ -24,7 +25,8 @@ abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     private static Address getBaseTypeAddress(Program program, Address address) {
         Address pointerAddress = address.add(program.getDefaultPointerSize() << 1);
-        return getAbsoluteAddress(program, pointerAddress);
+		Address result = getAbsoluteAddress(program, pointerAddress);
+		return result != null ? result : Address.NO_ADDRESS;
     }
 
     @Override
@@ -34,27 +36,41 @@ abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     @Override
     public ClassTypeInfo[] getParentModels() {
-        Address baseAddress = getBaseTypeAddress(program, address);
-        if (baseAddress != null && program.getMemory().getBlock(baseAddress).isInitialized()) {
-            TypeInfo parent = TypeInfoFactory.getTypeInfo(program, baseAddress);
-            if (parent instanceof ClassTypeInfo) {
-                return new ClassTypeInfo[]{
-                    (ClassTypeInfo) parent
-                    };
-            }
+		Address baseAddress = getBaseTypeAddress(program, address);
+		TypeInfo parent = null;
+		if (!baseAddress.equals(Address.NO_ADDRESS)
+			&& program.getMemory().getBlock(baseAddress).isInitialized()) {
+				parent = TypeInfoFactory.getTypeInfo(program, baseAddress);
+				if (parent instanceof ClassTypeInfo) {
+					return new ClassTypeInfo[] {
+						(ClassTypeInfo) parent
+					};
+				}
         }
         RelocationTable table = program.getRelocationTable();
-        Relocation reloc = table.getRelocation(
-            address.add(program.getDefaultPointerSize() << 1));
+        Relocation reloc = table.getRelocation(baseAddress);
         if (reloc != null && reloc.getSymbolName() != null) {
-            TypeInfo parent = TypeInfoUtils.getExternalTypeInfo(program, reloc);
+            parent = TypeInfoUtils.getExternalTypeInfo(program, reloc);
             if (parent instanceof ClassTypeInfo) {
                 return new ClassTypeInfo[]{
                     (ClassTypeInfo) parent
-                    };
+                };
             }
-        }
-        return new ClassTypeInfo[0];
+		}
+		StringBuilder builder = new StringBuilder("SiClassTypeInfo at ");
+		builder.append(address.toString())
+			   .append(" has an invalid parent ");
+		if (parent == null) {
+			builder.append("located at ")
+				   .append(reloc != null ? "relocation "+reloc.getAddress().toString()
+				   		   : baseAddress.toString());
+		} else {
+			if (!(parent instanceof ClassTypeInfo)) {
+			   builder.append("Non __class_type_info ");
+			}
+			builder.append(parent.toString());
+		}
+		throw new AssertException(builder.toString());
     }
 
     @Override

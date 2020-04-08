@@ -10,6 +10,7 @@ import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.EnumDataType;
 import ghidra.program.model.data.IntegerDataType;
@@ -158,8 +159,11 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     @Override
     public ClassTypeInfo[] getParentModels() {
-        List<AbstractClassTypeInfoModel> parents = getParents();
-        return parents.toArray(new ClassTypeInfo[parents.size()]);
+		List<AbstractClassTypeInfoModel> parents = getParents();
+		if (parents.size() > 0) {
+			return parents.toArray(new ClassTypeInfo[parents.size()]);
+		}
+		throw new AssertException(toString() + " has no parents");
     }
 
     @Override

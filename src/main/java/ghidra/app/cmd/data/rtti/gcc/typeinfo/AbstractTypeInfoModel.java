@@ -184,5 +184,14 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
                 return dt.getDataType(dtm);
             }
         } return null;
-    }
+	}
+	
+	@Override
+	public String toString() {
+		return new StringBuilder()
+				  .append(typeName != "" ? typeName : "Invalid type_info")
+				  .append(" address: ")
+				  .append(address.toString())
+				  .toString();
+	}
 }
