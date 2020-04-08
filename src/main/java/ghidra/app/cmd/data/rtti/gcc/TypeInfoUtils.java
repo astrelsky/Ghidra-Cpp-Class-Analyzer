@@ -2,6 +2,8 @@ package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.address.Address;
@@ -32,6 +34,8 @@ import static ghidra.app.util.demangler.DemanglerUtil.demangle;
 import static ghidra.program.model.data.DataUtilities.createData;
 
 public class TypeInfoUtils {
+	
+	private static final Pattern TYPEINFO_STRIPPER = Pattern.compile("(.+)(?:\\:\\:typeinfo)$");
 
     private TypeInfoUtils() {
     }
@@ -254,12 +258,15 @@ public class TypeInfoUtils {
     public static Namespace getNamespaceFromTypeName(Program program, String typename) {
 		DemangledObject demangled = demangle("_ZTI"+typename);
 		if (demangled != null) {
-			try {
-				return NamespaceUtils.createNamespaceHierarchy(
-					demangled.getNamespaceString(), null, program, SourceType.ANALYSIS);
-			} catch (InvalidInputException e) {
-				// unexpected
-				throw new AssertException(e);
+			Matcher matcher = TYPEINFO_STRIPPER.matcher(demangled.getSignature());
+			if (matcher.matches()) {
+				try {
+					return NamespaceUtils.createNamespaceHierarchy(
+						matcher.group(1), null, program, SourceType.ANALYSIS);
+				} catch (InvalidInputException e) {
+					// unexpected
+					throw new AssertException(e);
+				}
 			}
 		}
 		return null;
