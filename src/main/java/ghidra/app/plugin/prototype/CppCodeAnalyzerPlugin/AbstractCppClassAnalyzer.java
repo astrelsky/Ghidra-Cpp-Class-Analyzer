@@ -1,12 +1,15 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Stream;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.ExternalClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -148,7 +151,16 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                 continue;
             }
             try {
-                type.getClassDataType();
+				type.getClassDataType();
+				Stream<ClassTypeInfo> external =
+					Arrays.stream(type.getParentModels())
+						  .filter(ExternalClassTypeInfo.class::isInstance);
+				if (external.findAny().isPresent()) {
+					String msg = type.getName()
+						+ " requires a missing external library."
+						+ " Its inheritance model may be inaccurate.";
+					log.appendMsg(msg);
+				}
             } catch (IndexOutOfBoundsException e) {
                 Msg.trace(this, e);
             }

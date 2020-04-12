@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.ExternalClassTypeInfo;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
@@ -61,13 +62,17 @@ abstract public class AbstractCppClassBuilder {
     protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
 
     public Structure getDataType() {
-		if (built) {
+		if (built || type instanceof ExternalClassTypeInfo) {
 			return struct;
 		}
         if (struct.isDeleted()) {
             struct = ClassTypeInfoUtils.getPlaceholderStruct(
                 type, program.getDataTypeManager());
-        }
+		}
+		Integer id = null;
+		if (program.getCurrentTransaction() == null) {
+			id = program.startTransaction("creating datatype for "+type.getName());
+		}
         stashComponents();
 		int i = 0;
 		Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
@@ -102,7 +107,11 @@ abstract public class AbstractCppClassBuilder {
         addVptr();
 		fixComponents();
 		built = true;
-        return resolveStruct(struct);
+		struct = resolveStruct(struct);
+		if (id != null) {
+			program.endTransaction(id, true);
+		}
+		return struct;
 	}
 	
 	private Union getInterfacesUnion() {
@@ -126,7 +135,7 @@ abstract public class AbstractCppClassBuilder {
     }
 
     protected Structure getSuperClassDataType() {
-		if (type.getVirtualParents().isEmpty()) {
+		if (type instanceof ExternalClassTypeInfo || type.getVirtualParents().isEmpty()) {
 			return getDataType();
 		}
         DataTypeManager dtm = program.getDataTypeManager();

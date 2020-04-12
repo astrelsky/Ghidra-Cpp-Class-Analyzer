@@ -109,7 +109,9 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 			addAddresses(addresses, Arrays.asList(parent.getParentModels()));
 			addAddresses(addresses, parent.getVirtualParents());
 			Vtable parentVtable = parent.getVtable();
-			addresses.addAll(Arrays.asList(parentVtable.getTableAddresses()));
+			if (parentVtable != Vtable.NO_VTABLE) {
+				addresses.addAll(Arrays.asList(parentVtable.getTableAddresses()));
+			}
         }
     }
 

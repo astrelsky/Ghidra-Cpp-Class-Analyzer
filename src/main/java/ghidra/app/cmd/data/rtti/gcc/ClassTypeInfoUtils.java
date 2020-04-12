@@ -177,6 +177,7 @@ public class ClassTypeInfoUtils {
      * @return the placeholder struct for a ClassTypeInfo in a specified DataTypeManager
      */
     public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm) {
+		int id = dtm.startTransaction("getting placeholder struct for "+type.getName());
 		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
 		DataType struct = dtm.getDataType(path, type.getName());
 		struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
@@ -207,6 +208,7 @@ public class ClassTypeInfoUtils {
 					Msg.trace(ClassTypeInfoUtils.class, "Variable Utils returned wrong class structure! "
 									+ type.getName());
 		}
+		dtm.endTransaction(id, true);
 		return (Structure) struct;
 	}
 	
@@ -324,12 +326,12 @@ public class ClassTypeInfoUtils {
 					monitor.checkCanceled();
                     ClassTypeInfo classType = stack.pop();
                     if (classType.hasParent() && classSet.contains(classType)) {
-                        ClassTypeInfo parent = classType.getParentModels()[0];
-                        if (classSet.contains(parent)) {
-                            stack.push(classType);
-                            stack.push(parent);
-                            continue;
-                        }
+						ClassTypeInfo parent = classType.getParentModels()[0];
+						if (classSet.contains(parent)) {
+							stack.push(classType);
+							stack.push(parent);
+							continue;
+						}
                     }
                     sortedClasses.add(classType);
                     classSet.remove(classType);

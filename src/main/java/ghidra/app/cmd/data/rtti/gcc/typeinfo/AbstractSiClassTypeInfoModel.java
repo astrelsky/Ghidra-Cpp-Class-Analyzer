@@ -1,5 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
+import java.util.Collections;
 import java.util.Set;
 
 import ghidra.program.model.address.Address;
@@ -9,6 +10,7 @@ import ghidra.program.model.reloc.RelocationTable;
 import ghidra.util.exception.AssertException;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.ExternalClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
@@ -48,7 +50,10 @@ abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 				}
         }
         RelocationTable table = program.getRelocationTable();
-        Relocation reloc = table.getRelocation(baseAddress);
+		Relocation reloc = table.getRelocation(baseAddress);
+		if (reloc == null) {
+			reloc = table.getRelocation(address.add(program.getDefaultPointerSize() << 1));
+		}
         if (reloc != null && reloc.getSymbolName() != null) {
             parent = TypeInfoUtils.getExternalTypeInfo(program, reloc);
             if (parent instanceof ClassTypeInfo) {
@@ -75,7 +80,11 @@ abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     @Override
     public Set<ClassTypeInfo> getVirtualParents() {
-        ClassTypeInfo[] parents = getParentModels();
+		ClassTypeInfo[] parents = getParentModels();
+		if (parents[0] instanceof ExternalClassTypeInfo) {
+			// TODO need more data to know if this is acceptable or not
+			return Collections.emptySet();
+		}
         return parents[0].getVirtualParents();
     }
 

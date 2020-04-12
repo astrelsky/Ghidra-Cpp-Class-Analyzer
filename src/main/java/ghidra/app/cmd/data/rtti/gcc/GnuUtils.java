@@ -296,8 +296,8 @@ public final class GnuUtils {
                 continue;
             }
             Program exProgram = openProgram(path);
-            Namespace global = exProgram.getGlobalNamespace();
             if (exProgram != null) {
+				Namespace global = exProgram.getGlobalNamespace();
                 SymbolTable exTable = exProgram.getSymbolTable();
                 if (!exTable.getSymbols(reloc.getSymbolName(), global).isEmpty()) {
                     return exProgram;
@@ -309,7 +309,10 @@ public final class GnuUtils {
 
     private static Program openProgram(String path) {
         Project project = AppInfo.getActiveProject();
-        DomainFile file = project.getProjectData().getFile(path);
+		DomainFile file = project.getProjectData().getFile(path);
+		if (file == null) {
+			return null;
+		}
         Tool[] tools = project.getToolManager().getRunningTools();
         for (Tool tool : tools) {
             if (tool instanceof PluginTool) {
