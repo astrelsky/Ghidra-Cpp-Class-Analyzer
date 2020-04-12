@@ -9,6 +9,8 @@ import ghidra.program.model.listing.Program;
 
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getCxxAbiCategoryPath;
 
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
+
 /**
  * Model for the {@value #STRUCTURE_NAME} class.
  */
@@ -32,7 +34,8 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
 			if (isValid(program, address, ID_STRING)) {
 				return new PointerTypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private PointerTypeInfoModel(Program program, Address address) {

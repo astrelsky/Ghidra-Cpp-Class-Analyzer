@@ -3,6 +3,7 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
@@ -37,7 +38,8 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
 			if (isValid(program, address, ID_STRING)) {
 				return new ArrayTypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private ArrayTypeInfoModel(Program program, Address address) {

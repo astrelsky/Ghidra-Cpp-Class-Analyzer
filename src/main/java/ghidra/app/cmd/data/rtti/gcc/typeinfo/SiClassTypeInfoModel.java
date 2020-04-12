@@ -1,6 +1,7 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import ghidra.program.model.data.DataType;
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.DataTypeManager;
@@ -32,7 +33,8 @@ public final class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
 			if (isValid(program, address, ID_STRING)) {
 				return new SiClassTypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private SiClassTypeInfoModel(Program program, Address address) {

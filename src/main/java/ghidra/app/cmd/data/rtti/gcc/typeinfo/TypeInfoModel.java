@@ -1,5 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
@@ -35,7 +36,8 @@ public final class TypeInfoModel extends AbstractTypeInfoModel {
 			if (isValid(program, address, ID_STRING)) {
 				return new TypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private TypeInfoModel(Program program, Address address) {

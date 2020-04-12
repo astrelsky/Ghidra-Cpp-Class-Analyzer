@@ -31,7 +31,6 @@ import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 abstract class AbstractTypeInfoModel implements TypeInfo {
 
 	protected static final String DEFAULT_TYPENAME = "";
-	private static final String ERROR_MESSAGE = "The TypeInfo at %s is not valid";
 
     protected static final int BASE_ORDINAL = 0;
 
@@ -67,10 +66,6 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 		return true;
 	}
 
-	protected static String getErrorMessage(Address address) {
-		return String.format(ERROR_MESSAGE, address);
-	}
-
     @Override
     public final boolean equals(Object object) {
         if (!(object instanceof TypeInfo)) {
@@ -79,9 +74,6 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
         return ((TypeInfo) object).getAddress().equals(address);
     }
 
-    /**
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
     @Override
     public final int hashCode() {
         return typeName.hashCode();

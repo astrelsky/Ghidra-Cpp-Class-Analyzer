@@ -36,7 +36,8 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
 			if (isValid(program, address, ID_STRING)) {
 				return new EnumTypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private EnumTypeInfoModel(Program program, Address address) {

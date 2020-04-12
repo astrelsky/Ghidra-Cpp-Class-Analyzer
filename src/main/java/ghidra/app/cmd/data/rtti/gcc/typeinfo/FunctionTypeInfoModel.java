@@ -1,5 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -34,7 +35,8 @@ public final class FunctionTypeInfoModel extends AbstractTypeInfoModel {
 			if (isValid(program, address, ID_STRING)) {
 				return new FunctionTypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private FunctionTypeInfoModel(Program program, Address address) {

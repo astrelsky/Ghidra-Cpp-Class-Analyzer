@@ -1,6 +1,7 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -38,7 +39,8 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
 			if (isValid(program, address, ID_STRING)) {
 				return new PointerToMemberTypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private PointerToMemberTypeInfoModel(Program program, Address address) {

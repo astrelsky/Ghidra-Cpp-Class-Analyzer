@@ -102,7 +102,8 @@ public final class VtableModel implements Vtable {
             }
 			setupVtablePrefixes();
 			if (vtablePrefixes.isEmpty()) {
-				throw new InvalidDataTypeException("Vtable is empty");
+				throw new InvalidDataTypeException(
+					String.format("The vtable at %s is empty", address));
 			}
 	}
 

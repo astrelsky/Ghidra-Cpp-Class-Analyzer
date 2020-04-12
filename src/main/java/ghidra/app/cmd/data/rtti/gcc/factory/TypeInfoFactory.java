@@ -3,7 +3,7 @@ package ghidra.app.cmd.data.rtti.gcc.factory;
 import java.util.Map;
 import java.util.function.Function;
 
-import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.data.DataType;
@@ -106,9 +106,9 @@ public class TypeInfoFactory {
                 return null;
             } try {
 				return COPY_MAP.get(baseTypeName).modelGetter.getModel(program, address);
-            } catch (Exception e) {
-                Msg.error(TypeInfoFactory.class, "Unknown Exception", e);
-                return null;
+            } catch (InvalidDataTypeException e) {
+                throw new AssertException(
+					TypeInfoUtils.getErrorMessage(program, address, baseTypeName));
             }
     }
 

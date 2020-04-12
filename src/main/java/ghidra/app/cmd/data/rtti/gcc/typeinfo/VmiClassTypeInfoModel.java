@@ -21,6 +21,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
@@ -68,7 +69,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 			if (isValid(program, address, ID_STRING)) {
 				return new VmiClassTypeInfoModel(program, address);
 			}
-			throw new InvalidDataTypeException(getErrorMessage(address));
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
     private VmiClassTypeInfoModel(Program program, Address address) {

@@ -329,6 +329,31 @@ public class TypeInfoUtils {
 				}
 			}
 			return new ExternalClassTypeInfo(program, reloc);
-    }
+	}
+
+	/**
+	 * Generates an appropriate error message for when an invalid type_info is encountered
+	 * 
+	 * @param program the program containing the data
+	 * @param address the address of the data
+	 * @param id the expected type_info identification string
+	 * @return an appropriate error message
+	 */
+	public static String getErrorMessage(Program program, Address address, String id) {
+		StringBuilder builder = new StringBuilder("Exception caused by Ghidra-Cpp-Class-Analyzer\n");
+		builder.append(String.format("The TypeInfo at %s is not valid\n", address));
+		builder.append(
+			String.format("Expected %s to match identifier %s\n",
+						  TypeInfoUtils.getIDString(program, address),
+						  id))
+			   .append("Potential typename: ")
+			   .append(TypeInfoUtils.getTypeName(program, address));
+		Relocation reloc = program.getRelocationTable().getRelocation(address);
+		if (reloc != null) {
+			builder.append(String.format(
+				"\nrelocation at %s to symbol %s", reloc.getAddress(), reloc.getSymbolName()));
+		}
+		return builder.toString();
+	}
 
 }
