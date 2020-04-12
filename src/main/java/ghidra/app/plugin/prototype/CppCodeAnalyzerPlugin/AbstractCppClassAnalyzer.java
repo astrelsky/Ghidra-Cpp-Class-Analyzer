@@ -25,6 +25,9 @@ import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.data.Pointer;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.Undefined;
+import ghidra.program.model.data.VoidDataType;
+import ghidra.program.model.lang.PrototypeModel;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
@@ -35,10 +38,15 @@ import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Parameter;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.listing.VariableUtilities;
+import ghidra.program.model.symbol.SourceType;
 import ghidra.program.util.SymbolicPropogator;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
+
+import static ghidra.program.model.data.GenericCallingConvention.thiscall;
 
 public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
@@ -111,8 +119,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         } catch (CancelledException e) {
             throw e;
         } catch (Exception e) {
-            e.printStackTrace();
-            log.appendException(e);
+			e.printStackTrace();
+			log.error("Ghidra-Cpp-Class-Analyzer", e.getMessage());
             return false;
         }
     }
@@ -125,7 +133,24 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
         symProp = null;
         constructorAnalyzer = null;
         super.analysisEnded(program);
-    }
+	}
+	
+	private static void ensureThisCall(Function fun) {
+		PrototypeModel cc = fun.getCallingConvention();
+		if (cc == null || !cc.getGenericCallingConvention().equals(thiscall)) {
+			try {
+				fun.setCallingConvention(thiscall.getDeclarationName());
+				if (fun.getAutoParameterCount() < 1) {
+					throw new AssertException(
+						String.format("%s at %s was set to __thiscall but has no auto parameters",
+									  fun.getName(true), fun.getEntryPoint()));
+				}
+			} catch (InvalidInputException e) {
+				// cannot occur as an internal constant is being used
+				throw new AssertException(e);
+			}
+		}
+	}
 
     private void setupVftables() throws CancelledException, InvalidDataTypeException {
         vftables = new ArrayList<>(classes.size());
@@ -183,6 +208,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
                 if (fTable.length > 0 && fTable[0].length > 0) {
                     Function destructor = fTable[0][0];
                     if (destructor != null && isDestructor(destructor)) {
+						// check that the function is __thiscall and set if necessary
+						ensureThisCall(destructor);
                         analyzeDestructor(type, destructor);
                     }
                 }
@@ -235,6 +262,10 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
     }
 
     private void analyzeDestructor(ClassTypeInfo type, Function destructor) throws Exception {
+		// if the return type is undefined fix it and set it to void
+		if (Undefined.isUndefined(destructor.getReturnType())) {
+			destructor.setReturnType(VoidDataType.dataType, SourceType.ANALYSIS);
+		}
         InstructionIterator instructions = program.getListing().getInstructions(
             destructor.getBody(), true);
         propagateConstants(destructor, type);

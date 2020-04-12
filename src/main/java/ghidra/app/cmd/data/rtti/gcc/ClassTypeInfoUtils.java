@@ -50,6 +50,7 @@ import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.task.TaskMonitor;
@@ -300,8 +301,8 @@ public class ClassTypeInfoUtils {
             function.setCustomVariableStorage(false);
             return function;
         } catch (Exception e) {
-            Msg.error(ClassTypeInfoUtils.class, "Failed to retrieve class function at "+address, e);
-            return null;
+			throw new AssertException(String.format(
+				"Failed to retrieve class function for %s at %s", type, address), e);
         }
     }
 

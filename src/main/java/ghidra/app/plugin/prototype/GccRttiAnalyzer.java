@@ -152,7 +152,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
                 throw e;
             } catch (Exception e) {
                 e.printStackTrace();
-                log.appendException(e);
+                log.error("Ghidra-Cpp-Class-Analyzer", e.getMessage());
                 return false;
             }
     }

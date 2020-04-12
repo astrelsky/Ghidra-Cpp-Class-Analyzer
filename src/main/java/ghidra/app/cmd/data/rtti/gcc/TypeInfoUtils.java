@@ -2,8 +2,6 @@ package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.address.Address;
@@ -34,8 +32,6 @@ import static ghidra.app.util.demangler.DemanglerUtil.demangle;
 import static ghidra.program.model.data.DataUtilities.createData;
 
 public class TypeInfoUtils {
-	
-	private static final Pattern TYPEINFO_STRIPPER = Pattern.compile("(.+)(?:\\:\\:typeinfo)$");
 
     private TypeInfoUtils() {
     }
@@ -268,23 +264,21 @@ public class TypeInfoUtils {
 		DemangledObject demangled = typename.startsWith("_ZTI") ?
 			demangle(program, typename) : demangle(program, "_ZTI"+typename);
 		if (demangled != null) {
-			Matcher matcher = TYPEINFO_STRIPPER.matcher(demangled.getSignature());
-			if (matcher.matches()) {
-				try {
-					Integer id = null;
-					if (program.getCurrentTransaction() == null) {
-						id = program.startTransaction("creating namespace for "+typename);
-					}
-					Namespace ns = NamespaceUtils.createNamespaceHierarchy(
-						matcher.group(1), null, program, SourceType.ANALYSIS);
-					if (id != null) {
-						program.endTransaction(id, true);
-					}
-					return ns;
-				} catch (InvalidInputException e) {
-					// unexpected
-					throw new AssertException(e);
+			try {
+				Integer id = null;
+				if (program.getCurrentTransaction() == null) {
+					id = program.startTransaction("creating namespace for "+typename);
 				}
+				Namespace ns = NamespaceUtils.createNamespaceHierarchy(
+					demangled.getNamespace().getSignature(),
+					null, program, SourceType.ANALYSIS);
+				if (id != null) {
+					program.endTransaction(id, true);
+				}
+				return ns;
+			} catch (InvalidInputException e) {
+				// unexpected
+				throw new AssertException(e);
 			}
 		}
 		return null;
