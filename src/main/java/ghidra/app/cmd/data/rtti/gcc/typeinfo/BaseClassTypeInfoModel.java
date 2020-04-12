@@ -11,6 +11,7 @@ import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
 
@@ -128,7 +129,9 @@ public final class BaseClassTypeInfoModel {
         if (reloc != null && reloc.getSymbolName() != null) {
             return (ClassTypeInfo) TypeInfoUtils.getExternalTypeInfo(program, reloc);
         }
-        return null;
+        throw new AssertException(
+			String.format("Failed to retreive __class_type_info at %s in file %s",
+						  getAddress().toString(), program.getName()));
     }
 
 	/**
