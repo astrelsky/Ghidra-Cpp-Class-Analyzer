@@ -16,13 +16,13 @@ import ghidra.program.model.listing.Program;
  */
 public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
 
-    private static final String DESCRIPTION = "Model for Array Type Info";
+	private static final String DESCRIPTION = "Model for Array Type Info";
 	public static final String STRUCTURE_NAME = "__array_type_info";
 
-    public static final String ID_STRING = "N10__cxxabiv117__array_type_infoE";
-    private static final Pattern ARRAY_PATTERN = Pattern.compile(".*A(\\d*)_(.*)");
-    
-    private DataType dataType;
+	public static final String ID_STRING = "N10__cxxabiv117__array_type_infoE";
+	private static final Pattern ARRAY_PATTERN = Pattern.compile(".*A(\\d*)_(.*)");
+	
+	private DataType dataType;
 	private DataType typeInfoDataType;
 	
 	/**
@@ -42,47 +42,47 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-    private ArrayTypeInfoModel(Program program, Address address) {
-        super(program, address);
-    }
+	private ArrayTypeInfoModel(Program program, Address address) {
+		super(program, address);
+	}
 
-    /**
-     * Gets the __array_type_info datatype.
-     */
-    @Override
-    public DataType getDataType() {
-        if (typeInfoDataType == null) {
-            typeInfoDataType = getDataType(STRUCTURE_NAME, DESCRIPTION);
-        }
-        return typeInfoDataType;
-    }
+	/**
+	 * Gets the __array_type_info datatype.
+	 */
+	@Override
+	public DataType getDataType() {
+		if (typeInfoDataType == null) {
+			typeInfoDataType = getDataType(STRUCTURE_NAME, DESCRIPTION);
+		}
+		return typeInfoDataType;
+	}
 
 
-    /**
-     * Gets the {@value #STRUCTURE_NAME} datatype
-     * @param dtm the DataTypeManager
-     * @return the {@value #STRUCTURE_NAME} datatype
-     */
-    public static DataType getDataType(DataTypeManager dtm) {
-        return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);
-    }
+	/**
+	 * Gets the {@value #STRUCTURE_NAME} datatype
+	 * @param dtm the DataTypeManager
+	 * @return the {@value #STRUCTURE_NAME} datatype
+	 */
+	public static DataType getDataType(DataTypeManager dtm) {
+		return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);
+	}
 
-    @Override
-    public String getIdentifier() {
-        return ID_STRING;
-    }
+	@Override
+	public String getIdentifier() {
+		return ID_STRING;
+	}
 
-    @Override
-    public DataType getRepresentedDataType() {
-        if (dataType == null) {
-            Matcher matcher = ARRAY_PATTERN.matcher(getTypeName());
-            if (matcher.matches()) {
-                int length = Integer.valueOf(matcher.group(1));
-                DataType baseDt = parseDataType(matcher.group(2));
-                dataType = new ArrayDataType(baseDt, length, baseDt.getLength());
-            }
-        }
-        return dataType;
-    }
+	@Override
+	public DataType getRepresentedDataType() {
+		if (dataType == null) {
+			Matcher matcher = ARRAY_PATTERN.matcher(getTypeName());
+			if (matcher.matches()) {
+				int length = Integer.valueOf(matcher.group(1));
+				DataType baseDt = parseDataType(matcher.group(2));
+				dataType = new ArrayDataType(baseDt, length, baseDt.getLength());
+			}
+		}
+		return dataType;
+	}
 
 }

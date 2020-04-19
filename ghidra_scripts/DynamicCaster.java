@@ -77,8 +77,8 @@ public class DynamicCaster extends GhidraScript {
 	private FunctionSignature sig;
 	private ConstantPropagationAnalyzer analyzer;
 
-    @Override
-    public void run() throws Exception {
+	@Override
+	public void run() throws Exception {
 		table = currentProgram.getSymbolTable();
 		dtm = currentProgram.getDataTypeManager();
 		analyzer = getConstantAnalyzer(currentProgram);
@@ -93,12 +93,12 @@ public class DynamicCaster extends GhidraScript {
 			return;
 		}
 		sig = dynamicCast.getSignature();
-        final Parameter[] parameters = dynamicCast.getParameters();
-        if (parameters.length != 4) {
-            printerr("Unexpected number of __dynamic_cast parameters");
-            return;
-        }
-        if (!parameters[2].isRegisterVariable()) {
+		final Parameter[] parameters = dynamicCast.getParameters();
+		if (parameters.length != 4) {
+			printerr("Unexpected number of __dynamic_cast parameters");
+			return;
+		}
+		if (!parameters[2].isRegisterVariable()) {
 			printerr(UNSUPPORTED_MESSAGE);
 			return;
 		}
@@ -111,25 +111,25 @@ public class DynamicCaster extends GhidraScript {
 				  .map(Reference::getFromAddress)
 				  .filter(Predicate.not(manager::hasReferencesTo))
 				  .collect(Collectors.toList());
-        monitor.initialize(addresses.size());
-        monitor.setMessage("Analyzing __dynamic_cast calls");
-        for (Address address : addresses) {
-            monitor.checkCanceled();
-            doDynamicCast(address);
-            monitor.incrementProgress(1);
-        }
+		monitor.initialize(addresses.size());
+		monitor.setMessage("Analyzing __dynamic_cast calls");
+		for (Address address : addresses) {
+			monitor.checkCanceled();
+			doDynamicCast(address);
+			monitor.incrementProgress(1);
+		}
 	}
 
 	private Function getDynamicCast() {
 		List<Function> functions = getGlobalFunctions(DYNAMIC_CAST);
-        if (functions.size() > 1) {
-            printerr("More than one __dynamic_cast function found.");
-            return null;
-        }
-        if (functions.isEmpty()) {
-            printerr("__dynamic_cast function not found");
-            return null;
-        }
+		if (functions.size() > 1) {
+			printerr("More than one __dynamic_cast function found.");
+			return null;
+		}
+		if (functions.isEmpty()) {
+			printerr("__dynamic_cast function not found");
+			return null;
+		}
 		return functions.get(0);
 	}
 
@@ -173,7 +173,7 @@ public class DynamicCaster extends GhidraScript {
 		return null;
 	}
 
-    private void doDynamicCast(Address address) throws Exception {
+	private void doDynamicCast(Address address) throws Exception {
 		final Function function = getFunctionContaining(address);
 		final SymbolicPropogator prop = analyzeFunction(function, analyzer, monitor);
 		final ClassTypeInfo srcType = getType(prop, address, srcReg);
@@ -201,16 +201,16 @@ public class DynamicCaster extends GhidraScript {
 				def.setArguments(params);
 				def.setReturnType(destType);
 				return def;
-    }
+	}
 	
 	private void overrideFunction(Function function, Address address,
 		ClassTypeInfo src, ClassTypeInfo dest) throws Exception {
-            int transaction = -1; 
-            if (currentProgram.getCurrentTransaction() == null) {
-                transaction = currentProgram.startTransaction("Override Signature");
-            }
-            boolean commit = false;
-            try {
+			int transaction = -1; 
+			if (currentProgram.getCurrentTransaction() == null) {
+				transaction = currentProgram.startTransaction("Override Signature");
+			}
+			boolean commit = false;
+			try {
 				final FunctionDefinition def = getFunctionSignature(src, dest, function);
 				if (def != null) {
 					DataTypeSymbol symbol = new DataTypeSymbol(def, NAME_ROOT, AUTO_CAT);
@@ -220,18 +220,18 @@ public class DynamicCaster extends GhidraScript {
 						commit = true;
 					}
 				}
-            }
-            catch (Exception e) {
+			}
+			catch (Exception e) {
 				printerr("Error overriding signature: " + e.getMessage());
-            }
-            finally {
-                if (transaction != -1) {
-                    currentProgram.endTransaction(transaction, commit);
-                }
-            }
+			}
+			finally {
+				if (transaction != -1) {
+					currentProgram.endTransaction(transaction, commit);
+				}
+			}
 	}
 
-	    // These should be in a Util class somewhere!
+		// These should be in a Util class somewhere!
 
 		private static ConstantPropagationAnalyzer getConstantAnalyzer(Program program) {
 			AutoAnalysisManager mgr = AutoAnalysisManager.getAnalysisManager(program);

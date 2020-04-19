@@ -12,7 +12,6 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ExternalClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
-import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
@@ -21,71 +20,60 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
  */
 abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
-    protected AbstractSiClassTypeInfoModel(Program program, Address address) {
-        super(program, address);
-    }
+	protected AbstractSiClassTypeInfoModel(Program program, Address address) {
+		super(program, address);
+	}
 
-    private static Address getBaseTypeAddress(Program program, Address address) {
-        Address pointerAddress = address.add(program.getDefaultPointerSize() << 1);
+	private static Address getBaseTypeAddress(Program program, Address address) {
+		Address pointerAddress = address.add(program.getDefaultPointerSize() << 1);
 		Address result = getAbsoluteAddress(program, pointerAddress);
 		return result != null ? result : Address.NO_ADDRESS;
-    }
+	}
 
-    @Override
-    public boolean hasParent() {
-        return true;
-    }
+	@Override
+	public boolean hasParent() {
+		return true;
+	}
 
-    @Override
-    public ClassTypeInfo[] getParentModels() {
+	@Override
+	public ClassTypeInfo[] getParentModels() {
 		Address baseAddress = getBaseTypeAddress(program, address);
-		TypeInfo parent = null;
 		if (!baseAddress.equals(Address.NO_ADDRESS)
 			&& program.getMemory().getBlock(baseAddress).isInitialized()) {
-				parent = TypeInfoFactory.getTypeInfo(program, baseAddress);
-				if (parent instanceof ClassTypeInfo) {
-					return new ClassTypeInfo[] {
-						(ClassTypeInfo) parent
-					};
+				ClassTypeInfo parent = manager.getClassTypeInfo(baseAddress);
+				if (parent != null) {
+					return new ClassTypeInfo[] { parent };
 				}
-        }
-        RelocationTable table = program.getRelocationTable();
+		}
+		RelocationTable table = program.getRelocationTable();
 		Relocation reloc = table.getRelocation(baseAddress);
 		if (reloc == null) {
 			reloc = table.getRelocation(address.add(program.getDefaultPointerSize() << 1));
 		}
-        if (reloc != null && reloc.getSymbolName() != null) {
-            parent = TypeInfoUtils.getExternalTypeInfo(program, reloc);
-            if (parent instanceof ClassTypeInfo) {
-                return new ClassTypeInfo[]{
-                    (ClassTypeInfo) parent
-                };
-            }
+		if (reloc != null && reloc.getSymbolName() != null) {
+			TypeInfo type = TypeInfoUtils.getExternalTypeInfo(program, reloc);
+			if (type instanceof ClassTypeInfo) {
+				return new ClassTypeInfo[]{
+					(ClassTypeInfo) type
+				};
+			}
 		}
 		StringBuilder builder = new StringBuilder("SiClassTypeInfo at ");
 		builder.append(address.toString())
-			   .append(" has an invalid parent ");
-		if (parent == null) {
-			builder.append("located at ")
-				   .append(reloc != null ? "relocation "+reloc.getAddress().toString()
-				   		   : baseAddress.toString());
-		} else {
-			if (!(parent instanceof ClassTypeInfo)) {
-			   builder.append("Non __class_type_info ");
-			}
-			builder.append(parent.toString());
-		}
+			   .append(" has an invalid parent located at ")
+			   .append(reloc != null ? "relocation "+reloc.getAddress().toString()
+			   	: baseAddress.toString());
 		throw new AssertException(builder.toString());
-    }
+	}
 
-    @Override
-    public Set<ClassTypeInfo> getVirtualParents() {
+	@Override
+	public Set<ClassTypeInfo> getVirtualParents() {
 		ClassTypeInfo[] parents = getParentModels();
 		if (parents[0] instanceof ExternalClassTypeInfo) {
 			// TODO need more data to know if this is acceptable or not
 			return Collections.emptySet();
 		}
-        return parents[0].getVirtualParents();
-    }
+		return parents[0].getVirtualParents();
+	}
 
 }

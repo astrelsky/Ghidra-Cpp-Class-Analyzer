@@ -13,11 +13,11 @@ import ghidra.program.model.listing.Program;
  */
 public final class FundamentalTypeInfoModel extends AbstractTypeInfoModel {
 
-    public static final String STRUCTURE_NAME = "__fundamental_type_info";
-    public static final String ID_STRING = "N10__cxxabiv123__fundamental_type_infoE";
-    private static final String DESCRIPTION = "Model for Fundamental Type Info";
+	public static final String STRUCTURE_NAME = "__fundamental_type_info";
+	public static final String ID_STRING = "N10__cxxabiv123__fundamental_type_infoE";
+	private static final String DESCRIPTION = "Model for Fundamental Type Info";
 
-    private DataType typeInfoDataType;
+	private DataType typeInfoDataType;
 
 	/**
 	 * Gets a new FundamentalTypeInfoModel
@@ -36,33 +36,33 @@ public final class FundamentalTypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-    private FundamentalTypeInfoModel(Program program, Address address) {
-        super(program, address);
-    }
+	private FundamentalTypeInfoModel(Program program, Address address) {
+		super(program, address);
+	}
 
-    @Override
-    public String getIdentifier() {
-        return ID_STRING;
-    }
+	@Override
+	public String getIdentifier() {
+		return ID_STRING;
+	}
 
-    /**
-     * Gets the __fundamental_type_info datatype.
-     */
-    @Override
-    public DataType getDataType() {
-        if (typeInfoDataType == null) {
-            typeInfoDataType = getDataType(STRUCTURE_NAME, DESCRIPTION);
-        }
-        return typeInfoDataType;
-    }
+	/**
+	 * Gets the __fundamental_type_info datatype.
+	 */
+	@Override
+	public DataType getDataType() {
+		if (typeInfoDataType == null) {
+			typeInfoDataType = getDataType(STRUCTURE_NAME, DESCRIPTION);
+		}
+		return typeInfoDataType;
+	}
 
-    /**
-     * Gets the {@value #STRUCTURE_NAME} datatype
-     * @param dtm the DataTypeManager
-     * @return the {@value #STRUCTURE_NAME} datatype
-     */
-    public static DataType getDataType(DataTypeManager dtm) {
-        return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);
-    }
+	/**
+	 * Gets the {@value #STRUCTURE_NAME} datatype
+	 * @param dtm the DataTypeManager
+	 * @return the {@value #STRUCTURE_NAME} datatype
+	 */
+	public static DataType getDataType(DataTypeManager dtm) {
+		return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);
+	}
 
 }

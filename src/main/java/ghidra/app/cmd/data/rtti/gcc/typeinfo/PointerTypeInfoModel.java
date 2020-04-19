@@ -16,10 +16,10 @@ import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
  */
 public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
 
-    public static final String STRUCTURE_NAME = "__pointer_type_info";
-    public static final String ID_STRING = "N10__cxxabiv119__pointer_type_infoE";
-    private static final String DESCRIPTION = "Model for Pointer Type Info";
-    private DataType typeInfoDataType;
+	public static final String STRUCTURE_NAME = "__pointer_type_info";
+	public static final String ID_STRING = "N10__cxxabiv119__pointer_type_infoE";
+	private static final String DESCRIPTION = "Model for Pointer Type Info";
+	private DataType typeInfoDataType;
 
 	/**
 	 * Gets a new PointerTypeInfoModel
@@ -38,42 +38,42 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-    private PointerTypeInfoModel(Program program, Address address) {
-        super(program, address);
-    }
+	private PointerTypeInfoModel(Program program, Address address) {
+		super(program, address);
+	}
 
-    @Override
-    public String getIdentifier() {
-        return ID_STRING;
-    }
+	@Override
+	public String getIdentifier() {
+		return ID_STRING;
+	}
 
-    /**
-     * Gets the __pointer_type_info datatype.
-     */
-    @Override
-    public DataType getDataType() {
-        if (typeInfoDataType == null) {
-            typeInfoDataType = getDataType(program.getDataTypeManager());
-        }
-        return typeInfoDataType;
-    }
+	/**
+	 * Gets the __pointer_type_info datatype.
+	 */
+	@Override
+	public DataType getDataType() {
+		if (typeInfoDataType == null) {
+			typeInfoDataType = getDataType(program.getDataTypeManager());
+		}
+		return typeInfoDataType;
+	}
 
-    /**
-     * Gets the {@value #STRUCTURE_NAME} datatype
-     * @param dtm the DataTypeManager
-     * @return the {@value #STRUCTURE_NAME} datatype
-     */
-    public static DataType getDataType(DataTypeManager dtm) {
-        DataType superDt = getPBase(dtm);
-        DataType existingDt = dtm.getDataType(superDt.getCategoryPath(), STRUCTURE_NAME);
-        if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
-            return existingDt;
-        }
-        StructureDataType struct = new StructureDataType(
-            getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
-        struct.add(superDt, SUPER_NAME, null);
-        struct.setDescription(DESCRIPTION);
-        return alignDataType(struct, dtm);
-    }
+	/**
+	 * Gets the {@value #STRUCTURE_NAME} datatype
+	 * @param dtm the DataTypeManager
+	 * @return the {@value #STRUCTURE_NAME} datatype
+	 */
+	public static DataType getDataType(DataTypeManager dtm) {
+		DataType superDt = getPBase(dtm);
+		DataType existingDt = dtm.getDataType(superDt.getCategoryPath(), STRUCTURE_NAME);
+		if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
+			return existingDt;
+		}
+		StructureDataType struct = new StructureDataType(
+			getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
+		struct.add(superDt, SUPER_NAME, null);
+		struct.setDescription(DESCRIPTION);
+		return alignDataType(struct, dtm);
+	}
 
 }

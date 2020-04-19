@@ -24,73 +24,73 @@ import static ghidra.program.model.data.DataUtilities.ClearDataMode.CLEAR_ALL_CO
 
 public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 
-    private static final String NAME = CreateTypeInfoBackgroundCmd.class.getSimpleName();
+	private static final String NAME = CreateTypeInfoBackgroundCmd.class.getSimpleName();
 
-    private TypeInfo typeInfo;
-    private TaskMonitor monitor;
-    private Program program;
+	private TypeInfo typeInfo;
+	private TaskMonitor monitor;
+	private Program program;
 
-    /**
-     * Constructs a command for applying a TypeInfo at an address
-     * and its associated data.
-     * 
-     * @param typeInfo the TypeInfo to be created.
-     */
-    public CreateTypeInfoBackgroundCmd(TypeInfo typeInfo) {
-        super(NAME, true, true, false);
-        this.typeInfo = typeInfo;
-    }
+	/**
+	 * Constructs a command for applying a TypeInfo at an address
+	 * and its associated data.
+	 * 
+	 * @param typeInfo the TypeInfo to be created.
+	 */
+	public CreateTypeInfoBackgroundCmd(TypeInfo typeInfo) {
+		super(NAME, true, true, false);
+		this.typeInfo = typeInfo;
+	}
 
-    @Override
-    public final boolean applyTo(DomainObject obj, TaskMonitor taskMonitor) {
-        try {
-            if (!(obj instanceof Program)) {
-                String message = "Can only apply a " + typeInfo.getName() + " data type to a program.";
-                Msg.error(this, message);
-                return false;
-            }
-            program = (Program) obj;
-            monitor = taskMonitor;
-            return doApplyTo();
-        } catch (CancelledException e) {
-            setStatusMsg("User cancelled " + getName() + ".");
+	@Override
+	public final boolean applyTo(DomainObject obj, TaskMonitor taskMonitor) {
+		try {
+			if (!(obj instanceof Program)) {
+				String message = "Can only apply a " + typeInfo.getName() + " data type to a program.";
+				Msg.error(this, message);
+				return false;
+			}
+			program = (Program) obj;
+			monitor = taskMonitor;
+			return doApplyTo();
+		} catch (CancelledException e) {
+			setStatusMsg("User cancelled " + getName() + ".");
 		}
 		return false;
-    }
+	}
 
-    private boolean doApplyTo() throws CancelledException {
-        try {
-            monitor.checkCanceled();
-            Data data = createData(typeInfo.getAddress(), typeInfo.getDataType());
-            if (typeInfo instanceof VmiClassTypeInfoModel) {
-                VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) typeInfo;
-                DataType array = vmi.getBaseArrayDataType();
-                Address arrayAddress = vmi.getBaseArrayAddress();
-                createData(arrayAddress, array);
-            }
-            return applyTypeInfoSymbols() && data != null;
-        } catch (CodeUnitInsertionException e) {
-            Msg.error(this, e);
-            return false;
-        }
-    }
+	private boolean doApplyTo() throws CancelledException {
+		try {
+			monitor.checkCanceled();
+			Data data = createData(typeInfo.getAddress(), typeInfo.getDataType());
+			if (typeInfo instanceof VmiClassTypeInfoModel) {
+				VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) typeInfo;
+				DataType array = vmi.getBaseArrayDataType();
+				Address arrayAddress = vmi.getBaseArrayAddress();
+				createData(arrayAddress, array);
+			}
+			return applyTypeInfoSymbols() && data != null;
+		} catch (CodeUnitInsertionException e) {
+			Msg.error(this, e);
+			return false;
+		}
+	}
 
-    private Data createData(Address address, DataType dt) throws CodeUnitInsertionException {
-        return DataUtilities.createData(program, address, dt, 0, false, CLEAR_ALL_CONFLICT_DATA);
-    }
+	private Data createData(Address address, DataType dt) throws CodeUnitInsertionException {
+		return DataUtilities.createData(program, address, dt, 0, false, CLEAR_ALL_CONFLICT_DATA);
+	}
 
-    private boolean applyTypeInfoSymbols() {
-        SymbolTable table = program.getSymbolTable();
-        Namespace ns = typeInfo.getNamespace();
-        Address typenameAddress = getAbsoluteAddress(
-            program, typeInfo.getAddress().add(program.getDefaultPointerSize()));
-        try {
-            table.createLabel(typeInfo.getAddress(), TypeInfo.SYMBOL_NAME, ns, SourceType.ANALYSIS);
-            table.createLabel(typenameAddress, TypeInfo.SYMBOL_NAME+"_name", ns, SourceType.ANALYSIS);
-        } catch (InvalidInputException e) {
-            Msg.trace(this, e);
-            return false;
-        }
-        return true;
-    }
+	private boolean applyTypeInfoSymbols() {
+		SymbolTable table = program.getSymbolTable();
+		Namespace ns = typeInfo.getNamespace();
+		Address typenameAddress = getAbsoluteAddress(
+			program, typeInfo.getAddress().add(program.getDefaultPointerSize()));
+		try {
+			table.createLabel(typeInfo.getAddress(), TypeInfo.SYMBOL_NAME, ns, SourceType.ANALYSIS);
+			table.createLabel(typenameAddress, TypeInfo.SYMBOL_NAME+"_name", ns, SourceType.ANALYSIS);
+		} catch (InvalidInputException e) {
+			Msg.trace(this, e);
+			return false;
+		}
+		return true;
+	}
 }

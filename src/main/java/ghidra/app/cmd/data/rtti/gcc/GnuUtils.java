@@ -15,6 +15,7 @@ import ghidra.framework.model.Project;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.mem.MemBuffer;
+import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.mem.MemoryBufferImpl;
@@ -44,282 +45,299 @@ import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
 public final class GnuUtils {
 
-    private static final String PTRDIFF = "ptrdiff_t";
-    private static final String PPC = "PowerPC";
-    private static final String CXXABI = "__cxxabiv1";
-    private static final String EXTERNAL = "<EXTERNAL>";
+	private static final String PTRDIFF = "ptrdiff_t";
+	private static final String PPC = "PowerPC";
+	private static final String CXXABI = "__cxxabiv1";
+	private static final String EXTERNAL = "<EXTERNAL>";
 
-    public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
-    public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
-    public static final int UNSUPPORTED_RELOCATION = 5;
+	public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
+	public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
+	public static final int UNSUPPORTED_RELOCATION = 5;
 
-    private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
+	private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
 
-    private GnuUtils() {
-    }
+	private GnuUtils() {
+	}
 
-    /**
-     * Gets the {@value #CXXABI} CategoryPath
-     * @return the {@value #CXXABI} CategoryPath
-     */
-    public static CategoryPath getCxxAbiCategoryPath() {
-        return CXXABI_PATH;
-    }
+	/**
+	 * Gets the {@value #CXXABI} CategoryPath
+	 * @return the {@value #CXXABI} CategoryPath
+	 */
+	public static CategoryPath getCxxAbiCategoryPath() {
+		return CXXABI_PATH;
+	}
 
-    /**
-     * @param dtm the programs datatype manager
-     * @return true if LLP64 was defined
-     */
-    public static boolean isLLP64(DataTypeManager dtm) {
-        return dtm.getDataOrganization().getPointerSize() == 8;
-    }
+	/**
+	 * @param dtm the programs datatype manager
+	 * @return true if LLP64 was defined
+	 */
+	public static boolean isLLP64(DataTypeManager dtm) {
+		return dtm.getDataOrganization().getPointerSize() == 8;
+	}
 
-    private static DataType createPtrDiff(DataTypeManager dtm) {
+	private static DataType createPtrDiff(DataTypeManager dtm) {
 		DataOrganization org = dtm.getDataOrganization();
-        DataType dataType = AbstractIntegerDataType.getSignedDataType(org.getPointerSize(), dtm);
-        return new TypedefDataType(CategoryPath.ROOT, PTRDIFF, dataType, dtm);
-    }
+		DataType dataType = AbstractIntegerDataType.getSignedDataType(org.getPointerSize(), dtm);
+		return new TypedefDataType(CategoryPath.ROOT, PTRDIFF, dataType, dtm);
+	}
 
-    /**
-     * Gets the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
-     * @param dtm the programs datatype manager
-     * @return the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
-     */
-    public static DataType getPtrDiff_t(DataTypeManager dtm) {
-        DataType ptrdiff_t = createPtrDiff(dtm);
-        if (dtm.contains(ptrdiff_t)) {
-            return dtm.resolve(ptrdiff_t, KEEP_HANDLER);
-        }
-        return ptrdiff_t;
-    }
+	/**
+	 * Gets the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
+	 * @param dtm the programs datatype manager
+	 * @return the appropriate TypeDefDataType for the builtin __PTRDIFF_TYPE__
+	 */
+	public static DataType getPtrDiff_t(DataTypeManager dtm) {
+		DataType ptrdiff_t = createPtrDiff(dtm);
+		if (dtm.contains(ptrdiff_t)) {
+			return dtm.resolve(ptrdiff_t, KEEP_HANDLER);
+		}
+		return ptrdiff_t;
+	}
 
-    /**
-     * Gets the size in bytes of __PTRDIFF_TYPE__
-     * @param dtm the programs datatype manager
-     * @return the size in bytes of __PTRDIFF_TYPE__
-     */
-    public static int getPtrDiffSize(DataTypeManager dtm) {
-        return getPtrDiff_t(dtm).getLength();
-    }
+	/**
+	 * Gets the size in bytes of __PTRDIFF_TYPE__
+	 * @param dtm the programs datatype manager
+	 * @return the size in bytes of __PTRDIFF_TYPE__
+	 */
+	public static int getPtrDiffSize(DataTypeManager dtm) {
+		return getPtrDiff_t(dtm).getLength();
+	}
 
-    /**
-     * Gets all MemoryBlocks in a Program which hold non-volatile data
-     * @param program the program to be searched
-     * @return A list of all memory blocks whose name contains "data" with non-volatile data
-     */
-    public static List<MemoryBlock> getAllDataBlocks(Program program) {
-        MemoryBlock[] blocks = program.getMemory().getBlocks();
-        List<MemoryBlock> dataBlocks = new ArrayList<MemoryBlock>();
-        for (MemoryBlock block : blocks) {
-            if (isDataBlock(block) && block.getName().contains("data")) {
-                if (!block.isVolatile()) {
-                    dataBlocks.add(block);
-                }
-            }
-        }
-        return dataBlocks;
-    }
+	/**
+	 * Gets all MemoryBlocks in a Program which hold non-volatile data
+	 * @param program the program to be searched
+	 * @return A list of all memory blocks whose name contains "data" with non-volatile data
+	 */
+	public static List<MemoryBlock> getAllDataBlocks(Program program) {
+		MemoryBlock[] blocks = program.getMemory().getBlocks();
+		List<MemoryBlock> dataBlocks = new ArrayList<MemoryBlock>();
+		for (MemoryBlock block : blocks) {
+			if (isDataBlock(block) && block.getName().contains("data")) {
+				if (!block.isVolatile()) {
+					dataBlocks.add(block);
+				}
+			}
+		}
+		return dataBlocks;
+	}
 
-    /**
-     * Returns true if this MemoryBlock has non-volatile data
-     * @param block the memory block to test
-     * @return true if this MemoryBlock has non-volatile data
-     */
-    public static boolean isDataBlock(MemoryBlock block) {
-        return block != null ? block.isRead() || block.isWrite() : false;
-    }
+	/**
+	 * Returns true if this MemoryBlock has non-volatile data
+	 * @param block the memory block to test
+	 * @return true if this MemoryBlock has non-volatile data
+	 */
+	public static boolean isDataBlock(MemoryBlock block) {
+		return block != null ? block.isRead() || block.isWrite() : false;
+	}
 
-    /**
-     * Checks if a Program's language is PowerPC64
-     * @param program the program to test
-     * @return true if the program's language is PowerPC64
-     */
-    public static boolean hasFunctionDescriptors(Program program) {
-        Processor processor = program.getLanguage().getProcessor();
-        if (!processor.toString().contentEquals(PPC)) {
-            return false;
-        } return isLLP64(program.getDataTypeManager());
-    }
+	/**
+	 * Checks if a Program's language is PowerPC64
+	 * @param program the program to test
+	 * @return true if the program's language is PowerPC64
+	 */
+	public static boolean hasFunctionDescriptors(Program program) {
+		Processor processor = program.getLanguage().getProcessor();
+		if (!processor.toString().contentEquals(PPC)) {
+			return false;
+		} return isLLP64(program.getDataTypeManager());
+	}
 
 	/**
 	 * Checks if the Program was compiled by a GNU variant
 	 * @param program the program to check
 	 * @return true if compiled by a GNU variant
 	 */
-    public static boolean isGnuCompiler(Program program) {
-        String id = program.getCompilerSpec().getCompilerSpecID().getIdAsString().toLowerCase();
-        return COMPILER_NAMES.contains(id);
-    }
+	public static boolean isGnuCompiler(Program program) {
+		String id = program.getCompilerSpec().getCompilerSpecID().getIdAsString().toLowerCase();
+		return COMPILER_NAMES.contains(id);
+	}
 
-    /**
-     * Checks if a function pointer is located at the specified address
-     * @param program the program containing the data
-     * @param address the address of the data
-     * @return true if a function pointer is located at the specified address
-     */
-    public static boolean isFunctionPointer(Program program, Address address) {
-        RelocationTable table = program.getRelocationTable();
-        if (table.isRelocatable()) {
-            Relocation reloc = table.getRelocation(address);
-            if (reloc != null) {
-                String name = reloc.getSymbolName();
-                if (name != null) {
-                    if (name.equals(PURE_VIRTUAL_FUNCTION_NAME)) {
-                        return true;
-                    }
-                    DemangledObject demangled = demangle(name);
-                    if (demangled != null && demangled instanceof DemangledFunction) {
-                        return true;
-                    }
-                }
-            }
-        }
-        Address pointee = getAbsoluteAddress(program, address);
-        if (pointee == null) {
-            return false;
-        }
-        if (hasFunctionDescriptors(program)) {
-            // the PowerPC Elf64 ABI has Function Descriptors :/
-            pointee = getAbsoluteAddress(program, pointee);
-            if (pointee == null) {
-                return false;
-            }
-        }
-        MemoryBlock block = program.getMemory().getBlock(pointee);
-        return block != null ? block.isExecute() : false;
-    }
+	/**
+	 * Checks if a function pointer is located at the specified address
+	 * @param program the program containing the data
+	 * @param address the address of the data
+	 * @return true if a function pointer is located at the specified address
+	 */
+	public static boolean isFunctionPointer(Program program, Address address) {
+		RelocationTable table = program.getRelocationTable();
+		if (table.isRelocatable()) {
+			Relocation reloc = table.getRelocation(address);
+			if (reloc != null) {
+				String name = reloc.getSymbolName();
+				if (name != null) {
+					if (name.equals(PURE_VIRTUAL_FUNCTION_NAME)) {
+						return true;
+					}
+					DemangledObject demangled = demangle(name);
+					if (demangled != null && demangled instanceof DemangledFunction) {
+						return true;
+					}
+				}
+			}
+		}
+		Address pointee = getAbsoluteAddress(program, address);
+		if (pointee == null) {
+			return false;
+		}
+		if (hasFunctionDescriptors(program)) {
+			// the PowerPC Elf64 ABI has Function Descriptors :/
+			pointee = getAbsoluteAddress(program, pointee);
+			if (pointee == null) {
+				return false;
+			}
+		}
+		MemoryBlock block = program.getMemory().getBlock(pointee);
+		return block != null ? block.isExecute() : false;
+	}
 
-    /**
-     * Checks if a null pointer is located at the specified address
-     * @param program the program containing the data
-     * @param address the address of the data
-     * @return true if a null pointer is located at the specified address
-     */
-    public static boolean isNullPointer(Program program, Address address) {
-        return isNullPointer(new MemoryBufferImpl(program.getMemory(), address));
-    }
+	/**
+	 * Checks if a null pointer is located at the specified address
+	 * @param program the program containing the data
+	 * @param address the address of the data
+	 * @return true if a null pointer is located at the specified address
+	 */
+	public static boolean isNullPointer(Program program, Address address) {
+		return isNullPointer(new MemoryBufferImpl(program.getMemory(), address));
+	}
 
-    /**
-     * Checks if a null pointer is located at the specified address
-     * @param buf the memory buffer containing the data
-     * @return true if a null pointer is located at the specified address
-     */
-    public static boolean isNullPointer(MemBuffer buf) {
-        try {
-            return buf.getBigInteger(
-                0, buf.getMemory().getProgram().getDefaultPointerSize(), false).longValue() == 0;
-        } catch (MemoryAccessException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Checks if a valid pointer is located at the specified address
-     * @param program the program containing the data
-     * @param address the address of the data
-     * @return true if a valid pointer is located at the specified address
-     */
-    public static boolean isValidPointer(Program program, Address address) {
-        Address pointee = getAbsoluteAddress(program, address);
-        if (pointee != null) {
-            return program.getMemory().getLoadedAndInitializedAddressSet().contains(pointee);
-        } return false;
-    }
-
-    /**
-     * Checks if a valid pointer is located at the specified address
+	/**
+	 * Checks if a null pointer is located at the specified address
 	 * @param buf the memory buffer containing the data
-     * @return true if a valid pointer is located at the specified address
-     */
-    public static boolean isValidPointer(MemBuffer buf) {
-        return buf != null ?
-            isValidPointer(buf.getMemory().getProgram(), buf.getAddress()) : false;
-    }
+	 * @return true if a null pointer is located at the specified address
+	 */
+	public static boolean isNullPointer(MemBuffer buf) {
+		try {
+			return buf.getBigInteger(
+				0, buf.getMemory().getProgram().getDefaultPointerSize(), false).longValue() == 0;
+		} catch (MemoryAccessException e) {
+			return false;
+		}
+	}
 
-    /**
-     * Gets all direct data references to the specified address
-     * @param program the program containing the data
-     * @param address the address of the data
-     * @return a set of all direct data references to the specified address
-     */
-    public static Set<Address> getDirectDataReferences(Program program, Address address) {
-        try {
-            return getDirectDataReferences(program, address, new DummyCancellableTaskMonitor());
-        } catch (CancelledException e) {
-            return null;
-        }
-    }
+	/**
+	 * Checks if a valid pointer is located at the specified address
+	 * @param program the program containing the data
+	 * @param address the address of the data
+	 * @return true if a valid pointer is located at the specified address
+	 */
+	public static boolean isValidPointer(Program program, Address address) {
+		Address pointee = getAbsoluteAddress(program, address);
+		if (pointee != null) {
+			return program.getMemory().getLoadedAndInitializedAddressSet().contains(pointee);
+		} return false;
+	}
 
-    /**
-     * Gets all direct data references to the specified address
-     * @param program the program containing the data
-     * @param address the address of the data
-     * @param monitor the task monitor
-     * @return a set of all direct data references to the specified address
-     * @throws CancelledException if the search is cancelled
-     */
-    public static Set<Address> getDirectDataReferences(Program program, Address address,
-        TaskMonitor monitor) throws CancelledException {
-            if (address == null)
-                return Collections.emptySet();
-            List<MemoryBlock> dataBlocks = getAllDataBlocks(program);
-            int pointerAlignment =
-                program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
-            return ProgramMemoryUtil.findDirectReferences(program, dataBlocks,
-                pointerAlignment, address, monitor);
-    }
+	/**
+	 * Checks if a valid pointer is located at the specified address
+	 * @param buf the memory buffer containing the data
+	 * @return true if a valid pointer is located at the specified address
+	 */
+	public static boolean isValidPointer(MemBuffer buf) {
+		return buf != null ?
+			isValidPointer(buf.getMemory().getProgram(), buf.getAddress()) : false;
+	}
 
-    /**
-     * Attempts to get the Program containing the data for the relocation
-     * @param program the program containing the relocation
-     * @param reloc the relocation
-     * @return the external program or null if not resolved
-     */
-    public static Program getExternalProgram(Program program, Relocation reloc) {
-        ExternalManager manager = program.getExternalManager();
-        SymbolTable table = program.getSymbolTable();
-        for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
-            for (String path : symbol.getPath()) {
-                Library library = manager.getExternalLibrary(path);
-                if (library != null) {
-                    return openProgram(library.getAssociatedProgramPath());
-                }
-            }
-        }
-        // If still not found, brute force it
-        for (String name : manager.getExternalLibraryNames()) {
-            if (name.equals(EXTERNAL)) {
-                continue;
-            }
-            String path = manager.getExternalLibraryPath(name);
-            if (path == null) {
-                continue;
-            }
-            Program exProgram = openProgram(path);
-            if (exProgram != null) {
+	/**
+	 * Checks if a valid pointer to a .*data section address is located at the specified address
+	 * @param buf the memory buffer containing the data
+	 * @return true if a valid data pointer is located at the specified address
+	 */
+	public static boolean isDataPointer(MemBuffer buf) {
+		if (isValidPointer(buf)) {
+			Memory mem = buf.getMemory();
+			Address pointee = getAbsoluteAddress(mem.getProgram(), buf.getAddress());
+			MemoryBlock block = mem.getBlock(pointee);
+			if (block != null) {
+				return getAllDataBlocks(mem.getProgram()).contains(block);
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Gets all direct data references to the specified address
+	 * @param program the program containing the data
+	 * @param address the address of the data
+	 * @return a set of all direct data references to the specified address
+	 */
+	public static Set<Address> getDirectDataReferences(Program program, Address address) {
+		try {
+			return getDirectDataReferences(program, address, new DummyCancellableTaskMonitor());
+		} catch (CancelledException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Gets all direct data references to the specified address
+	 * @param program the program containing the data
+	 * @param address the address of the data
+	 * @param monitor the task monitor
+	 * @return a set of all direct data references to the specified address
+	 * @throws CancelledException if the search is cancelled
+	 */
+	public static Set<Address> getDirectDataReferences(Program program, Address address,
+		TaskMonitor monitor) throws CancelledException {
+			if (address == null)
+				return Collections.emptySet();
+			List<MemoryBlock> dataBlocks = getAllDataBlocks(program);
+			int pointerAlignment =
+				program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
+			return ProgramMemoryUtil.findDirectReferences(program, dataBlocks,
+				pointerAlignment, address, monitor);
+	}
+
+	/**
+	 * Attempts to get the Program containing the data for the relocation
+	 * @param program the program containing the relocation
+	 * @param reloc the relocation
+	 * @return the external program or null if not resolved
+	 */
+	public static Program getExternalProgram(Program program, Relocation reloc) {
+		ExternalManager manager = program.getExternalManager();
+		SymbolTable table = program.getSymbolTable();
+		for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
+			for (String path : symbol.getPath()) {
+				Library library = manager.getExternalLibrary(path);
+				if (library != null) {
+					return openProgram(library.getAssociatedProgramPath());
+				}
+			}
+		}
+		// If still not found, brute force it
+		for (String name : manager.getExternalLibraryNames()) {
+			if (name.equals(EXTERNAL)) {
+				continue;
+			}
+			String path = manager.getExternalLibraryPath(name);
+			if (path == null) {
+				continue;
+			}
+			Program exProgram = openProgram(path);
+			if (exProgram != null) {
 				Namespace global = exProgram.getGlobalNamespace();
-                SymbolTable exTable = exProgram.getSymbolTable();
-                if (!exTable.getSymbols(reloc.getSymbolName(), global).isEmpty()) {
-                    return exProgram;
-                }
-            }
-        }
-        return null;
-    }
+				SymbolTable exTable = exProgram.getSymbolTable();
+				if (!exTable.getSymbols(reloc.getSymbolName(), global).isEmpty()) {
+					return exProgram;
+				}
+			}
+		}
+		return null;
+	}
 
-    private static Program openProgram(String path) {
-        Project project = AppInfo.getActiveProject();
+	private static Program openProgram(String path) {
+		Project project = AppInfo.getActiveProject();
 		DomainFile file = project.getProjectData().getFile(path);
 		if (file == null) {
 			return null;
 		}
-        Tool[] tools = project.getToolManager().getRunningTools();
-        for (Tool tool : tools) {
-            if (tool instanceof PluginTool) {
-                return getProgramManager((PluginTool) tool, false).openProgram(file);
-            }
-        }
-        return null;
-    }
+		Tool[] tools = project.getToolManager().getRunningTools();
+		for (Tool tool : tools) {
+			if (tool instanceof PluginTool) {
+				return getProgramManager((PluginTool) tool, false).openProgram(file);
+			}
+		}
+		return null;
+	}
 
 }

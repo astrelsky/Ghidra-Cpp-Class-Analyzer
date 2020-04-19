@@ -16,12 +16,12 @@ import ghidra.program.model.listing.Program;
  */
 public final class TypeInfoModel extends AbstractTypeInfoModel {
 
-    public static final String STRUCTURE_NAME = "type_info";
-    private static final String DESCRIPTION = "Model for the base Type Info";
+	public static final String STRUCTURE_NAME = "type_info";
+	private static final String DESCRIPTION = "Model for the base Type Info";
 
-    protected static final int NAME_ORDINAL = 1;
+	protected static final int NAME_ORDINAL = 1;
 
-    public static final String ID_STRING = "St9type_info";
+	public static final String ID_STRING = "St9type_info";
 
 	/**
 	 * Gets a new TypeInfoModel
@@ -40,40 +40,40 @@ public final class TypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-    private TypeInfoModel(Program program, Address address) {
-        super(program, address);
-    }
+	private TypeInfoModel(Program program, Address address) {
+		super(program, address);
+	}
 
-    @Override
-    public DataType getDataType() {
-        return getDataType(program.getDataTypeManager());
-    }
+	@Override
+	public DataType getDataType() {
+		return getDataType(program.getDataTypeManager());
+	}
 
-    /**
-     * Gets the {@value #STRUCTURE_NAME} datatype
-     * @param dtm the DataTypeManager
-     * @return the {@value #STRUCTURE_NAME} datatype
-     */
-    public static DataType getDataType(DataTypeManager dtm) {
-        DataType existingDt = dtm.getDataType(STD_PATH, STRUCTURE_NAME);
-        if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
-            return existingDt;
-        }
-        StructureDataType struct = new StructureDataType(STD_PATH, STRUCTURE_NAME, 0, dtm);
-        struct.add(dtm.getPointer(VoidDataType.dataType), "_vptr", null);
-        struct.add(PointerDataType.getPointer(StringDataType.dataType, dtm), "__name", null);
-        struct.setDescription(DESCRIPTION);
-        return alignDataType(struct, dtm);
-    }
+	/**
+	 * Gets the {@value #STRUCTURE_NAME} datatype
+	 * @param dtm the DataTypeManager
+	 * @return the {@value #STRUCTURE_NAME} datatype
+	 */
+	public static DataType getDataType(DataTypeManager dtm) {
+		DataType existingDt = dtm.getDataType(STD_PATH, STRUCTURE_NAME);
+		if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
+			return existingDt;
+		}
+		StructureDataType struct = new StructureDataType(STD_PATH, STRUCTURE_NAME, 0, dtm);
+		struct.add(dtm.getPointer(VoidDataType.dataType), "_vptr", null);
+		struct.add(PointerDataType.getPointer(StringDataType.dataType, dtm), "__name", null);
+		struct.setDescription(DESCRIPTION);
+		return alignDataType(struct, dtm);
+	}
 
-    @Override
-    public String getIdentifier() {
-        return ID_STRING;
-    }
+	@Override
+	public String getIdentifier() {
+		return ID_STRING;
+	}
 
-    @Override
-    public DataType getRepresentedDataType() {
-        return getDataType();
-    }
+	@Override
+	public DataType getRepresentedDataType() {
+		return getDataType();
+	}
 
 }

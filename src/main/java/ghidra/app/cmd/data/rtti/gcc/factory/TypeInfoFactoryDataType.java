@@ -1,5 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.factory;
 
+import ghidra.program.database.data.rtti.TypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.BuiltInDataTypeManager;
 import ghidra.program.model.data.DataType;
@@ -13,59 +14,55 @@ import ghidra.docking.settings.Settings;
 
 public class TypeInfoFactoryDataType extends FactoryStructureDataType {
 
-    private static final String DATA_TYPE_NAME = "TypeInfo";
-    private static final String DESCRIPTION = "Automatically applies the correct typeinfo structure upon creation";
+	private static final String DATA_TYPE_NAME = "TypeInfo";
+	private static final String DESCRIPTION = "Automatically applies the correct typeinfo structure upon creation";
 
-    public TypeInfoFactoryDataType() {
-        this(null);
-    }
+	public TypeInfoFactoryDataType() {
+		this(null);
+	}
 
-    public TypeInfoFactoryDataType(DataTypeManager dtm) {
-        super(DATA_TYPE_NAME, dtm);
-    }
+	public TypeInfoFactoryDataType(DataTypeManager dtm) {
+		super(DATA_TYPE_NAME, dtm);
+	}
 
-    @Override
-    public String getMnemonic(Settings settings) {
-        return DATA_TYPE_NAME;
-    }
+	@Override
+	public String getMnemonic(Settings settings) {
+		return DATA_TYPE_NAME;
+	}
 
-    @Override
-    public boolean isDynamicallySized() {
-        return true;
-    }
+	@Override
+	public boolean isDynamicallySized() {
+		return true;
+	}
 
-    @Override
-    public DataType clone(DataTypeManager dtm) {
-        if (dtm == getDataTypeManager()) {
-            return this;
-        }
-        if (dtm instanceof BuiltInDataTypeManager) {
-            return new TypeInfoFactoryDataType(dtm);
-        }
-        // stay in the builtin datatype manager
-        return this;
-    }
+	@Override
+	public DataType clone(DataTypeManager dtm) {
+		if (dtm == getDataTypeManager()) {
+			return this;
+		}
+		if (dtm instanceof BuiltInDataTypeManager) {
+			return new TypeInfoFactoryDataType(dtm);
+		}
+		// stay in the builtin datatype manager
+		return this;
+	}
 
-    @Override
-    protected void populateDynamicStructure(MemBuffer buf, Structure struct) {}
+	@Override
+	protected void populateDynamicStructure(MemBuffer buf, Structure struct) {}
 
-    public static DataType getDataType(Program program, Address address) {
-        try {
-            TypeInfo typeinfo = TypeInfoFactory.getTypeInfo(program, address);
-            return typeinfo != null ? typeinfo.getDataType() : null;
-        }
-        catch (Exception e) {
-            return null;
-        }
-    }
+	public static DataType getDataType(Program program, Address address) {
+		TypeInfoManager manager = TypeInfoManager.getManager(program);
+		TypeInfo typeinfo = manager.getTypeInfo(address);
+		return typeinfo != null ? typeinfo.getDataType() : null;
+	}
 
-    @Override
-    public DataType getDataType(MemBuffer buf) {
-        return getDataType(buf.getMemory().getProgram(), buf.getAddress());
-    }
+	@Override
+	public DataType getDataType(MemBuffer buf) {
+		return getDataType(buf.getMemory().getProgram(), buf.getAddress());
+	}
 
-    @Override
-    public String getDescription() {
-        return DESCRIPTION;
-    }
+	@Override
+	public String getDescription() {
+		return DESCRIPTION;
+	}
 }

@@ -15,10 +15,10 @@ import ghidra.program.model.data.PointerDataType;
  */
 public final class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
-    public static final String STRUCTURE_NAME = "__class_type_info";
-    private static final String DESCRIPTION = "Model for Class Type Info";
+	public static final String STRUCTURE_NAME = "__class_type_info";
+	private static final String DESCRIPTION = "Model for Class Type Info";
 
-    public static final String ID_STRING = "N10__cxxabiv117__class_type_infoE";
+	public static final String ID_STRING = "N10__cxxabiv117__class_type_infoE";
 
 	/**
 	 * Gets a new ClassTypeInfoModel
@@ -37,49 +37,49 @@ public final class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-    private ClassTypeInfoModel(Program program, Address address) {
-        super(program, address);
-    }
+	private ClassTypeInfoModel(Program program, Address address) {
+		super(program, address);
+	}
 
-    /**
-     * Gets the __class_type_info datatype.
-     */
-    @Override
-    public DataType getDataType() {
-        return getDataType(STRUCTURE_NAME, DESCRIPTION);
-    }
+	/**
+	 * Gets the __class_type_info datatype.
+	 */
+	@Override
+	public DataType getDataType() {
+		return getDataType(STRUCTURE_NAME, DESCRIPTION);
+	}
 
-    /**
-     * Gets the {@value #STRUCTURE_NAME} datatype
-     * @param dtm the DataTypeManager
-     * @return the {@value #STRUCTURE_NAME} datatype
-     */
-    public static DataType getDataType(DataTypeManager dtm) {
-        return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);
-    }
+	/**
+	 * Gets the {@value #STRUCTURE_NAME} datatype
+	 * @param dtm the DataTypeManager
+	 * @return the {@value #STRUCTURE_NAME} datatype
+	 */
+	public static DataType getDataType(DataTypeManager dtm) {
+		return getDataType(dtm, STRUCTURE_NAME, DESCRIPTION);
+	}
 
-    /**
-     * Gets a pointer to a __class_type_info datatype
-     * @param dtm the datatype manager
-     * @return {@value #STRUCTURE_NAME}*
-     */
-    public static Pointer getPointer(DataTypeManager dtm) {
-        return PointerDataType.getPointer(getDataType(dtm), dtm);
-    }
+	/**
+	 * Gets a pointer to a __class_type_info datatype
+	 * @param dtm the datatype manager
+	 * @return {@value #STRUCTURE_NAME}*
+	 */
+	public static Pointer getPointer(DataTypeManager dtm) {
+		return PointerDataType.getPointer(getDataType(dtm), dtm);
+	}
 
-    @Override
-    public String getIdentifier() {
-        return ID_STRING;
-    }
+	@Override
+	public String getIdentifier() {
+		return ID_STRING;
+	}
 
-    @Override
-    public boolean hasParent() {
-        return false;
-    }
+	@Override
+	public boolean hasParent() {
+		return false;
+	}
 
-    @Override
-    public ClassTypeInfo[] getParentModels() {
-        return new ClassTypeInfo[0];
-    }
+	@Override
+	public ClassTypeInfo[] getParentModels() {
+		return new ClassTypeInfo[0];
+	}
 
 }

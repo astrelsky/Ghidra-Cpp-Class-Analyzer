@@ -18,54 +18,54 @@ import ghidra.program.model.listing.Program;
 
 public class VsCppClassBuilder extends AbstractCppClassBuilder {
 
-    private static final String VFPTR = "_vfptr";
-    private static final String VBPTR = "_vbptr";
+	private static final String VFPTR = "_vfptr";
+	private static final String VBPTR = "_vbptr";
 
-    public VsCppClassBuilder(RttiModelWrapper type) {
-        super(type);
-    }
+	public VsCppClassBuilder(RttiModelWrapper type) {
+		super(type);
+	}
 
-    @Override
-    protected AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent) {
-        return new VsCppClassBuilder((RttiModelWrapper) parent);
-    }
+	@Override
+	protected AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent) {
+		return new VsCppClassBuilder((RttiModelWrapper) parent);
+	}
 
-    @Override
-    protected void addVptr() {
-        try {    
-            addPointers();
-        } catch (InvalidDataTypeException e) {
-            return;
-        }
-    }
+	@Override
+	protected void addVptr() {
+		try {	
+			addPointers();
+		} catch (InvalidDataTypeException e) {
+			return;
+		}
+	}
 
-    private void addVfptr(int offset) {
+	private void addVfptr(int offset) {
 		final ClassTypeInfo type = getType();
 		final Program program = getProgram();
 		final DataType vfptr = ClassTypeInfoUtils.getVptrDataType(program, type);
-        DataTypeComponent comp = struct.getComponentAt(offset);
-        if (comp == null || isUndefined(comp.getDataType())) {
+		DataTypeComponent comp = struct.getComponentAt(offset);
+		if (comp == null || isUndefined(comp.getDataType())) {
 			replaceComponent(struct, vfptr, VFPTR, offset);
-        } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
-            replaceComponent(struct, vfptr, VFPTR, offset);
-        }
+		} else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
+			replaceComponent(struct, vfptr, VFPTR, offset);
+		}
 	}
 
-    private void addVbptr(int offset) throws InvalidDataTypeException {
+	private void addVbptr(int offset) throws InvalidDataTypeException {
 		final Program program = getProgram();
 		final DataTypeManager dtm = program.getDataTypeManager();
-        final int ptrSize = program.getDefaultPointerSize();
-        final DataType vbptr = dtm.getPointer(
+		final int ptrSize = program.getDefaultPointerSize();
+		final DataType vbptr = dtm.getPointer(
 			MSDataTypeUtils.getPointerDisplacementDataType(program), ptrSize);
-        DataTypeComponent comp = struct.getComponentAt(offset);
-        if (comp == null || isUndefined(comp.getDataType())) {
+		DataTypeComponent comp = struct.getComponentAt(offset);
+		if (comp == null || isUndefined(comp.getDataType())) {
 			replaceComponent(struct, vbptr, VBPTR, offset);
-        } else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
+		} else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
 			replaceComponent(struct, vbptr, VBPTR, offset);
-        }
+		}
 	}
 
-	private static boolean hasVtable(RttiModelWrapper type) {
+	private static boolean hasVtable(WindowsClassTypeInfo type) {
 		return Vtable.isValid(type.getVtable());
 	}
 	
@@ -73,7 +73,7 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 		final int vfPtrOffset;
 		final int vbPtrOffset;
 		final int ptrSize = getProgram().getDefaultPointerSize();
-		final RttiModelWrapper type = getType();
+		final WindowsClassTypeInfo type = getType();
 		final boolean hasVtable = hasVtable(type);
 		if (!type.getVirtualParents().isEmpty()) {
 			final Rtti1Model base = type.getBaseModel();
@@ -96,13 +96,13 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 		}
 	}
 
-    @Override
-    protected Map<ClassTypeInfo, Integer> getBaseOffsets() {
-        return getType().getBaseOffsets();
+	@Override
+	protected Map<ClassTypeInfo, Integer> getBaseOffsets() {
+		return getType().getBaseOffsets();
 	}
 	
 	@Override
-	protected RttiModelWrapper getType() {
-		return (RttiModelWrapper) super.getType();
+	protected WindowsClassTypeInfo getType() {
+		return (WindowsClassTypeInfo) super.getType();
 	}
 }

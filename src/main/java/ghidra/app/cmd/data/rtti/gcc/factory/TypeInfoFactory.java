@@ -16,9 +16,14 @@ import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 
+/**
+ * @deprecated please use the methods provided by
+ * {@link ghidra.program.database.data.rtti.ClassTypeInfoManager ClassTypeInfoManager}
+ */
+@Deprecated(since = "1.5", forRemoval = true)
 public class TypeInfoFactory {
 
-    private TypeInfoFactory() {}
+	private TypeInfoFactory() {}
 
 	private static final Map<String, MethodPair> COPY_MAP =
 		Map.ofEntries(
@@ -83,75 +88,74 @@ public class TypeInfoFactory {
 					IosFailTypeInfoModel::getModel,
 					IosFailTypeInfoModel::getDataType)));
 
-    /**
-     * Get the TypeInfo in the buffer
-     * @param buf the memory buffer containing the TypeInfo data
-     * @return the TypeInfo at the buffers address
-     */
-    public static TypeInfo getTypeInfo(MemBuffer buf) {
-        return getTypeInfo(buf.getMemory().getProgram(), buf.getAddress());
-    }
+	/**
+	 * Get the TypeInfo in the buffer
+	 * @param buf the memory buffer containing the TypeInfo data
+	 * @return the TypeInfo at the buffers address
+	 */
+	public static TypeInfo getTypeInfo(MemBuffer buf) {
+		return getTypeInfo(buf.getMemory().getProgram(), buf.getAddress());
+	}
 
-    /**
-     * Get the TypeInfo at the address
-     * @param program the program containing the TypeInfo
-     * @param address the address of the TypeInfo
-     * @return the TypeInfo at the specified address in the specified program
-     * or null if none exists.
-     */
-    public static TypeInfo getTypeInfo(Program program, Address address) {
-            String baseTypeName = TypeInfoUtils.getIDString(program, address);
-            if (!COPY_MAP.containsKey(baseTypeName)) {
-                // invalid typeinfo
-                return null;
-            } try {
+	/**
+	 * Get the TypeInfo at the address
+	 * @param program the program containing the TypeInfo
+	 * @param address the address of the TypeInfo
+	 * @return the TypeInfo at the specified address in the specified program
+	 * or null if none exists.
+	 */
+	public static TypeInfo getTypeInfo(Program program, Address address) {
+			String baseTypeName = TypeInfoUtils.getIDString(program, address);
+			if (!COPY_MAP.containsKey(baseTypeName)) {
+				// invalid typeinfo
+				return null;
+			} try {
 				return COPY_MAP.get(baseTypeName).modelGetter.getModel(program, address);
-            } catch (InvalidDataTypeException e) {
-                throw new AssertException(
+			} catch (InvalidDataTypeException e) {
+				throw new AssertException(
 					TypeInfoUtils.getErrorMessage(program, address, baseTypeName));
-            }
-    }
+			}
+	}
 
-    /**
-     * Checks if a valid TypeInfo is located at the start of the buffer
-     * @param buf the memory buffer containing the TypeInfo data
-     * @return true if the buffer contains a valid TypeInfo
-     */
-    public static boolean isTypeInfo(MemBuffer buf) {
-        return buf != null ? isTypeInfo(buf.getMemory().getProgram(), buf.getAddress()) : false;
-    }
+	/**
+	 * Checks if a valid TypeInfo is located at the start of the buffer
+	 * @param buf the memory buffer containing the TypeInfo data
+	 * @return true if the buffer contains a valid TypeInfo
+	 */
+	public static boolean isTypeInfo(MemBuffer buf) {
+		return buf != null ? isTypeInfo(buf.getMemory().getProgram(), buf.getAddress()) : false;
+	}
 
-    /**
-     * Checks if a valid TypeInfo is located at the address in the program.
-     * @param program the program containing the TypeInfo
-     * @param address the address of the TypeInfo
-     * @return true if the data is a valid TypeInfo
-     */
-    public static boolean isTypeInfo(Program program, Address address) {
-        try {
-            return COPY_MAP.containsKey(TypeInfoUtils.getIDString(program, address));
-        } catch (AddressOutOfBoundsException e) {
-            return false;
-        }
-    }
+	/**
+	 * Checks if a valid TypeInfo is located at the address in the program.
+	 * @param program the program containing the TypeInfo
+	 * @param address the address of the TypeInfo
+	 * @return true if the data is a valid TypeInfo
+	 */
+	public static boolean isTypeInfo(Program program, Address address) {
+		try {
+			return COPY_MAP.containsKey(TypeInfoUtils.getIDString(program, address));
+		} catch (AddressOutOfBoundsException e) {
+			return false;
+		}
+	}
 
-    /**
-     * Invokes getDataType on the TypeInfo containing the specified typename
-     * @param program the program containing the TypeInfo
-     * @param typename the type_info class's typename
-     * @return the TypeInfo structure for the typename
+	/**
+	 * Invokes getDataType on the TypeInfo containing the specified typename
+	 * @param program the program containing the TypeInfo
+	 * @param typename the type_info class's typename
+	 * @return the TypeInfo structure for the typename
 	 * @see TypeInfoModel#getDataType()
-     */
-    public static Structure getDataType(Program program, String typename) {
-        if (COPY_MAP.containsKey(typename)) {
+	 */
+	public static Structure getDataType(Program program, String typename) {
+		if (COPY_MAP.containsKey(typename)) {
 			final Function<DataTypeManager, DataType> getter =
 				COPY_MAP.get(typename).dataTypeGetter;
 			return (Structure) getter.apply(program.getDataTypeManager());
-        }
-        return null;
+		}
+		return null;
 	}
 
-	@FunctionalInterface
 	private interface ModelGetter {
 		public TypeInfo getModel(Program program, Address address) throws InvalidDataTypeException;
 	}

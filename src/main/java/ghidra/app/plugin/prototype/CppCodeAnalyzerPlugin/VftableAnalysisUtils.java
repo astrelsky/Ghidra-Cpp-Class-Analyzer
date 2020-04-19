@@ -12,63 +12,63 @@ import ghidra.util.Msg;
 
 public class VftableAnalysisUtils {
 
-    public static final String CONSTRUCTOR = "CONSTRUCTOR";
-    public static final String DESTRUCTOR = "DESTRUCTOR";
-    public static final String DESTRUCTOR_CHAR = "~";
+	public static final String CONSTRUCTOR = "CONSTRUCTOR";
+	public static final String DESTRUCTOR = "DESTRUCTOR";
+	public static final String DESTRUCTOR_CHAR = "~";
 
-    private VftableAnalysisUtils() {}
+	private VftableAnalysisUtils() {}
 
-    public static boolean isDestructor(Function function) {
-        return function.getName().contains(DESTRUCTOR_CHAR);
-    }
+	public static boolean isDestructor(Function function) {
+		return function.getName().contains(DESTRUCTOR_CHAR);
+	}
 
-    public static boolean isProcessedFunction(Function function) {
-        if (function == null) {
-            return true;
-        }
-        Namespace ns = function.getParentNamespace();
-        if (ns.isGlobal()) {
-            String name = function.getName();
-            return !(name.startsWith(Function.THUNK) || name.startsWith("FUN_"));
-        } return true;
-    }
+	public static boolean isProcessedFunction(Function function) {
+		if (function == null) {
+			return true;
+		}
+		Namespace ns = function.getParentNamespace();
+		if (ns.isGlobal()) {
+			String name = function.getName();
+			return !(name.startsWith(Function.THUNK) || name.startsWith("FUN_"));
+		} return true;
+	}
 
-    public static void setConstructorDestructorTag(Program program, Function function,
-        boolean destructor) {
-            AddFunctionTagCmd cmd = destructor ?
-                    new AddFunctionTagCmd(DESTRUCTOR, function.getEntryPoint()) :
-                    new AddFunctionTagCmd(CONSTRUCTOR, function.getEntryPoint());
-            if (destructor) {
-                function.removeTag(CONSTRUCTOR);
-            } else {
-                function.removeTag(DESTRUCTOR);
-            }
-            cmd.applyTo(program);
-    }
+	public static void setConstructorDestructorTag(Program program, Function function,
+		boolean destructor) {
+			AddFunctionTagCmd cmd = destructor ?
+					new AddFunctionTagCmd(DESTRUCTOR, function.getEntryPoint()) :
+					new AddFunctionTagCmd(CONSTRUCTOR, function.getEntryPoint());
+			if (destructor) {
+				function.removeTag(CONSTRUCTOR);
+			} else {
+				function.removeTag(DESTRUCTOR);
+			}
+			cmd.applyTo(program);
+	}
 
-    public static Function recurseThunkFunctions(Program program, Function function) {
-        FunctionManager manager = program.getFunctionManager();
-        while(true) {
-            Address thunkedAddress = CreateThunkFunctionCmd.getThunkedAddr(
-                program, function.getEntryPoint(), false);
-            if (thunkedAddress == null || thunkedAddress == Address.NO_ADDRESS) {
+	public static Function recurseThunkFunctions(Program program, Function function) {
+		FunctionManager manager = program.getFunctionManager();
+		while(true) {
+			Address thunkedAddress = CreateThunkFunctionCmd.getThunkedAddr(
+				program, function.getEntryPoint(), false);
+			if (thunkedAddress == null || thunkedAddress == Address.NO_ADDRESS) {
 				// difference in ghidra versions
-                break;
-            }
-            Function thunkedFunction = manager.getFunctionAt(thunkedAddress);
-            if (thunkedFunction == null) {
-                CreateFunctionCmd cmd = new CreateFunctionCmd(thunkedAddress);
-                if (cmd.applyTo(program)) {
-                    thunkedFunction = cmd.getFunction();
-                } else {
-                    Msg.info(VftableAnalysisUtils.class,
-                             "Failed to create function at "+thunkedAddress);
-                    return function;
-                }
-            }
-            function.setThunkedFunction(thunkedFunction);
-            function = function.getThunkedFunction(true);
-        }
-        return function;
-    }
+				break;
+			}
+			Function thunkedFunction = manager.getFunctionAt(thunkedAddress);
+			if (thunkedFunction == null) {
+				CreateFunctionCmd cmd = new CreateFunctionCmd(thunkedAddress);
+				if (cmd.applyTo(program)) {
+					thunkedFunction = cmd.getFunction();
+				} else {
+					Msg.info(VftableAnalysisUtils.class,
+							 "Failed to create function at "+thunkedAddress);
+					return function;
+				}
+			}
+			function.setThunkedFunction(thunkedFunction);
+			function = function.getThunkedFunction(true);
+		}
+		return function;
+	}
 }

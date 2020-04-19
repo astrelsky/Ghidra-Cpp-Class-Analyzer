@@ -8,6 +8,7 @@ import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.app.util.demangler.DemangledObject;
+import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
@@ -32,150 +33,152 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 
 	protected static final String DEFAULT_TYPENAME = "";
 
-    protected static final int BASE_ORDINAL = 0;
+	protected static final int BASE_ORDINAL = 0;
 
-    protected Program program;
-    protected Address address;
-    private DataType dataType = null;
+	protected final Program program;
+	protected final Address address;
+	protected final ClassTypeInfoManager manager;
+	private DataType dataType = null;
 
-    protected String typeName = DEFAULT_TYPENAME;
-    protected Namespace namespace;
-    private MemoryBufferImpl buf;
+	protected String typeName = DEFAULT_TYPENAME;
+	protected Namespace namespace;
+	private MemoryBufferImpl buf;
 
-    protected static final String SUPER = "super_";
-    protected static final CategoryPath STD_PATH = new CategoryPath(CategoryPath.ROOT, "std");
+	protected static final String SUPER = "super_";
+	protected static final CategoryPath STD_PATH = new CategoryPath(CategoryPath.ROOT, "std");
 
-    private static final Pattern TYPE_PATTERN = Pattern.compile(".*_\\((.*)\\)");
-    private static final Pattern FUNCTION_PATTERN = Pattern.compile("(.*)\\S*?\\((.*)\\)");
+	private static final Pattern TYPE_PATTERN = Pattern.compile(".*_\\((.*)\\)");
+	private static final Pattern FUNCTION_PATTERN = Pattern.compile("(.*)\\S*?\\((.*)\\)");
 
-    protected AbstractTypeInfoModel(Program program, Address address) {
-        this.program = program;
-        this.address = address;
-        this.buf = new MemoryBufferImpl(program.getMemory(), address);
-        this.typeName = TypeInfoUtils.getTypeName(program, address);
-        this.namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
-    }
+	protected AbstractTypeInfoModel(Program program, Address address) {
+		this.manager = ClassTypeInfoManager.getManager(program);
+		this.program = program;
+		this.address = address;
+		this.buf = new MemoryBufferImpl(program.getMemory(), address);
+		this.typeName = TypeInfoUtils.getTypeName(program, address);
+		this.namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
+	}
 
 	protected static boolean isValid(Program program, Address address, String id) {
-        if (!TypeInfoUtils.getIDString(program, address).equals(id)) {
-            return false;
-        }
-        if (TypeInfoUtils.getTypeName(program, address).equals(DEFAULT_TYPENAME)) {
-            return false;
+		if (!TypeInfoUtils.getIDString(program, address).equals(id)) {
+			return false;
+		}
+		if (TypeInfoUtils.getTypeName(program, address).equals(DEFAULT_TYPENAME)) {
+			return false;
 		}
 		return true;
 	}
 
-    @Override
-    public final boolean equals(Object object) {
-        if (!(object instanceof TypeInfo)) {
-            return false;
-        }
-        return ((TypeInfo) object).getAddress().equals(address);
-    }
+	@Override
+	public final boolean equals(Object object) {
+		if (!(object instanceof TypeInfo)) {
+			return false;
+		}
+		return ((TypeInfo) object).getAddress().equals(address);
+	}
 
-    @Override
-    public final int hashCode() {
-        return typeName.hashCode();
-    }
+	@Override
+	public final int hashCode() {
+		return typeName.hashCode();
+	}
 
-    @Override
-    public Namespace getNamespace() {
-        return namespace;
-    }
+	@Override
+	public Namespace getNamespace() {
+		return namespace;
+	}
 
-    protected MemBuffer getBuffer() {
-        return buf;
-    }
+	protected MemBuffer getBuffer() {
+		return buf;
+	}
 
-    protected static DataType alignDataType(StructureDataType struct, DataTypeManager dtm) {
-        struct.setInternallyAligned(true);
-        struct.adjustInternalAlignment();
-        DataType result = dtm.resolve(struct, KEEP_HANDLER);
-        return result.getLength() <= 1 ? dtm.resolve(struct, REPLACE_HANDLER) : result;
-    }
+	protected static DataType alignDataType(StructureDataType struct, DataTypeManager dtm) {
+		struct.setInternallyAligned(true);
+		struct.adjustInternalAlignment();
+		DataType result = dtm.resolve(struct, KEEP_HANDLER);
+		return result.getLength() <= 1 ? dtm.resolve(struct, REPLACE_HANDLER) : result;
+	}
 
-    @Override
-    public final String getName() {
-        return namespace.getName();
-    }
+	@Override
+	public final String getName() {
+		return namespace.getName();
+	}
 
-    protected Structure getDataType(String dtName, String description) {
-        return getDataType(program.getDataTypeManager(), dtName, description);
-    }
+	protected Structure getDataType(String dtName, String description) {
+		return getDataType(program.getDataTypeManager(), dtName, description);
+	}
 
-    protected static Structure getDataType(DataTypeManager dtm, String name, String description) {
-        DataType existingDt = dtm.getDataType(getCxxAbiCategoryPath(), name);
-        if (existingDt != null && existingDt.getDescription().equals(description)) {
-            return (Structure) existingDt;
-        }
-        StructureDataType struct = new StructureDataType(getCxxAbiCategoryPath(), name, 0, dtm);
-        struct.add(TypeInfoModel.getDataType(dtm), "super_type_info", null);
-        struct.setDescription(description);
-        return (Structure) alignDataType(struct, dtm);
-    }
+	protected static Structure getDataType(DataTypeManager dtm, String name, String description) {
+		DataType existingDt = dtm.getDataType(getCxxAbiCategoryPath(), name);
+		if (existingDt != null && existingDt.getDescription().equals(description)) {
+			return (Structure) existingDt;
+		}
+		StructureDataType struct = new StructureDataType(getCxxAbiCategoryPath(), name, 0, dtm);
+		struct.add(TypeInfoModel.getDataType(dtm), "super_type_info", null);
+		struct.setDescription(description);
+		return (Structure) alignDataType(struct, dtm);
+	}
 
-    @Override
-    public Address getAddress() {
-        return address;
-    }
+	@Override
+	public Address getAddress() {
+		return address;
+	}
 
-    @Override
-    public String getTypeName() {
-        return typeName;
-    }
+	@Override
+	public String getTypeName() {
+		return typeName;
+	}
 
-    @Override
-    public DataType getRepresentedDataType() {
-        if (dataType == null) {
-            dataType = parseDataType(typeName);
-        }
-        return dataType;
-    }
+	@Override
+	public DataType getRepresentedDataType() {
+		if (dataType == null) {
+			dataType = parseDataType(typeName);
+		}
+		return dataType;
+	}
 
-    private static DemangledDataType getDemangledType(String demangled) {
-        if (demangled.contains(DemangledDataType.UNSIGNED)) {
-            demangled = demangled.replace(DemangledDataType.UNSIGNED+" ", "u");
-        }
-        if (demangled.contains(" ")) {
-            int index = demangled.indexOf(" ");
-            demangled = demangled.substring(0, index);
-        }
-        return new DemangledDataType(null, demangled, demangled);
-    }
+	private static DemangledDataType getDemangledType(String demangled) {
+		if (demangled.contains(DemangledDataType.UNSIGNED)) {
+			demangled = demangled.replace(DemangledDataType.UNSIGNED+" ", "u");
+		}
+		if (demangled.contains(" ")) {
+			int index = demangled.indexOf(" ");
+			demangled = demangled.substring(0, index);
+		}
+		return new DemangledDataType(null, demangled, demangled);
+	}
 
-    protected DemangledFunctionReference getDemangledFunction(String signature) {
-        DemangledFunctionReference method = new DemangledFunctionReference("_Z"+typeName, signature);
-        Matcher matcher = FUNCTION_PATTERN.matcher(signature);
-        if (matcher.matches()) {
-            method.setReturnType(getDemangledType(matcher.group(1)));
-            String[] parameters = matcher.group(2).split(",");
-            for (String parameter : parameters) {
-                if (parameter.equals("")) {
-                    parameter = DemangledDataType.VOID;
-                }
-                method.addParameter(getDemangledType(parameter));
-            }
-        }
-        return method;
-    }
+	protected DemangledFunctionReference getDemangledFunction(String signature) {
+		DemangledFunctionReference method = new DemangledFunctionReference("_Z"+typeName, signature);
+		Matcher matcher = FUNCTION_PATTERN.matcher(signature);
+		if (matcher.matches()) {
+			method.setReturnType(getDemangledType(matcher.group(1)));
+			String[] parameters = matcher.group(2).split(",");
+			for (String parameter : parameters) {
+				if (parameter.equals("")) {
+					parameter = DemangledDataType.VOID;
+				}
+				method.addParameter(getDemangledType(parameter));
+			}
+		}
+		return method;
+	}
 
 	// TODO this needs to be retested or improved
-    protected DataType parseDataType(String dataTypeName) {
-        DemangledObject demangled = demangle("_Z1_"+dataTypeName);
-        if (demangled != null) {
-            Matcher matcher = TYPE_PATTERN.matcher(demangled.getSignature(false));
-            if (matcher.matches()) {
-                DataTypeManager dtm = program.getDataTypeManager();
-                if (matcher.group(1).contains("(")) {
-                    // we have a demangled function
-                    DemangledFunctionReference method = getDemangledFunction(matcher.group(1));
-                    return ((Pointer) method.getDataType(dtm)).getDataType();
-                }
-                DemangledDataType dt = new DemangledDataType(null, matcher.group(1), matcher.group(1));
-                return dt.getDataType(dtm);
-            }
-        } return null;
+	protected DataType parseDataType(String dataTypeName) {
+		DemangledObject demangled = demangle("_Z1_"+dataTypeName);
+		if (demangled != null) {
+			Matcher matcher = TYPE_PATTERN.matcher(demangled.getSignature(false));
+			if (matcher.matches()) {
+				DataTypeManager dtm = program.getDataTypeManager();
+				if (matcher.group(1).contains("(")) {
+					// we have a demangled function
+					DemangledFunctionReference method = getDemangledFunction(matcher.group(1));
+					return ((Pointer) method.getDataType(dtm)).getDataType();
+				}
+				DemangledDataType dt = new DemangledDataType(null, matcher.group(1), matcher.group(1));
+				return dt.getDataType(dtm);
+			}
+		} return null;
 	}
 	
 	@Override

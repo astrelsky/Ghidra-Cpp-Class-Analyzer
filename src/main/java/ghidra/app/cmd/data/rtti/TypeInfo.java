@@ -12,49 +12,49 @@ import ghidra.program.model.address.Address;
  */
 public interface TypeInfo {
 
-    static final String SYMBOL_NAME = "typeinfo";
+	static final String SYMBOL_NAME = "typeinfo";
 
-    /**
-     * Gets name for the TypeInfo DataType Model
+	/**
+	 * Gets name for the TypeInfo DataType Model
 	 * @return the TypeInfo's name
-     */
-    String getName();
+	 */
+	String getName();
 
-    /**
-     * Gets the namespace for this TypeInfo
+	/**
+	 * Gets the namespace for this TypeInfo
 	 * @return the TypeInfo's namespace
-     */
-     Namespace getNamespace();
+	 */
+	 Namespace getNamespace();
 
-    /**
-     * Gets The TypeInfo's typename string
+	/**
+	 * Gets The TypeInfo's typename string
 	 * @return the TypeInfo's typename
-     */
-    String getTypeName();
+	 */
+	String getTypeName();
 
-    /**
-     * Gets The TypeInfo's Identifier String
+	/**
+	 * Gets The TypeInfo's Identifier String
 	 * @return the TypeInfo's ID_STRING field
 	 * @see TypeInfoModel#ID_STRING
-     */
+	 */
 	String getIdentifier();
 
-    /**
-     * Gets corresponding structure for this TypeInfo Model
+	/**
+	 * Gets corresponding structure for this TypeInfo Model
 	 * @return the type_info or subclasses DataType
-     */
-    DataType getDataType();
+	 */
+	DataType getDataType();
 
-    /**
-     * Gets the DataType represented by this TypeInfo
-     * @return the represented DataType
-     */
-    DataType getRepresentedDataType();
+	/**
+	 * Gets the DataType represented by this TypeInfo
+	 * @return the represented DataType
+	 */
+	DataType getRepresentedDataType();
 
-    /**
+	/**
 	 * Gets the address of this TypeInfo structure.
-     * @return the TypeInfo's address.
-     */ 
-    Address getAddress();
+	 * @return the TypeInfo's address.
+	 */ 
+	Address getAddress();
 
 }

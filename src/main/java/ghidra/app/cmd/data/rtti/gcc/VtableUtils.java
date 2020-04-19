@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.address.AddressRange;
@@ -23,7 +24,7 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -32,34 +33,34 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
 
 public class VtableUtils {
 
-    // that's still a awful lot
-    public static final int MAX_PTR_DIFFS = 25;
+	// that's still a awful lot
+	public static final int MAX_PTR_DIFFS = 25;
 
-    private VtableUtils() {}
+	private VtableUtils() {}
 
-    @FunctionalInterface
-    private interface IntToLongFunction {
-        long applyAsLong(int value) throws MemoryAccessException;
-    }
+	@FunctionalInterface
+	private interface IntToLongFunction {
+		long applyAsLong(int value) throws MemoryAccessException;
+	}
 
-    /**
-     * Gets the number of ptrdiff_t's in the vtable_prefix at the address
-     * @param program the program containing the vtable_prefix
-     * @param address the address of the vtable_prefix
-     * @return the number of ptrdiff_t's in the vtable_prefix at the address
-     */
-    public static int getNumPtrDiffs(Program program, Address address) {
-        return getNumPtrDiffs(program, address, -1);
-    }
+	/**
+	 * Gets the number of ptrdiff_t's in the vtable_prefix at the address
+	 * @param program the program containing the vtable_prefix
+	 * @param address the address of the vtable_prefix
+	 * @return the number of ptrdiff_t's in the vtable_prefix at the address
+	 */
+	public static int getNumPtrDiffs(Program program, Address address) {
+		return getNumPtrDiffs(program, address, -1);
+	}
 
-    /**
-     * Gets the size of the ptrdiff_t array at the start of a vtable_prefix
-     * @param program the program containing the ptrdiff_t array
-     * @param address the address of the ptrdiff_t array
-     * @param maxLength the max length for the ptrdiff_t array
-     * @return the number of ptrdiff_t's in the array or 0 if invalid
-     */
-    public static int getNumPtrDiffs(Program program, Address address, int maxLength) {
+	/**
+	 * Gets the size of the ptrdiff_t array at the start of a vtable_prefix
+	 * @param program the program containing the ptrdiff_t array
+	 * @param address the address of the ptrdiff_t array
+	 * @param maxLength the max length for the ptrdiff_t array
+	 * @return the number of ptrdiff_t's in the array or 0 if invalid
+	 */
+	public static int getNumPtrDiffs(Program program, Address address, int maxLength) {
 		/**
 		 * This is not pretty. The rules I have found are as follows.
 		 * Positive values may only repeate when going down.
@@ -70,227 +71,228 @@ public class VtableUtils {
 		 * Most classes within libstdc++ contain no more than 2 ptrdiff_t's,
 		 * however this was written to be able to withstand large inheritance chains.
 		 */
-        if (maxLength < 0) {
-            maxLength = MAX_PTR_DIFFS;
-        }
-        Listing listing = program.getListing();
-        Data before = listing.getDefinedDataBefore(address);
-        Data after = listing.getDefinedDataAfter(address);
-        Data containing = listing.getDefinedDataContaining(address);
-        if (isValidData(containing)) {
-            AddressRangeImpl set;
-            if (before.equals(containing)) {
-                set = new AddressRangeImpl(before.getAddress(), after.getAddress());
-            } else {
-                while(isValidData(before)) {
-                    before = listing.getDefinedDataBefore(before.getAddress());
-                }
-                if (after == null) {
-                    set = new AddressRangeImpl(before.getMaxAddress(), program.getMaxAddress());
-                } else {
-                    set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
-                }
-            }
-            if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
-                if (isPtrDiffArray(before)) {
-                    return before.getNumComponents();
-                }
-                if (isVptrArray(after)) {
-                    after = listing.getDefinedDataAfter(after.getMaxAddress());
-                }
-                int ptrDiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
-                set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
-                return getNumPtrDiffs(program, address.subtract(ptrDiffSize), set, true, maxLength);
-            }
-            return getNumPtrDiffs(program, address, set, false, maxLength);
-        }
-        return 0;
-    }
+		if (maxLength < 0) {
+			maxLength = MAX_PTR_DIFFS;
+		}
+		Listing listing = program.getListing();
+		Data before = listing.getDefinedDataBefore(address);
+		Data after = listing.getDefinedDataAfter(address);
+		Data containing = listing.getDefinedDataContaining(address);
+		if (isValidData(containing)) {
+			AddressRangeImpl set;
+			if (before.equals(containing)) {
+				set = new AddressRangeImpl(before.getAddress(), after.getAddress());
+			} else {
+				while(isValidData(before)) {
+					before = listing.getDefinedDataBefore(before.getAddress());
+				}
+				if (after == null) {
+					set = new AddressRangeImpl(before.getMaxAddress(), program.getMaxAddress());
+				} else {
+					set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
+				}
+			}
+			if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
+				if (isPtrDiffArray(before)) {
+					return before.getNumComponents();
+				}
+				if (isVptrArray(after)) {
+					after = listing.getDefinedDataAfter(after.getMaxAddress());
+				}
+				int ptrDiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
+				set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
+				return getNumPtrDiffs(program, address.subtract(ptrDiffSize), set, true, maxLength);
+			}
+			return getNumPtrDiffs(program, address, set, false, maxLength);
+		}
+		return 0;
+	}
 
-    private static boolean isPtrDiffArray(Data data) {
-        if (data != null && data.isArray()) {
-            DataType ptrDiff = GnuUtils.getPtrDiff_t(data.getDataType().getDataTypeManager());
-            return ((Array) data.getDataType()).getDataType().equals(ptrDiff);
-        }
-        return false;
-    }
+	private static boolean isPtrDiffArray(Data data) {
+		if (data != null && data.isArray()) {
+			DataType ptrDiff = GnuUtils.getPtrDiff_t(data.getDataType().getDataTypeManager());
+			return ((Array) data.getDataType()).getDataType().equals(ptrDiff);
+		}
+		return false;
+	}
 
-    private static boolean isVptrArray(Data data) {
-        if (data != null && data.isArray()) {
-            return ((Array) data.getDataType()).getDataType().equals(PointerDataType.dataType);
-        }
-        return false;
-    }
+	private static boolean isVptrArray(Data data) {
+		if (data != null && data.isArray()) {
+			return ((Array) data.getDataType()).getDataType().equals(PointerDataType.dataType);
+		}
+		return false;
+	}
 
-    private static int getNumPtrDiffs(Program program, Address address,
-        AddressRange range, boolean reverse, int maxLength) {
-            MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), address);
-            DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
-            int length = ptrdiff_t.getLength();
-            int direction = reverse? -1 : 1;
-            int count = 0;
-            long value = 0;
-            List<Long> values = new ArrayList<>();
-            IntToLongFunction getValue = length == 8 ? buf::getLong : buf::getInt;
-            while (range.contains(buf.getAddress()) && count < maxLength) {
-                try {
-                    if (GnuUtils.isValidPointer(buf) && !(getValue.applyAsLong(0) == 0)) {
-                        if ((direction < 0) ^ TypeInfoUtils.isTypeInfoPointer(buf)) {
-                            break;
-                        } else if (direction < 0) {
-                            break;
-                        } return 0;
-                    }
-                    value = getValue.applyAsLong(0);
-                    if (value < 0 && direction < 0) {
-                        return count;
-                    }
-                    if (value > 0 && direction < 0) {
-                        if (values.contains(value)) {
-                            return 0;
-                        } values.add(value);
-                    }
-                    count++;
-                    buf.advance(direction * length);
-                } catch (MemoryAccessException | AddressOverflowException e) {
-                    if (direction < 0) {
-                        return count;
-                    } return 0;
-                }
-            }
-            return count;
-    }
+	private static int getNumPtrDiffs(Program program, Address address,
+		AddressRange range, boolean reverse, int maxLength) {
+			MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), address);
+			DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
+			int length = ptrdiff_t.getLength();
+			int direction = reverse ? -1 : 1;
+			int count = 0;
+			long value = 0;
+			List<Long> values = new ArrayList<>();
+			IntToLongFunction getValue = length == 8 ? buf::getLong : buf::getInt;
+			while (range.contains(buf.getAddress()) && count < maxLength) {
+				try {
+					if (GnuUtils.isDataPointer(buf) && !(getValue.applyAsLong(0) == 0)) {
+						if ((direction < 0) ^ TypeInfoUtils.isTypeInfoPointer(buf)) {
+							break;
+						} else if (direction < 0) {
+							break;
+						} return 0;
+					}
+					value = getValue.applyAsLong(0);
+					if (value < 0 && direction < 0) {
+						return count;
+					}
+					if (value > 0 && direction < 0) {
+						if (values.contains(value)) {
+							return 0;
+						} values.add(value);
+					}
+					count++;
+					buf.advance(direction * length);
+				} catch (MemoryAccessException | AddressOverflowException e) {
+					if (direction < 0) {
+						return count;
+					} return 0;
+				}
+			}
+			return count;
+	}
 
-    private static boolean isValidData(Data data) {
-        if (data == null) {
-            return true;
-        }
-        if (data.isPointer()) {
-            return TypeInfoUtils.isTypeInfoPointer(data);
-        }
-        if (Undefined.isUndefined(data.getDataType())) {
-            return true;
-        }
-        if (!data.isArray()) {
-            return data.getDataType() instanceof DefaultDataType;
-        }
-        if (Undefined.isUndefinedArray(data.getDataType())) {
-            return true;
-        }
-        DataType ptrDiff = GnuUtils.getPtrDiff_t(data.getDataType().getDataTypeManager());
-        return ((Array) data.getDataType()).getDataType().equals(ptrDiff);
-    }
+	private static boolean isValidData(Data data) {
+		if (data == null) {
+			return true;
+		}
+		if (data.isPointer()) {
+			return TypeInfoUtils.isTypeInfoPointer(data);
+		}
+		if (Undefined.isUndefined(data.getDataType())) {
+			return true;
+		}
+		if (!data.isArray()) {
+			return data.getDataType() instanceof DefaultDataType;
+		}
+		if (Undefined.isUndefinedArray(data.getDataType())) {
+			return true;
+		}
+		DataType ptrDiff = GnuUtils.getPtrDiff_t(data.getDataType().getDataTypeManager());
+		return ((Array) data.getDataType()).getDataType().equals(ptrDiff);
+	}
 
-    /**
-     * Returns the TypeInfo Model this vtable points to
-     * @param program program the vtable is in
-     * @param address address of the start of the vtable
-     * @return the pointed to TypeInfo Model or null if not found
-     */
-    public static ClassTypeInfo getTypeInfo(Program program, Address address) {
-        DataTypeManager dtm = program.getDataTypeManager();
-        int ptrDiffSize = GnuUtils.getPtrDiffSize(dtm);
-        int numPtrDiffs = getNumPtrDiffs(program, address);
-        Address currentAddress = address.add(ptrDiffSize * numPtrDiffs);
-        if (TypeInfoUtils.isTypeInfoPointer(program, currentAddress)) {
-            return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(program, getAbsoluteAddress(program, currentAddress));
-        }
-        return null;
-    }
+	/**
+	 * Returns the TypeInfo Model this vtable points to
+	 * @param program program the vtable is in
+	 * @param address address of the start of the vtable
+	 * @return the pointed to TypeInfo Model or null if not found
+	 */
+	public static ClassTypeInfo getTypeInfo(Program program, Address address) {
+		ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(program);
+		DataTypeManager dtm = program.getDataTypeManager();
+		int ptrDiffSize = GnuUtils.getPtrDiffSize(dtm);
+		int numPtrDiffs = getNumPtrDiffs(program, address);
+		Address currentAddress = address.add(ptrDiffSize * numPtrDiffs);
+		if (TypeInfoUtils.isTypeInfoPointer(program, currentAddress)) {
+			return manager.getClassTypeInfo(getAbsoluteAddress(program, currentAddress));
+		}
+		return null;
+	}
 
-    /**
-     * Gets the number of elements in the vtable_prefix's function table
-     * @param program the program containing the function table
-     * @param address the address of the function table
-     * @return the number of elements in the vtable_prefix's function table
-     */
-    public static int getFunctionTableLength(Program program, Address address) {
-        int tableSize = 0;
-        MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), address);
-        int pointerSize = program.getDefaultPointerSize();
-        while (GnuUtils.isNullPointer(buf)) {
-            tableSize++;
-            try {
-                buf.advance(pointerSize);
-            }
-            catch (AddressOverflowException e) {
-                return 0;
-            }
-        }
-        while (GnuUtils.isFunctionPointer(program, buf.getAddress())) {
-            tableSize++;
-            try {
-                buf.advance(pointerSize);
-            }
-            catch (AddressOverflowException e) {
-                // Assume table ends at end of address set
-                break;
-            }
-        }
-        if (TypeInfoUtils.isTypeInfoPointer(program, buf.getAddress())) {
-            if (GnuUtils.isNullPointer(program, buf.getAddress().subtract(pointerSize))) {
-                // Prevent colliding with another vtable prefix
-                tableSize--;
-            }
-        }
-        return tableSize;
-    }
+	/**
+	 * Gets the number of elements in the vtable_prefix's function table
+	 * @param program the program containing the function table
+	 * @param address the address of the function table
+	 * @return the number of elements in the vtable_prefix's function table
+	 */
+	public static int getFunctionTableLength(Program program, Address address) {
+		int tableSize = 0;
+		MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), address);
+		int pointerSize = program.getDefaultPointerSize();
+		while (GnuUtils.isNullPointer(buf)) {
+			tableSize++;
+			try {
+				buf.advance(pointerSize);
+			}
+			catch (AddressOverflowException e) {
+				return 0;
+			}
+		}
+		while (GnuUtils.isFunctionPointer(program, buf.getAddress())) {
+			tableSize++;
+			try {
+				buf.advance(pointerSize);
+			}
+			catch (AddressOverflowException e) {
+				// Assume table ends at end of address set
+				break;
+			}
+		}
+		if (TypeInfoUtils.isTypeInfoPointer(program, buf.getAddress())) {
+			if (GnuUtils.isNullPointer(program, buf.getAddress().subtract(pointerSize))) {
+				// Prevent colliding with another vtable prefix
+				tableSize--;
+			}
+		}
+		return tableSize;
+	}
 
-    /**
-     * Gets the function table at the specified address.
-     * @param program the program containing the function table
-     * @param address the address of the function table
-     * @return a Function[] representing the function table.
-     */
-    public static Function[] getFunctionTable(Program program, Address address) {
-        Function[] functions = new Function[getFunctionTableLength(program, address)];
-        int pointerSize = program.getDefaultPointerSize();
-        for (int i = 0; i < functions.length; i++) {
-            Address functionAddress = getFunctionAddress(program, address.add(i * pointerSize));
-            if (functionAddress.getOffset() != 0) {
-                functions[i] = createFunction(program, functionAddress);
-            } else {
-                functions[i] = null;
-            }
-        }
-        return functions;
-    }
+	/**
+	 * Gets the function table at the specified address.
+	 * @param program the program containing the function table
+	 * @param address the address of the function table
+	 * @return a Function[] representing the function table.
+	 */
+	public static Function[] getFunctionTable(Program program, Address address) {
+		Function[] functions = new Function[getFunctionTableLength(program, address)];
+		int pointerSize = program.getDefaultPointerSize();
+		for (int i = 0; i < functions.length; i++) {
+			Address functionAddress = getFunctionAddress(program, address.add(i * pointerSize));
+			if (functionAddress.getOffset() != 0) {
+				functions[i] = createFunction(program, functionAddress);
+			} else {
+				functions[i] = null;
+			}
+		}
+		return functions;
+	}
 
-    private static Address getFunctionAddress(Program program, Address currentAddress) {
-        Address functionAddress = getAbsoluteAddress(program, currentAddress);
-        if (GnuUtils.hasFunctionDescriptors(program) && functionAddress.getOffset() != 0) {
-            Relocation reloc = program.getRelocationTable().getRelocation(currentAddress);
-            if (reloc == null || reloc.getSymbolName() == null) {
-                return getAbsoluteAddress(program, functionAddress);
-            }
-        } return functionAddress;
-    }
+	private static Address getFunctionAddress(Program program, Address currentAddress) {
+		Address functionAddress = getAbsoluteAddress(program, currentAddress);
+		if (GnuUtils.hasFunctionDescriptors(program) && functionAddress.getOffset() != 0) {
+			Relocation reloc = program.getRelocationTable().getRelocation(currentAddress);
+			if (reloc == null || reloc.getSymbolName() == null) {
+				return getAbsoluteAddress(program, functionAddress);
+			}
+		} return functionAddress;
+	}
 
-    private static Function createFunction(Program program, Address currentAddress) {
-        Listing listing = program.getListing();
-        Function function = listing.getFunctionAt(currentAddress);
-        if (function != null) {
-            return function;
-        }
-        if (listing.getInstructionAt(currentAddress) == null) {
-            // If it has not been disassembled, disassemble it first.
-            if (program.getMemory().getBlock(currentAddress).isInitialized()) {
-                DisassembleCommand cmd = new DisassembleCommand(currentAddress, null, true);
-                cmd.applyTo(program);
-            }
-        }
-        CreateFunctionCmd cmd = new CreateFunctionCmd(currentAddress);
-        cmd.applyTo(program);
-        return cmd.getFunction();
-    }
+	private static Function createFunction(Program program, Address currentAddress) {
+		Listing listing = program.getListing();
+		Function function = listing.getFunctionAt(currentAddress);
+		if (function != null) {
+			return function;
+		}
+		if (listing.getInstructionAt(currentAddress) == null) {
+			// If it has not been disassembled, disassemble it first.
+			if (program.getMemory().getBlock(currentAddress).isInitialized()) {
+				DisassembleCommand cmd = new DisassembleCommand(currentAddress, null, true);
+				cmd.applyTo(program);
+			}
+		}
+		CreateFunctionCmd cmd = new CreateFunctionCmd(currentAddress);
+		cmd.applyTo(program);
+		return cmd.getFunction();
+	}
 
-    /**
-     * Gets the VttModel for the specified VtableModel if one exists
-     * @param program the program containing the vtable
-     * @param vtable the vtable
-     * @return the VttModel or {@link VttModel#INVALID} if none
-     */
-    public static VttModel getVttModel(Program program, VtableModel vtable) {
+	/**
+	 * Gets the VttModel for the specified VtableModel if one exists
+	 * @param program the program containing the vtable
+	 * @param vtable the vtable
+	 * @return the VttModel or {@link VttModel#INVALID} if none
+	 */
+	public static VttModel getVttModel(Program program, Vtable vtable) {
 		if (vtable.getTypeInfo().getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
 			return VttModel.INVALID;
 		}
@@ -318,5 +320,5 @@ public class VtableUtils {
 			}
 		}
 		return VttModel.INVALID;
-    }
+	}
 }

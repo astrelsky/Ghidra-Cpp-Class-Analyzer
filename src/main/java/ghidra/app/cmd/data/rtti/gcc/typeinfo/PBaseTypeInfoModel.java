@@ -12,12 +12,12 @@ import ghidra.program.model.listing.Program;
  */
 public final class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
 
-    public static final String STRUCTURE_NAME = "__pbase_type_info";
-    public static final String DESCRIPTION = "Model for Pointer Base Type Info";
+	public static final String STRUCTURE_NAME = "__pbase_type_info";
+	public static final String DESCRIPTION = "Model for Pointer Base Type Info";
 
-    public static final String ID_STRING = "N10__cxxabiv117__pbase_type_infoE";
+	public static final String ID_STRING = "N10__cxxabiv117__pbase_type_infoE";
 
-    private DataType typeInfoDataType;
+	private DataType typeInfoDataType;
 
 	/**
 	 * Gets a new PBaseTypeInfoModel
@@ -36,32 +36,32 @@ public final class PBaseTypeInfoModel extends AbstractPBaseTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-    private PBaseTypeInfoModel(Program program, Address address) {
-        super(program, address);
-    }
+	private PBaseTypeInfoModel(Program program, Address address) {
+		super(program, address);
+	}
 
-    @Override
-    public String getIdentifier() {
-        return ID_STRING;
-    }
+	@Override
+	public String getIdentifier() {
+		return ID_STRING;
+	}
 
-    /**
-     * Gets the __pbase_type_info datatype.
-     */
-    @Override
-    public DataType getDataType() {
-        if (typeInfoDataType == null) {
-            typeInfoDataType = getDataType(program.getDataTypeManager());
-        }
-        return typeInfoDataType;
-    }
+	/**
+	 * Gets the __pbase_type_info datatype.
+	 */
+	@Override
+	public DataType getDataType() {
+		if (typeInfoDataType == null) {
+			typeInfoDataType = getDataType(program.getDataTypeManager());
+		}
+		return typeInfoDataType;
+	}
 
-    /**
-     * Gets the {@value #STRUCTURE_NAME} datatype
-     * @param dtm the DataTypeManager
-     * @return the {@value #STRUCTURE_NAME} datatype
-     */
-    public static DataType getDataType(DataTypeManager dtm) {
-        return getPBase(dtm);
-    }
+	/**
+	 * Gets the {@value #STRUCTURE_NAME} datatype
+	 * @param dtm the DataTypeManager
+	 * @return the {@value #STRUCTURE_NAME} datatype
+	 */
+	public static DataType getDataType(DataTypeManager dtm) {
+		return getPBase(dtm);
+	}
 }

@@ -1,12 +1,12 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
@@ -14,6 +14,7 @@ import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapp
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
+import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
@@ -22,7 +23,6 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.symbol.SymbolType;
-import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -43,7 +43,6 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 		setPriority(new RttiAnalyzer().getPriority().after());
 	}
 
-	@SuppressWarnings("hiding")
 	@Override
 	public boolean canAnalyze(Program program) {
 		return PEUtil.canAnalyze(program) && !GnuUtils.isGnuCompiler(program);
@@ -63,10 +62,26 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	protected boolean hasVtt() {
 		return false;
 	}
-
+	
+	/**
+	 * @deprecated use {@link ClassTypeInfoManager#getIterable()}
+	 * after invoking {@link #buildClassTypeInfoDatabase(Program, TaskMonitor)} or having run
+	 * the WindowsCppClassAnalyzer.
+	 */
+	@Deprecated
 	public static List<ClassTypeInfo> getClassTypeInfoList(Program program, TaskMonitor monitor)
 			throws CancelledException {
-		final ArrayList<ClassTypeInfo> classes = new ArrayList<>();
+		ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(program);
+		if (manager.getClassTypeInfoCount() == 0) {
+			buildClassTypeInfoDatabase(program, monitor);
+		}
+		return manager.getClassTypeInfoStream().collect(Collectors.toList());
+	}
+
+	public static void buildClassTypeInfoDatabase(Program program, TaskMonitor monitor)
+			throws CancelledException {
+		ClassTypeInfoManager manager = null;
+		manager = ClassTypeInfoManager.getManager(program);
 		final SymbolTable table = program.getSymbolTable();
 		final AddressSet addrSet = new AddressSet();
 		GnuUtils.getAllDataBlocks(program).forEach(
@@ -78,7 +93,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 				 .collect(Collectors.toList());
 		monitor.initialize(symbols.size());
 		monitor.setMessage("Locating Type Information");
-        for (Symbol symbol : symbols) {
+		for (Symbol symbol : symbols) {
 			monitor.checkCanceled();
 			TypeDescriptorModel descriptor = new TypeDescriptorModel(
 				program, symbol.getAddress(), DEFAULT_OPTIONS);
@@ -93,59 +108,50 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 				continue;
 			}
 			ClassTypeInfo type = RttiModelWrapper.getWrapper(descriptor);
-			if (type == null) {
-				try {
-					Msg.debug(WindowsCppClassAnalyzer.class, descriptor.getTypeName());
-				} catch (InvalidDataTypeException e2) {
-					// I really hate this exception
+			if (type.getNamespace() != null) {
+				manager.resolve(type);
+				Vtable vtable = type.findVtable(monitor);
+				if (Vtable.isValid(vtable)) {
+					manager.resolve(vtable);
 				}
-			} else if (type.getNamespace() != null) {
-					classes.add(type);
 			}
 			monitor.incrementProgress(1);
-        }
-        classes.trimToSize();
-        return classes;
-    }
+		}
+	}
 
-    @Override
-    protected List<ClassTypeInfo> getClassTypeInfoList() throws CancelledException {
-        return getClassTypeInfoList(program, getMonitor());
-    }
+	@Override
+	protected void analyzeVftables() throws Exception {
+		if (!hasGuardedVftables()) {
+			super.analyzeVftables();
+		} else {
+			if (shouldAnalyzeConstructors()) {
+				analyzeConstructors();
+			}
+			log.appendMsg(CFG_WARNING);
+		}
+	}
 
-    @Override
-    protected void analyzeVftables() throws Exception {
-        if (!hasGuardedVftables()) {
-            super.analyzeVftables();
-        } else {
-            if (shouldAnalyzeConstructors()) {
-                analyzeConstructors(getClassTypeInfoList());
-            }
-            log.appendMsg(CFG_WARNING);
-        }
-    }
+	@Override
+	protected boolean analyzeVftable(ClassTypeInfo type) {
+		vfTableAnalyzer.setTypeInfo(type);
+		return vfTableAnalyzer.applyTo(program);
+	}
 
-    @Override
-    protected boolean analyzeVftable(ClassTypeInfo type) {
-        vfTableAnalyzer.setTypeInfo(type);
-        return vfTableAnalyzer.applyTo(program);
-    }
+	@Override
+	protected boolean analyzeConstructor(ClassTypeInfo type) {
+	   constructorAnalyzer.setTypeInfo(type);
+	   return constructorAnalyzer.applyTo(program);
+	}
 
-    @Override
-    protected boolean analyzeConstructor(ClassTypeInfo type) {
-       constructorAnalyzer.setTypeInfo(type);
-       return constructorAnalyzer.applyTo(program);
-    }
+	@Override
+	protected AbstractConstructorAnalysisCmd getConstructorAnalyzer() {
+		this.vfTableAnalyzer = new WindowsVftableAnalysisCmd();
+		return new WindowsConstructorAnalysisCmd();
+	}
 
-    @Override
-    protected AbstractConstructorAnalysisCmd getConstructorAnalyzer() {
-        this.vfTableAnalyzer = new WindowsVftableAnalysisCmd();
-        return new WindowsConstructorAnalysisCmd();
-    }
-
-    @Override
-    protected boolean isDestructor(Function function) {
-        return function.getName().contains("destructor");
-    }
+	@Override
+	protected boolean isDestructor(Function function) {
+		return function.getName().contains("destructor");
+	}
 
 }

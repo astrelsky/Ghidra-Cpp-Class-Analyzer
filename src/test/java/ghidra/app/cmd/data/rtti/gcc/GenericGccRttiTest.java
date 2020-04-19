@@ -9,12 +9,12 @@ import generic.test.AbstractGenericTest;
 
 public class GenericGccRttiTest extends AbstractGenericTest {
 
-    protected GenericGccRttiTest() {
-        super();
-    }
+	protected GenericGccRttiTest() {
+		super();
+	}
 
-    @Before
-    public void setup() throws Exception {
-        ClassSearcher.search(true, TaskMonitor.DUMMY);
-    }
+	@Before
+	public void setup() throws Exception {
+		ClassSearcher.search(true, TaskMonitor.DUMMY);
+	}
 }

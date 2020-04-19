@@ -20,6 +20,7 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 
 import static ghidra.program.model.data.Undefined.isUndefined;
 
@@ -52,52 +53,52 @@ public class WindowsVtableModel implements Vtable {
 		return new MemoryBufferImpl(program.getMemory(), addr);
 	}
 
-    @Override
-    public ClassTypeInfo getTypeInfo() {
-        return type;
-    }
+	@Override
+	public ClassTypeInfo getTypeInfo() {
+		return type;
+	}
 
-    @Override
-    public Address[] getTableAddresses() {
-        Address[] addresses = new Address[vftables.size()];
-        for (int i = 0; i < addresses.length; i++) {
-            addresses[i] = vftables.get(i).getAddress();
-        }
-        return addresses;
-    }
+	@Override
+	public Address[] getTableAddresses() {
+		Address[] addresses = new Address[vftables.size()];
+		for (int i = 0; i < addresses.length; i++) {
+			addresses[i] = vftables.get(i).getAddress();
+		}
+		return addresses;
+	}
 
-    private Function[] getFunctions(VfTableModel vftable) {
-        Function[] functions = new Function[vftable.getCount()];
-        FunctionManager manager = program.getFunctionManager();
-        for (int i = 0; i < vftable.getCount(); i++) {
-            functions[i] = manager.getFunctionAt(vftable.getVirtualFunctionPointer(i));
-        }
-        return functions;
-    }
+	private Function[] getFunctions(VfTableModel vftable) {
+		Function[] functions = new Function[vftable.getCount()];
+		FunctionManager manager = program.getFunctionManager();
+		for (int i = 0; i < vftable.getCount(); i++) {
+			functions[i] = manager.getFunctionAt(vftable.getVirtualFunctionPointer(i));
+		}
+		return functions;
+	}
 
-    @Override
-    public Function[][] getFunctionTables() {
-        List<Function[]> tables = new ArrayList<>(vftables.size());
-        for (VfTableModel vftable : vftables) {
-            tables.add(getFunctions(vftable));
-        }
-        return tables.toArray(new Function[tables.size()][]);
-    }
+	@Override
+	public Function[][] getFunctionTables() {
+		List<Function[]> tables = new ArrayList<>(vftables.size());
+		for (VfTableModel vftable : vftables) {
+			tables.add(getFunctions(vftable));
+		}
+		return tables.toArray(new Function[tables.size()][]);
+	}
 
-    protected List<VfTableModel> getVfTables() {
-        return vftables;
-    }
+	protected List<VfTableModel> getVfTables() {
+		return vftables;
+	}
 
-    @Override
-    public boolean containsFunction(Function function) {
-        for (Function[] functionTables : getFunctionTables()) {
-            for (Function vFunction : functionTables) {
-                if (vFunction.equals(function)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+	@Override
+	public boolean containsFunction(Function function) {
+		for (Function[] functionTables : getFunctionTables()) {
+			for (Function vFunction : functionTables) {
+				if (vFunction.equals(function)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	public int getVirtualOffset(Rtti1Model model) throws InvalidDataTypeException {
@@ -117,5 +118,13 @@ public class WindowsVtableModel implements Vtable {
 			}
 		}
 		return 0;
+	}
+
+	@Override
+	public Address getAddress() {
+		if (!vftables.isEmpty()) {
+			return vftables.get(0).getAddress();
+		}
+		throw new AssertException("Ghidra-Cpp-Class-Analyzer: no vftables");
 	}
 }

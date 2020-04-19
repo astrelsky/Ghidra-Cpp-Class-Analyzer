@@ -99,9 +99,14 @@ public class ExternalClassTypeInfo implements ClassTypeInfo {
 		throw new UnsupportedOperationException(
 			String.format("Cannot determine if an %s is abstract", getClass().getSimpleName()));
 	}
+	
+	@Override
+	public Vtable getVtable() {
+		return Vtable.NO_VTABLE;
+	}
 
 	@Override
-	public Vtable getVtable(TaskMonitor monitor) throws CancelledException {
+	public Vtable findVtable(TaskMonitor monitor) throws CancelledException {
 		return Vtable.NO_VTABLE;
 	}
 
