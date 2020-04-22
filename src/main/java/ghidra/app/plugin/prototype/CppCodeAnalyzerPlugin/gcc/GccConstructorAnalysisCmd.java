@@ -19,6 +19,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
@@ -266,7 +267,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
 	private void setVttParam(Function function, ClassTypeInfo typeinfo) {
 		DataTypeManager dtm = program.getDataTypeManager();
-		DataType vpp = dtm.getPointer(ClassTypeInfoUtils.getVptrDataType(program, typeinfo));
+		DataType vpp = dtm.getPointer(dtm.getPointer(VoidDataType.dataType));
 		try {
 			if (function.getParameterCount() == 1) {
 				ParameterImpl param = new ParameterImpl(VTT_PARAM_NAME, vpp, program);

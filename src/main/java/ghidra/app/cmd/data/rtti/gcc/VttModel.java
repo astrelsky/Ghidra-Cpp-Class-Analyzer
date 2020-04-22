@@ -3,6 +3,7 @@ package ghidra.app.cmd.data.rtti.gcc;
 import java.util.*;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
@@ -27,9 +28,9 @@ public class VttModel {
 	private DataType dataType;
 	private ClassTypeInfo typeinfo;
 	private int pointerSize;
-	private List<VtableModel> constructionModels;
+	private List<GnuVtable> constructionModels;
 	private final ClassTypeInfoManager manager;
-	Set<Address> validAddresses;
+	private Set<Address> validAddresses;
 
 	private VttModel() {
 		this.elementCount = 0;
@@ -111,7 +112,7 @@ public class VttModel {
 	 */
 	public Vtable getVtableModel(int ordinal) {
 		Address pointee = getElementPointee(ordinal);
-		return pointee != null ? getVtableContaining(pointee) : VtableModel.NO_VTABLE;
+		return pointee != null ? getVtableContaining(pointee) : GnuVtable.NO_VTABLE;
 	}
 
 	/**
@@ -137,19 +138,19 @@ public class VttModel {
 		return getAbsoluteAddress(getProgram(), currentAddress).subtract(pointerSize);
 	}
 
-	private static boolean vtableContainsAddress(VtableModel vtable, Address a) {
+	private static boolean vtableContainsAddress(GnuVtable vtable, Address a) {
 		Address startAddress = vtable.getAddress();
 		AddressSet set = new AddressSet(startAddress, startAddress.add(vtable.getLength()));
 		return set.contains(a);
 	}
 
-	private VtableModel getVtableContaining(Address a) {
-		for (VtableModel vtable : constructionModels) {
+	private GnuVtable getVtableContaining(Address a) {
+		for (GnuVtable vtable : constructionModels) {
 			if (vtableContainsAddress(vtable, a)) {
 				return vtable;
 			}
 		}
-		VtableModel vtable = (VtableModel) typeinfo.getVtable();
+		GnuVtable vtable = (GnuVtable) typeinfo.getVtable();
 		if (vtableContainsAddress(vtable, a)) {
 			return vtable;
 		}
@@ -160,11 +161,11 @@ public class VttModel {
 	 * Gets the construction vtable models in this VttModel
 	 * @return the construction vtable models in this VttModel
 	 */
-	public VtableModel[] getConstructionVtableModels() {
+	public GnuVtable[] getConstructionVtableModels() {
 		if (!isValid()) {
-			return new VtableModel[0];
+			return new GnuVtable[0];
 		}
-		return constructionModels.toArray(new VtableModel[constructionModels.size()]);
+		return constructionModels.toArray(new GnuVtable[constructionModels.size()]);
 	}
 
 	private Address getTIAddress(Address pointerAddress) {
@@ -237,7 +238,7 @@ public class VttModel {
 				currentAddress = address.add(tableSize * pointerSize);
 				continue;
 			}
-			VtableModel cvtable = new VtableModel(
+			GnuVtable cvtable = new VtableModel(
 				program, getTIPointer(currentAddress), currentType, subCount, true);
 			tableSize += subCount;
 			currentAddress = address.add(tableSize * pointerSize);
@@ -271,6 +272,11 @@ public class VttModel {
 			dataType = new ArrayDataType(pointerDt, getElementCount(), pointerSize, dtm);
 		}
 		return dataType;
+	}
+	
+	@Override
+	public String toString() {
+		return "VTT for " + typeinfo.getName();
 	}
 
 }

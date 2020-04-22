@@ -57,8 +57,8 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 			address = vtable.getTableAddresses()[0];
 		}
 		record.setLongValue(SchemaOrdinals.ADDRESS.ordinal(), manager.encodeAddress(address));
+		record.setLongValue(SchemaOrdinals.CLASS.ordinal(), classKey);
 		manager.updateRecord(record);
-		setClassKey(classKey);
 	}
 	
 	public void setClassKey(long key) {

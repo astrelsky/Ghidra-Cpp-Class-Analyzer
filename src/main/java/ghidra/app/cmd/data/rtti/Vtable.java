@@ -1,13 +1,15 @@
 package ghidra.app.cmd.data.rtti;
 
-import ghidra.app.cmd.data.rtti.gcc.VtableModel;
+import java.util.List;
+
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.DataType;
 import ghidra.program.model.listing.Function;
 
 public interface Vtable {
-	
-	public static final Vtable NO_VTABLE = VtableModel.NO_VTABLE;
-	
+
+	public static final InvalidVtable NO_VTABLE = new InvalidVtable();
+
 	public static boolean isValid(Vtable vtable) {
 		return vtable != NO_VTABLE;
 	}
@@ -23,7 +25,7 @@ public interface Vtable {
 	 * @return the addresses of this vtable's function tables
 	 */
 	public Address[] getTableAddresses();
-	
+
 	/**
 	 * Gets the address of the start of the vtable
 	 * @return the address of the start of the vtable
@@ -42,8 +44,57 @@ public interface Vtable {
 	 * @return true if this vtable contains the specified function
 	 */
 	public boolean containsFunction(Function function);
-	
-	default int getLength() {
-		return -1;
+
+	static class InvalidVtable implements GnuVtable {
+		
+		private static final String MESSAGE = "Invalid Vtable";
+
+		private InvalidVtable() {
+		}
+
+		@Override
+		public ClassTypeInfo getTypeInfo() {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public Address[] getTableAddresses() {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public Address getAddress() {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public Function[][] getFunctionTables() {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public boolean containsFunction(Function function) {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public long getOffset(int index, int ordinal) {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public long[] getBaseOffsetArray() {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public long[] getBaseOffsetArray(int index) {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public List<DataType> getDataTypes() {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
 	}
 }

@@ -17,30 +17,14 @@ import ghidra.framework.options.Options;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
-import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.DataTypeConflictHandler;
-import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.Pointer;
-import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.Undefined;
-import ghidra.program.model.data.VoidDataType;
+import ghidra.program.model.data.*;
 import ghidra.program.model.lang.PrototypeModel;
 import ghidra.program.model.lang.Register;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.FunctionManager;
-import ghidra.program.model.listing.GhidraClass;
-import ghidra.program.model.listing.Instruction;
-import ghidra.program.model.listing.InstructionIterator;
-import ghidra.program.model.listing.Listing;
-import ghidra.program.model.listing.Parameter;
-import ghidra.program.model.listing.Program;
-import ghidra.program.model.listing.VariableUtilities;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.util.SymbolicPropogator;
 import ghidra.util.Msg;
-import ghidra.util.exception.AssertException;
-import ghidra.util.exception.CancelledException;
-import ghidra.util.exception.InvalidInputException;
+import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
 
 import static ghidra.program.model.data.GenericCallingConvention.thiscall;
@@ -119,7 +103,6 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	}
 
 	@Override
-	@SuppressWarnings("hiding")
 	public void analysisEnded(Program program) {
 		manager = null;
 		symProp = null;
@@ -326,7 +309,6 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		}
 	}
 	
-	@SuppressWarnings("hiding")
 	@Override
 	public void optionsChanged(Options options, Program program) {
 		super.optionsChanged(options, program);

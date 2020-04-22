@@ -12,6 +12,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemanglerOptions;
 import ghidra.app.util.demangler.DemanglerUtil;
@@ -87,8 +88,8 @@ public class CreateVttBackgroundCmd extends BackgroundCommand {
 
 	private boolean createAssociatedData() throws InvalidDataTypeException {
 		SymbolTable table = program.getSymbolTable();
-		for (VtableModel model : vtt.getConstructionVtableModels()) {
-			Address vtableAddress = ((VtableModel) model.getTypeInfo().getVtable()).getAddress();
+		for (GnuVtable model : vtt.getConstructionVtableModels()) {
+			Address vtableAddress = model.getTypeInfo().getVtable().getAddress();
 			if (!model.getAddress().equals(vtableAddress)) {
 					CreateConstructionVtableBackgroundCmd cmd =
 					new CreateConstructionVtableBackgroundCmd(model, child);

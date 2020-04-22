@@ -6,11 +6,14 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.List;
 
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
@@ -104,14 +107,20 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 							   .collect(Collectors.toList());
 	}
 	
+	public Stream<TypeInfo> getTypeInfoStream() {
+		return typeMap.keySet().stream()
+							   .map(this::addr)
+							   .map(manager::getTypeInfo);
+	}
+	
 	private void buildTypes() {
 		typeMap.keySet().stream()
 						.map(this::addr)
 						.forEach(manager::getTypeInfo);
 	}
 
-	public List<VtableModel> getVtableList() {
-		List<VtableModel> list = new ArrayList<>(vtableMap.size());
+	public List<GnuVtable> getVtableList() {
+		List<GnuVtable> list = new ArrayList<>(vtableMap.size());
 		Program program = getProgram();
 		for (Long offset : vtableMap.keySet()) {
 			ClassTypeInfo type = VtableUtils.getTypeInfo(program, addr(offset));
@@ -119,12 +128,24 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 		}
 		return list;
 	}
+	
+	public Stream<Vtable> getVtableStream() {
+		return vtableMap.keySet().stream()
+								 .map(this::addr)
+								 .map(a -> VtableModel.getVtable(getProgram(), a));
+	}
 
 	public List<VttModel> getVttList() {
 		List<VttModel> list = new ArrayList<>(vttMap.size());
 		Program program = getProgram();
 		vttMap.keySet().forEach((a) -> list.add(new VttModel(program, addr(a))));
 		return list;
+	}
+	
+	public Stream<VttModel> getVttStream() {
+		return vttMap.keySet().stream()
+							  .map(this::addr)
+							  .map(a -> new VttModel(getProgram(), a));
 	}
 
 	protected static Entry<Long, String> getEntry(Long offset, String bytes) {

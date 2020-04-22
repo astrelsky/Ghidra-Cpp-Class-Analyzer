@@ -3,7 +3,7 @@ package ghidra.app.cmd.data.rtti.gcc;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.Ppc64TypeInfoProgramBuilder;
@@ -17,25 +17,24 @@ import org.junit.Test;
 public class VtableModelTest extends GenericGccRttiTest {
 
 	private void validationTest(AbstractTypeInfoProgramBuilder builder) throws Exception {
-		for (VtableModel vtable : builder.getVtableList()) {
+		for (GnuVtable vtable : builder.getVtableList()) {
 			assert Vtable.isValid(vtable) : vtable.getTypeInfo().getNamespace().getName(true);
 		}
 	}
 
 	private void locationTest(AbstractTypeInfoProgramBuilder builder) throws Exception {
 		ClassTypeInfoManager manager = builder.getManager();
-		manager.sort(TaskMonitor.DUMMY);
-
-		Set<Address> addresses = manager.getClassTypeInfoStream(true)
-										.map(ClassTypeInfo::findVtable)
-										.filter(Vtable::isValid)
+		manager.findVtables(TaskMonitor.DUMMY);
+		Set<Address> addresses = builder.getVtableStream()
 										.map(Vtable::getAddress)
 										.collect(Collectors.toSet());
-		
-		for (VtableModel vtable : builder.getVtableList()) {
-			assert addresses.contains(vtable.getAddress())
-				: vtable.getTypeInfo().getNamespace().getName(true);
+		for (Vtable vtable : manager.getVtableIterable()) {
+			assert addresses.remove(vtable.getAddress())
+				: String.format("Vtable for %s was incorrectly located. It should not be at %s",
+					vtable.getTypeInfo().getName(), vtable.getAddress());
 		}
+		assert addresses.isEmpty() : Integer.toString(addresses.size())
+			+" vtables were not located";
 	}
 
 	@Test

@@ -105,6 +105,8 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 			this.address = manager.decodeAddress(
 				record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
 			this.typename = record.getString(SchemaOrdinals.TYPENAME.ordinal());
+			this.vtableSearched = record.getBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal());
+			this.vtableKey = record.getLongValue(SchemaOrdinals.VTABLE_KEY.ordinal());
 			this.gc = fetchGhidraClass();
 			this.struct = fetchDataType(record);
 	}
@@ -122,17 +124,17 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 				SchemaOrdinals.ADDRESS.ordinal(), manager.encodeAddress(type.getAddress()));
 			record.setLongValue(
 				SchemaOrdinals.DATATYPE_ID.ordinal(), AddressMap.INVALID_ADDRESS_KEY);
-			manager.updateRecord(record);
 			Vtable vtable = type.getVtable();
 			if (Vtable.isValid(vtable)) {
-				record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), true);
-				record.setLongValue(
-					SchemaOrdinals.VTABLE_KEY.ordinal(),
-					manager.getVtableKey(vtable.getAddress()));
+				this.vtableSearched = true;
+				this.vtableKey = manager.getVtableKey(vtable.getAddress());
 			} else {
-				record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), false);
-				record.setLongValue(SchemaOrdinals.VTABLE_KEY.ordinal(), -1);
+				this.vtableSearched = false;
+				this.vtableKey = -1;
 			}
+			record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), vtableSearched);
+			record.setLongValue(SchemaOrdinals.VTABLE_KEY.ordinal(), vtableKey);
+			manager.updateRecord(record);
 	}
 	
 	protected abstract Namespace buildNamespace();
@@ -378,10 +380,16 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 
 	@Override
 	public Structure getClassDataType() {
+		db.Record record = getRecord();
 		if (struct != null) {
+			long dtKey = record.getLongValue(SchemaOrdinals.DATATYPE_ID.ordinal());
+			if (dtKey == AddressMap.INVALID_ADDRESS_KEY) {
+				record.setLongValue(
+					SchemaOrdinals.DATATYPE_ID.ordinal(), struct.getUniversalID().getValue());
+				manager.updateRecord(record);
+			}
 			return struct;
 		}
-		db.Record record = getRecord();
 		GccCppClassBuilder builder = new GccCppClassBuilder(this);
 		struct = builder.getDataType();
 		record.setLongValue(

@@ -1,6 +1,10 @@
 package ghidra.app.cmd.data.rtti;
 
-public interface VbTable {
+import java.util.List;
+
+import ghidra.program.model.data.DataType;
+
+public interface GnuVtable extends Vtable {
 
 	/**
 	 * Gets the ptrdiff_t value within the base offset array.
@@ -25,4 +29,17 @@ public interface VbTable {
 	 * @return the whole ptrdiff_t array
 	 */
 	long[] getBaseOffsetArray(int index);
+
+	/**
+	 * Gets the DataTypes that compose this Vtable
+	 * 
+	 * @return the list of DataTypes this Vtable is made of
+	 */
+	List<DataType> getDataTypes();
+	
+	default int getLength() {
+		return getDataTypes().stream()
+							 .mapToInt(DataType::getLength)
+							 .sum();
+	}
 }

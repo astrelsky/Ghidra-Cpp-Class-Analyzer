@@ -30,6 +30,7 @@ import ghidra.program.model.data.MutabilitySettingsDefinition;
 import ghidra.program.model.data.VoidDataType;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.*;
@@ -205,7 +206,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			}
 	}
 
-	private void createVtable(VtableModel vtable) throws Exception {
+	private void createVtable(GnuVtable vtable) throws Exception {
 		if (vtable == Vtable.NO_VTABLE) {
 			return;
 		}
@@ -236,10 +237,10 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
-	private void locateVTT(Vtable vtable) throws Exception {
+	private void locateVTT(GnuVtable vtable) throws Exception {
 		ClassTypeInfo type = vtable.getTypeInfo();
 		if (!CLASS_TYPESTRINGS.contains(type.getTypeName())) {
-			VttModel vtt = VtableUtils.getVttModel(program, (VtableModel) vtable);
+			VttModel vtt = VtableUtils.getVttModel(program, vtable);
 			if (vtt.isValid()) {
 				createVtt(type, vtt);
 			}
@@ -254,18 +255,14 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 
 	private void createVtables() throws Exception {
 		findAndCreatePureVirtualFunction();
-		manager.sort(monitor);
+		manager.findVtables(monitor);
 		//ClassTypeInfoUtils.sortByMostDerived(program, classes, monitor);
 		//Collections.reverse(classes);
-		monitor.initialize(manager.getClassTypeInfoCount());
-		monitor.setMessage("Finding vtables");
-		for (ClassTypeInfo type : manager.getIterable(true)) {
+		monitor.initialize(manager.getVtableCount());
+		monitor.setMessage("Creating vtables");
+		for (Vtable vtable : manager.getVtableIterable()) {
 			monitor.checkCanceled();
-			VtableModel vtable = (VtableModel) type.findVtable(dummy);
-			if (vtable != Vtable.NO_VTABLE) {
-				createVtable(vtable);
-				//manager.resolve(vtable);
-			}
+			createVtable((GnuVtable) vtable);
 			monitor.incrementProgress(1);
 		}
 		monitor.setMessage(null);

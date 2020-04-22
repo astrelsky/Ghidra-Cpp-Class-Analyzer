@@ -1,5 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 
 public class CreateVtableBackgroundCmd extends AbstractCreateVtableBackgroundCmd {
@@ -10,7 +11,7 @@ public class CreateVtableBackgroundCmd extends AbstractCreateVtableBackgroundCmd
 
 	private TypeInfo type;
 
-	public CreateVtableBackgroundCmd(VtableModel vtable) {
+	public CreateVtableBackgroundCmd(GnuVtable vtable) {
 		super(vtable, NAME);
 		this.type = vtable.getTypeInfo();
 	}

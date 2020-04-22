@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.VbTable;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
@@ -385,9 +385,6 @@ public class ClassTypeInfoUtils {
 			path = new CategoryPath(path, type.getName());
 			DataTypeManager dtm = program.getDataTypeManager();
 			Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);
-			if (dtm.getDataType(struct.getDataTypePath()) != null) {
-				return dtm.getPointer(dtm.getDataType(struct.getDataTypePath()));
-			}
 			Function[][] functionTable = vtable.getFunctionTables();
 			int pointerSize = program.getDefaultPointerSize();
 			if (functionTable.length > 0 && functionTable[0].length > 0) {
@@ -412,7 +409,7 @@ public class ClassTypeInfoUtils {
 					}
 				}
 			}
-			struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
+			struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
 			return dtm.getPointer(struct, program.getDefaultPointerSize());
 		} catch (DuplicateNameException e) {
 			return null;
@@ -450,7 +447,7 @@ public class ClassTypeInfoUtils {
 		}
 		if (type.getParentModels().length == 1) {
 			if (Vtable.isValid(type.getVtable())) {
-				VbTable vtable = (VbTable) type.getVtable();
+				GnuVtable vtable = (GnuVtable) type.getVtable();
 				long offset = vtable.getOffset(0, 1);
 				if (offset < Long.MAX_VALUE && offset > 0) {
 					return Map.of(type.getParentModels()[0], (int) offset);

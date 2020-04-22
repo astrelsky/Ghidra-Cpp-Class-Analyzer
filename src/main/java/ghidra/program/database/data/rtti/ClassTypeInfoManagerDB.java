@@ -6,7 +6,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
@@ -48,12 +47,13 @@ import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.NoValueException;
+import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
 import db.*;
 import db.util.ErrorHandler;
 
-// man = ghidra.program.database.ClassTypeInfoManagerDB(currentProgram)
+// man = ghidra.program.database.data.rtti.ClassTypeInfoManagerDB(currentProgram)
 public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, ErrorHandler {
 
 	private DBObjectCache<AbstractClassTypeInfoDB> classCache;
@@ -380,11 +380,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, 
 		try {
 			classCache.invalidate();
 			vtableCache.invalidate();
-			DBHandle handle = program.getDBHandle();
-			handle.deleteTable(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
-			handle.deleteTable(AbstractVtableDB.VTABLE_TABLE_NAME);
-			classTable = getNewClassTable(handle);
-			vtableTable = getNewVtableTable(handle);
+			classTable.deleteAll();
+			vtableTable.deleteAll();
 		}
 		catch (IOException e) {
 			program.dbError(e);
@@ -402,8 +399,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, 
 	@Override
 	public void programReady(int openMode, int currentRevision, TaskMonitor monitor)
 			throws IOException, CancelledException {
-		// TODO Auto-generated method stub
-
+		// do nothing
 	}
 
 	@Override
@@ -637,10 +633,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, 
 
 	@Override
 	public Iterable<Vtable> getVtableIterable(boolean reverse) {
-		return () -> StreamSupport.stream(getIterable(reverse).spliterator(), false)
-				.map(ClassTypeInfo::getVtable)
-				.filter(Vtable::isValid)
-				.iterator();
+		return () -> getClassTypeInfoStream(reverse)
+					.map(ClassTypeInfo::getVtable)
+					.filter(Vtable::isValid)
+					.iterator();
 	}
 
 	@Override
@@ -652,10 +648,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, 
 	public Stream<ClassTypeInfo> getClassTypeInfoStream(boolean reverse) {
 		long maxKey = classTable.getMaxKey();
 		if (reverse) {
-			return LongStream.iterate(maxKey, i -> i-1 >= 0, i -> --i)
+			return LongStream.iterate(maxKey, i -> i >= 0, i -> i-1)
 							 .mapToObj(this::getClass);
 		}
-		return LongStream.iterate(0, i -> i+1 < maxKey, i -> ++i)
+		return LongStream.iterate(0, i -> i <= maxKey, i -> i+1)
 						 .mapToObj(this::getClass);
 	}
 
@@ -691,7 +687,19 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, 
 	}
 
 	@Override
-	public void sort(TaskMonitor monitor) throws CancelledException {
+	public void findVtables(TaskMonitor monitor) throws CancelledException {
+		TaskMonitor dummy = new CancelOnlyWrappingTaskMonitor(monitor);
+		sort(monitor);
+		monitor.initialize(getClassTypeInfoCount());
+		monitor.setMessage("Finding vtables");
+		for (ClassTypeInfo type : getIterable(true)) {
+			monitor.checkCanceled();
+			type.findVtable(dummy);
+			monitor.incrementProgress(1);
+		}
+	}
+	
+	private void sort(TaskMonitor monitor) throws CancelledException {
 		lock.acquire();
 		try {
 			classTable.rebuild(monitor);

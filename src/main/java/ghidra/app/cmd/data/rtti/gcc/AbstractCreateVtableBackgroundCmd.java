@@ -12,6 +12,7 @@ import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Program;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemanglerOptions;
 import ghidra.app.util.demangler.DemanglerUtil;
@@ -25,13 +26,13 @@ import ghidra.program.model.data.DataUtilities.ClearDataMode;
 
 public abstract class AbstractCreateVtableBackgroundCmd extends BackgroundCommand {
 
-	private VtableModel vtable;
+	private GnuVtable vtable;
 	private TaskMonitor monitor;
 	private Program program;
 
 	private static final DemanglerOptions OPTIONS = new DemanglerOptions();
 
-	protected AbstractCreateVtableBackgroundCmd(VtableModel vtable, String name) {
+	protected AbstractCreateVtableBackgroundCmd(GnuVtable vtable, String name) {
 		super(name, true, true, false);
 		this.vtable = vtable;
 	}

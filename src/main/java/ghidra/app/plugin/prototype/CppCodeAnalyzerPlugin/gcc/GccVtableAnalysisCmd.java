@@ -1,6 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
@@ -37,7 +38,6 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 		this.typeinfo = type;
 	}
 
-	@SuppressWarnings("hiding")
 	@Override
 	public boolean applyTo(DomainObject obj, TaskMonitor monitor) {
 		if (!(obj instanceof Program)) {
@@ -51,7 +51,7 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 			Vtable vtable = typeinfo.getVtable();
 			VttModel vtt = null;
 			if (Vtable.isValid(vtable)) {
-				vtt = VtableUtils.getVttModel(program, vtable);
+				vtt = VtableUtils.getVttModel(program, (GnuVtable) vtable);
 			}
 			if (vtt != null && vtt.isValid()) {
 				for (Vtable parentVtable : vtt.getConstructionVtableModels()) {

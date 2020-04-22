@@ -24,7 +24,7 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -292,7 +292,7 @@ public class VtableUtils {
 	 * @param vtable the vtable
 	 * @return the VttModel or {@link VttModel#INVALID} if none
 	 */
-	public static VttModel getVttModel(Program program, Vtable vtable) {
+	public static VttModel getVttModel(Program program, GnuVtable vtable) {
 		if (vtable.getTypeInfo().getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {
 			return VttModel.INVALID;
 		}

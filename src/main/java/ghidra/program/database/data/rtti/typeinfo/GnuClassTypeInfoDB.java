@@ -113,10 +113,10 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 						  .entrySet()
 						  .stream()
 						  .collect(Collectors.toList());
-		for (int i = 0; i < baseKeys.length; i++) {
+		for (int i = 0; i < baseEntries.size(); i++) {
 			Map.Entry<ClassTypeInfo, Integer> entry = baseEntries.get(i);
 			keys.add(manager.resolve(entry.getKey()).getKey());
-			offsets.add(baseOffsets[i] = entry.getValue());
+			offsets.add(entry.getValue());
 		}
 	}
 	
@@ -163,8 +163,11 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), true);
 		manager.updateRecord(record);
 		Vtable vtable = ClassTypeInfoUtils.findVtable(getProgram(), this, monitor);
-		setVtable(vtable);
-		return getVtable();
+		if (Vtable.isValid(vtable)) {
+			setVtable(vtable);
+			return getVtable();
+		}
+		return vtable;
 	}
 	
 	public static long[] getBaseKeys(db.Record record) {

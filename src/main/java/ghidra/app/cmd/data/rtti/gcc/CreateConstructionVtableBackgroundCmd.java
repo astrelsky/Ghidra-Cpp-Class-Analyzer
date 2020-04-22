@@ -1,6 +1,7 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 
 public class CreateConstructionVtableBackgroundCmd extends AbstractCreateVtableBackgroundCmd {
@@ -13,7 +14,7 @@ public class CreateConstructionVtableBackgroundCmd extends AbstractCreateVtableB
 	private static final String PREFIX = "_ZTC";
 	private static final String SEPARATOR = "_";
 
-	public CreateConstructionVtableBackgroundCmd(VtableModel vtable, ClassTypeInfo child) {
+	public CreateConstructionVtableBackgroundCmd(GnuVtable vtable, ClassTypeInfo child) {
 		super(vtable, NAME);
 		this.parent = vtable.getTypeInfo();
 		this.child = child;

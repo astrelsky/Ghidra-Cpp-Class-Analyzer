@@ -220,7 +220,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 				result.add((long) base.getOffset());
 			}
 		}
-		if (Vtable.isValid(getVtable())) {
+		if (Vtable.isValid(findVtable())) {
 			long[] offsets = ((VtableModel) getVtable()).getBaseOffsetArray();
 			if (offsets.length > 0) {
 				Arrays.sort(offsets);

@@ -1,6 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
@@ -52,7 +53,11 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	@Override
 	protected boolean analyzeConstructor(ClassTypeInfo type) {
 		Vtable vtable = type.getVtable();
-		VttModel vtt = VtableUtils.getVttModel(program, vtable);
+		if (!Vtable.isValid(vtable)) {
+			// can only analyze types with valid vtables
+			return false;
+		}
+		VttModel vtt = VtableUtils.getVttModel(program, (GnuVtable) vtable);
 		if (vtt.isValid()) {
 			((GccConstructorAnalysisCmd) constructorAnalyzer).setVtt(vtt);
 		} else {

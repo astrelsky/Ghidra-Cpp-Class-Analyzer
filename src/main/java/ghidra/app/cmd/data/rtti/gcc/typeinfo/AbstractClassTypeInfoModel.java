@@ -5,6 +5,7 @@ import java.util.Set;
 
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
@@ -27,7 +28,7 @@ import ghidra.util.task.TaskMonitor;
  */
 public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel implements ClassTypeInfo {
 
-	protected VtableModel vtable = null;
+	protected GnuVtable vtable = null;
 	private GccCppClassBuilder builder;
 
 	protected AbstractClassTypeInfoModel(Program program, Address address) {
@@ -57,28 +58,28 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
 	}
 	
 	@Override
-	public VtableModel getVtable() {
+	public GnuVtable getVtable() {
 		if (vtable == null) {
-			return VtableModel.NO_VTABLE;
+			return Vtable.NO_VTABLE;
 		}
 		return vtable;
 	}
 
 	@Override
-	public VtableModel findVtable(TaskMonitor monitor) throws CancelledException {
+	public GnuVtable findVtable(TaskMonitor monitor) throws CancelledException {
 		if (vtable != null) {
 			return vtable;
 		}
 		SymbolTable table = program.getSymbolTable();
 		for (Symbol symbol : table.getSymbols(VtableModel.SYMBOL_NAME, getGhidraClass())) {
-			final VtableModel tmpVtable =
+			GnuVtable tmpVtable =
 				VtableModel.getVtable(program, symbol.getAddress(), this);
 			if (Vtable.isValid(tmpVtable)) {
 				vtable = tmpVtable;
 				return vtable;
 			}
 		}
-		vtable = (VtableModel) ClassTypeInfoUtils.findVtable(program, address, monitor);
+		vtable = (GnuVtable) ClassTypeInfoUtils.findVtable(program, address, monitor);
 		return vtable;
 	}
 

@@ -6,9 +6,11 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
+import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataUtilities;
@@ -62,7 +64,7 @@ public class TestBuilder extends GhidraScript {
 
 	private Map<TypeInfo, byte[]> tiMap = new LinkedHashMap<>();
 	private Map<String, Address> nameMap = new LinkedHashMap<>();
-	private Map<VtableModel, byte[]> vtableMap = new LinkedHashMap<>();
+	private Map<Vtable, byte[]> vtableMap = new LinkedHashMap<>();
 	private Map<VttModel, byte[]> vttMap = new LinkedHashMap<>();
 	private Set<Function> functionSet = new LinkedHashSet<>();
 
@@ -215,7 +217,7 @@ public class TestBuilder extends GhidraScript {
 
 	private CodeBlock getVtableMapInitializer() throws Exception {
 		List<CodeBlock> blocks = new LinkedList<>();
-		for (VtableModel vtable : vtableMap.keySet()) {
+		for (Vtable vtable : vtableMap.keySet()) {
 			blocks.add(
 				CodeBlock.builder().add(
 					"getEntry(0x$LL, $S)",
@@ -361,21 +363,16 @@ public class TestBuilder extends GhidraScript {
 	}
 
 	private void populateMaps() throws Exception {
+		ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(currentProgram);
 		int pointerSize = currentProgram.getDefaultPointerSize();
 		SymbolTable table = currentProgram.getSymbolTable();
 		Listing listing = currentProgram.getListing();
 		Memory mem = currentProgram.getMemory();
 		for (Symbol symbol : table.getSymbols(TypeInfo.SYMBOL_NAME)) {
-			TypeInfo type = getTypeInfo(currentProgram, symbol.getAddress());
-			try {
-				if (type == null) {
+			TypeInfo type = manager.getTypeInfo(symbol.getAddress());
+			if (type == null) {
 					println("TypeInfo at "+symbol.getAddress().toString()+" is null");
 					continue;
-				}
-				type.validate();
-			} catch (InvalidDataTypeException e) {
-				printerr("TypeInfo at "+symbol.getAddress().toString()+" is invalid");
-				continue;
 			}
 			DataType dt = type.getDataType();
 			Data data = DataUtilities.createData(
@@ -401,17 +398,10 @@ public class TestBuilder extends GhidraScript {
 
 			if (type instanceof ClassTypeInfo) {
 				ClassTypeInfo classType = (ClassTypeInfo) type;
-				VtableModel vtable = (VtableModel) classType.getVtable();
-				try {
-					vtable.validate();
-				} catch (InvalidDataTypeException e) {
-					if (!table.getSymbols(VtableModel.SYMBOL_NAME, classType.getGhidraClass()).isEmpty()) {
-						printerr(type.getNamespace().getName(true)+"'s vtable is invalid");
-					}
+				Vtable vtable = classType.getVtable();
+				if (!Vtable.isValid(vtable)) {
 					continue;
 				}
-				CreateVtableBackgroundCmd cmd = new CreateVtableBackgroundCmd(vtable);
-				cmd.applyTo(currentProgram);
 				MemoryBufferImpl buf = new MemoryBufferImpl(
 					mem, vtable.getAddress());
 				byte[] bytes = new byte[vtable.getLength()];

@@ -20,7 +20,7 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.util.Msg;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.VbTable;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -28,7 +28,7 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
 /**
  * Model for GNU Vtables
  */
-public final class VtableModel implements Vtable, VbTable {
+public final class VtableModel implements GnuVtable {
 
 	public static final String SYMBOL_NAME = "vtable";
 	public static final String CONSTRUCTION_SYMBOL_NAME = "construction-"+SYMBOL_NAME;
@@ -46,21 +46,16 @@ public final class VtableModel implements Vtable, VbTable {
 	private long[] offsets;
 	private List<VtablePrefixModel> vtablePrefixes;
 
-	public static final VtableModel NO_VTABLE = new VtableModel();
-
-	public static VtableModel getVtable(Program program, Address address) {
+	public static GnuVtable getVtable(Program program, Address address) {
 		return getVtable(program, address, null);
 	}
 
-	public static VtableModel getVtable(Program program, Address address, ClassTypeInfo type) {
+	public static GnuVtable getVtable(Program program, Address address, ClassTypeInfo type) {
 		try {
 			return new VtableModel(program, address, type);
 		} catch (InvalidDataTypeException e) {
 			return NO_VTABLE;
 		}
-	}
-
-	private VtableModel() {
 	}
 
 	VtableModel(Program program, Address address) throws InvalidDataTypeException {
@@ -111,9 +106,6 @@ public final class VtableModel implements Vtable, VbTable {
 
 	@Override
 	public ClassTypeInfo getTypeInfo() {
-		if (this == NO_VTABLE) {
-			return null;
-		}
 		if (type == null) {
 			type = VtableUtils.getTypeInfo(program, address);
 		}
@@ -131,10 +123,10 @@ public final class VtableModel implements Vtable, VbTable {
 
 	@Override
 	public boolean equals(Object object) {
-		if (!(object instanceof VtableModel)) {
+		if (!(object instanceof GnuVtable)) {
 			return false;
 		}
-		if (this == NO_VTABLE || object == NO_VTABLE) {
+		if (object == NO_VTABLE) {
 			return this == object;
 		}
 		getTypeInfo();
@@ -241,6 +233,7 @@ public final class VtableModel implements Vtable, VbTable {
 		return address.add(size);
 	}
 
+	@Override
 	public List<DataType> getDataTypes() {
 		List<DataType> result = new ArrayList<>(vtablePrefixes.size() * MAX_PREFIX_ELEMENTS);
 		for (VtablePrefixModel prefix : vtablePrefixes) {

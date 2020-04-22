@@ -45,6 +45,6 @@ public interface ClassTypeInfoManager extends TypeInfoManager {
 	Stream<ClassTypeInfo> getClassTypeInfoStream(boolean reverse);
 	Stream<Vtable> getVtableStream();
 	
-	void sort(TaskMonitor monitor) throws CancelledException;
+	void findVtables(TaskMonitor monitor) throws CancelledException;
 
 }
