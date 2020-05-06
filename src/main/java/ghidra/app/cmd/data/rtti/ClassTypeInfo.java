@@ -14,7 +14,7 @@ import ghidra.util.task.TaskMonitor;
  * All derived models are based on dwarf information from libstdc++.a
  */
 public interface ClassTypeInfo extends TypeInfo {
-	
+
 	default DataType getRepresentedDataType() {
 		return getClassDataType();
 	}
@@ -35,7 +35,7 @@ public interface ClassTypeInfo extends TypeInfo {
 	/**
 	 * Retrieves the Models of this ClassTypeInfo classes base classes
 	 * @return the parent models
-	 */ 
+	 */
 	ClassTypeInfo[] getParentModels();
 
 	/**
@@ -89,7 +89,15 @@ public interface ClassTypeInfo extends TypeInfo {
 	 * The resulting string should be identical across all architectures and binaries
 	 * for a compiler.
 	 * @return a unique typename string
+	 * @deprecated this no longer serves a purpose
 	 */
-	String getUniqueTypeName();
-	
+	@Deprecated(since = "1.5", forRemoval = true)
+	default String getUniqueTypeName() {
+		return "";
+	}
+
+	default boolean isExternal() {
+		return false;
+	}
+
 }

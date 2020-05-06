@@ -19,7 +19,7 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 
 	private static final int VERSION = 0;
 	public static final String VTABLE_TABLE_NAME = "Vtable Table";
-	
+
 	public static enum SchemaOrdinals {
 		ADDRESS,
 		CLASS,
@@ -40,7 +40,8 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 
 	protected final ClassTypeInfoManagerDB manager;
 
-	AbstractVtableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache, long key) {
+	AbstractVtableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
+		long key) {
 		super(cache, key);
 		this.manager = manager;
 	}
@@ -60,22 +61,29 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 		record.setLongValue(SchemaOrdinals.CLASS.ordinal(), classKey);
 		manager.updateRecord(record);
 	}
-	
+
+	AbstractVtableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
+			ArchivedGnuVtable vtable, db.Record record) {
+		super(cache, record.getKey());
+		this.manager = manager;
+
+	}
+
 	public void setClassKey(long key) {
 		db.Record record = getRecord();
 		record.setLongValue(SchemaOrdinals.CLASS.ordinal(), key);
 		manager.updateRecord(record);
 	}
-	
+
 	public Address getAddress() {
 		db.Record record = getRecord();
 		return manager.decodeAddress(record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
 	}
-	
+
 	public Program getProgram() {
 		return manager.getProgram();
 	}
-	
+
 	protected db.Record getRecord() {
 		db.Record record = manager.getRecord(this);
 		if (record == null) {
@@ -83,7 +91,7 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 		}
 		return record;
 	}
-	
+
 	protected byte[] getModelData() {
 		return getRecord().getBinaryData(SchemaOrdinals.RECORDS.ordinal());
 	}
@@ -106,7 +114,7 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 	protected boolean refresh() {
 		return manager.containsRecord(this);
 	}
-	
+
 	protected static Address getEntryPoint(Function function) {
 		return function != null ? function.getEntryPoint() : Address.NO_ADDRESS;
 	}

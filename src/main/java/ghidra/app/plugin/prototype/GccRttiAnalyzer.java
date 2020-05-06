@@ -56,11 +56,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	private CancelOnlyWrappingTaskMonitor dummy;
 
 	// The only one excluded is BaseClassTypeInfoModel
-	private static final List<String> CLASS_TYPESTRINGS = Arrays.asList(new String[]{
+	private static final List<String> CLASS_TYPESTRINGS = List.of(
 		ClassTypeInfoModel.ID_STRING,
 		SiClassTypeInfoModel.ID_STRING,
 		VmiClassTypeInfoModel.ID_STRING
-	});
+	);
 
 	private static final String[] FUNDAMENTAL_TYPESTRINGS = new String[] {
 		FundamentalTypeInfoModel.ID_STRING,
@@ -100,11 +100,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		throws CancelledException {
 			this.program = program;
 			this.monitor = monitor;
-			
+
 			this.manager = ClassTypeInfoManager.getManager(program);
-			
+
 			this.relocatable = program.getRelocationTable().isRelocatable();
-			
+
 			dummy = new CancelOnlyWrappingTaskMonitor(monitor);
 			for (String typeString : CLASS_TYPESTRINGS) {
 				if (!getDynamicReferences(typeString).isEmpty()) {
@@ -159,13 +159,13 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		}
 		return false;
 	}
-	
+
 	private static boolean isPureVirtualType(ClassTypeInfo type) {
 		return type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING);
 	}
-	
+
 	private Stream<ClassTypeInfo> getStream() {
-		Iterable<ClassTypeInfo> iter = manager.getIterable();
+		Iterable<ClassTypeInfo> iter = manager.getTypes();
 		return StreamSupport.stream(iter.spliterator(), false);
 	}
 
@@ -260,7 +260,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		//Collections.reverse(classes);
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Creating vtables");
-		for (Vtable vtable : manager.getVtableIterable()) {
+		for (Vtable vtable : manager.getVtables()) {
 			monitor.checkCanceled();
 			createVtable((GnuVtable) vtable);
 			monitor.incrementProgress(1);
@@ -349,7 +349,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
-	
+
 	@Override
 	public void optionsChanged(Options options, Program program) {
 		super.optionsChanged(options, program);

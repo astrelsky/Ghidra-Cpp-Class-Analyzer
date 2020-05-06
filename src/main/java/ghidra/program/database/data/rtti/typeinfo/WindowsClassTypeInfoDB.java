@@ -66,7 +66,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 		buf.putLong(hierarchyDescriptorAddress);
 		record.setBinaryData(SchemaOrdinals.MODEL_DATA.ordinal(), buf.array());
 	}
-	
+
 	private int getSize() {
 		return
 			baseKeys.length * Long.BYTES
@@ -85,7 +85,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 						 .mapToObj(manager::getClass)
 						 .toArray(ClassTypeInfo[]::new);
 	}
-	
+
 	static boolean isVirtual(Rtti1Model model) throws InvalidDataTypeException {
 		return (model.getAttributes() >> 4 & 1) == 1;
 	}
@@ -101,7 +101,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 				ClassTypeInfo parent = manager.getClass(baseKeys[i]);
 				result.addAll(parent.getVirtualParents());
 				if (isVirtual(model)) {
-					result.add(manager.getClassTypeInfo(model.getRtti0Address()));
+					result.add(manager.getType(model.getRtti0Address()));
 				}
 			}
 			return result;

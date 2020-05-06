@@ -62,9 +62,9 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	protected boolean hasVtt() {
 		return false;
 	}
-	
+
 	/**
-	 * @deprecated use {@link ClassTypeInfoManager#getIterable()}
+	 * @deprecated use {@link ClassTypeInfoManager#getTypes()}
 	 * after invoking {@link #buildClassTypeInfoDatabase(Program, TaskMonitor)} or having run
 	 * the WindowsCppClassAnalyzer.
 	 */
@@ -72,10 +72,10 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	public static List<ClassTypeInfo> getClassTypeInfoList(Program program, TaskMonitor monitor)
 			throws CancelledException {
 		ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(program);
-		if (manager.getClassTypeInfoCount() == 0) {
+		if (manager.getTypeCount() == 0) {
 			buildClassTypeInfoDatabase(program, monitor);
 		}
-		return manager.getClassTypeInfoStream().collect(Collectors.toList());
+		return manager.getTypeStream().collect(Collectors.toList());
 	}
 
 	public static void buildClassTypeInfoDatabase(Program program, TaskMonitor monitor)

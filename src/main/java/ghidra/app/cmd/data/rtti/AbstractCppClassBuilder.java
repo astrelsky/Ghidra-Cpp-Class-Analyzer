@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.cmd.data.rtti.gcc.ExternalClassTypeInfo;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
@@ -34,7 +33,7 @@ public abstract class AbstractCppClassBuilder {
 	protected Structure struct;
 	private CategoryPath path;
 	private ClassTypeInfo type;
-	
+
 	// this is lazyness
 	private boolean built = false;
 
@@ -62,7 +61,7 @@ public abstract class AbstractCppClassBuilder {
 	protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
 
 	public Structure getDataType() {
-		if (built || type instanceof ExternalClassTypeInfo) {
+		if (built) {
 			return struct;
 		}
 		if (struct.isDeleted()) {
@@ -113,7 +112,7 @@ public abstract class AbstractCppClassBuilder {
 		}
 		return struct;
 	}
-	
+
 	private Union getInterfacesUnion() {
 		final DataTypeManager dtm = program.getDataTypeManager();
 		final DataTypePath dtPath = new DataTypePath(path, INTERFACES);
@@ -135,7 +134,7 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	protected Structure getSuperClassDataType() {
-		if (type instanceof ExternalClassTypeInfo || type.getVirtualParents().isEmpty()) {
+		if (type.getVirtualParents().isEmpty()) {
 			return getDataType();
 		}
 		DataTypeManager dtm = program.getDataTypeManager();

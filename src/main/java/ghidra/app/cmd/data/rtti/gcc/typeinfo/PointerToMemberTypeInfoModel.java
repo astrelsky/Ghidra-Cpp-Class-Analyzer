@@ -88,7 +88,7 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
 		Structure struct = (Structure) getDataType();
 		DataTypeComponent comp = struct.getComponent(CONTEXT_ORDINAL);
 		Address pointee = getAbsoluteAddress(program, address.add(comp.getOffset()));
-		return manager.getClassTypeInfo(pointee);
+		return manager.getType(pointee);
 	}
 
 }

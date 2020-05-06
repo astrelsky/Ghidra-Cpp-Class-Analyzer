@@ -2,9 +2,11 @@ package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import ghidra.program.model.data.Array;
 import ghidra.program.model.data.ArrayDataType;
@@ -43,7 +45,6 @@ public final class VtableModel implements GnuVtable {
 	private boolean construction;
 	private Set<Function> functions = new HashSet<>();
 	private ClassTypeInfo type = null;
-	private long[] offsets;
 	private List<VtablePrefixModel> vtablePrefixes;
 
 	public static GnuVtable getVtable(Program program, Address address) {
@@ -88,14 +89,14 @@ public final class VtableModel implements GnuVtable {
 			if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
 				if (this.type == null) {
 					Address typeAddress = getAbsoluteAddress(program, address);
-					this.type = manager.getClassTypeInfo(typeAddress);
+					this.type = manager.getType(typeAddress);
 				}
 			} else if (this.type == null) {
 				int length = VtableUtils.getNumPtrDiffs(program, address);
 				DataType ptrdiff_t = GnuUtils.getPtrDiff_t(program.getDataTypeManager());
 				Address typePointerAddress = address.add(length * ptrdiff_t.getLength());
 				Address typeAddress = getAbsoluteAddress(program, typePointerAddress);
-				this.type = manager.getClassTypeInfo(typeAddress);
+				this.type = manager.getType(typeAddress);
 			}
 			setupVtablePrefixes();
 			if (vtablePrefixes.isEmpty()) {
@@ -203,19 +204,6 @@ public final class VtableModel implements GnuVtable {
 		return vtablePrefixes.get(index).getBaseOffset(ordinal);
 	}
 
-	@Override
-	public long[] getBaseOffsetArray() {
-		if (offsets == null) {
-			offsets = vtablePrefixes.get(0).getBaseOffsets();
-		}
-		return offsets;
-	}
-
-	@Override
-	public long[] getBaseOffsetArray(int index) {
-		return vtablePrefixes.get(index).getBaseOffsets();
-	}
-
 	/**
 	 * Gets the number of vtable_prefix's in this vtable
 	 *
@@ -269,7 +257,12 @@ public final class VtableModel implements GnuVtable {
 		}
 	}
 
-	private class VtablePrefixModel {
+	@Override
+	public List<VtablePrefix> getPrefixes() {
+		return Collections.unmodifiableList(vtablePrefixes);
+	}
+
+	private class VtablePrefixModel implements VtablePrefix {
 
 		private Address prefixAddress;
 		private List<DataType> dataTypes;
@@ -330,7 +323,8 @@ public final class VtableModel implements GnuVtable {
 			return prefixAddress.add(size);
 		}
 
-		private long[] getBaseOffsets() {
+		@Override
+		public List<Long> getOffsets() {
 			try {
 				Array array = (Array) dataTypes.get(0);
 				MemoryBufferImpl prefixBuf = new MemoryBufferImpl(
@@ -340,10 +334,12 @@ public final class VtableModel implements GnuVtable {
 				for (int i = 0; i < result.length; i++) {
 					result[i] = prefixBuf.getBigInteger(i*length, length, true).longValue();
 				}
-				return result;
+				return Arrays.stream(result)
+					.boxed()
+					.collect(Collectors.toUnmodifiableList());
 			} catch (MemoryAccessException e) {
 				Msg.error(this, "Failed to retreive base offsets at "+prefixAddress, e);
-				return new long[0];
+				return Collections.emptyList();
 			}
 		}
 
@@ -352,7 +348,22 @@ public final class VtableModel implements GnuVtable {
 			if (ordinal >= array.getElementLength()) {
 				return -1;
 			}
-			return getBaseOffsets()[ordinal];
+			return getOffsets().get(ordinal);
+		}
+
+		@Override
+		public List<Function> getFunctionTable() {
+			return List.of(VtableUtils.getFunctionTable(program, prefixAddress));
+		}
+
+		@Override
+		public List<DataType> getDataTypes() {
+			return Collections.unmodifiableList(dataTypes);
+		}
+
+		@Override
+		public Address getAddress() {
+			return prefixAddress;
 		}
 	}
 }

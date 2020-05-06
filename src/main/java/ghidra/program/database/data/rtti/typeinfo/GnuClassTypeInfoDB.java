@@ -17,14 +17,18 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
+import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
 import ghidra.program.database.data.rtti.DataBaseUtils;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.IntArrayList;
 import ghidra.util.datastruct.LongArrayList;
 import ghidra.util.datastruct.LongIntHashtable;
+
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
+
+import db.Record;
 
 public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
@@ -33,8 +37,8 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	private final long[] baseKeys;
 	private final int[] baseOffsets;
 
-	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractClassTypeInfoDB> cache,
-			db.Record record) {
+	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager,
+		DBObjectCache<AbstractClassTypeInfoDB> cache, db.Record record) {
 		super(manager, cache, record);
 		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
 		nonVirtualBaseKeys = DataBaseUtils.getLongArray(buf);
@@ -58,10 +62,11 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			ClassTypeInfo type, db.Record record) {
 		super(manager, cache, type, record);
 		if (type.hasParent()) {
-			virtualBaseKeys = type.getVirtualParents().stream()
-								  .map(manager::resolve)
-								  .mapToLong(DatabaseObject::getKey)
-								  .toArray();
+			virtualBaseKeys = type.getVirtualParents()
+				.stream()
+				.map(manager::resolve)
+				.mapToLong(DatabaseObject::getKey)
+				.toArray();
 		} else {
 			virtualBaseKeys = new long[0];
 		}
@@ -69,17 +74,17 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) type;
 			nonVirtualBaseKeys =
 				Arrays.stream(vmi.getBases())
-					  .filter(Predicate.not(BaseClassTypeInfoModel::isVirtual))
-					  .map(BaseClassTypeInfoModel::getClassModel)
-					  .map(manager::resolve)
-					  .mapToLong(DatabaseObject::getKey)
-					  .toArray();
+					.filter(Predicate.not(BaseClassTypeInfoModel::isVirtual))
+					.map(BaseClassTypeInfoModel::getClassModel)
+					.map(manager::resolve)
+					.mapToLong(DatabaseObject::getKey)
+					.toArray();
 		} else if (type.hasParent()) {
 			nonVirtualBaseKeys =
 				Arrays.stream(type.getParentModels())
-					  .map(manager::resolve)
-					  .mapToLong(DatabaseObject::getKey)
-					  .toArray();
+					.map(manager::resolve)
+					.mapToLong(DatabaseObject::getKey)
+					.toArray();
 		} else {
 			nonVirtualBaseKeys = new long[0];
 		}
@@ -95,7 +100,22 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		}
 		fillRecord(record);
 	}
-	
+
+	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager,
+			DBObjectCache<AbstractClassTypeInfoDB> cache, ArchivedClassTypeInfo type,
+			Record record) {
+		super(manager, cache, type, record);
+		this.nonVirtualBaseKeys = type.getBaseKeys();
+		this.virtualBaseKeys = type.getVirtualKeys();
+		ArchiveClassTypeInfoManager aMan = type.getManager();
+		this.baseKeys = Arrays.stream(type.getBaseKeys())
+			.mapToObj(aMan::getClass)
+			.map(manager::resolve)
+			.mapToLong(DatabaseObject::getKey)
+			.toArray();
+		this.baseOffsets = type.getBaseOffsets();
+	}
+
 	private void fillRecord(db.Record record) {
 		ByteBuffer buf = ByteBuffer.allocate(getSize());
 		DataBaseUtils.putLongArray(buf, nonVirtualBaseKeys);
@@ -105,21 +125,21 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		record.setBinaryData(SchemaOrdinals.MODEL_DATA.ordinal(), buf.array());
 		manager.updateRecord(record);
 	}
-	
+
 	private void fillBaseOffsets(LongArrayList keys, IntArrayList offsets) {
 		ClassTypeInfo type = (ClassTypeInfo) manager.getTypeInfo(address, false);
 		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
-		ClassTypeInfoUtils.getBaseOffsets(type)
-						  .entrySet()
-						  .stream()
-						  .collect(Collectors.toList());
+			ClassTypeInfoUtils.getBaseOffsets(type)
+			.entrySet()
+			.stream()
+			.collect(Collectors.toList());
 		for (int i = 0; i < baseEntries.size(); i++) {
 			Map.Entry<ClassTypeInfo, Integer> entry = baseEntries.get(i);
 			keys.add(manager.resolve(entry.getKey()).getKey());
 			offsets.add(entry.getValue());
 		}
 	}
-	
+
 	private int getSize() {
 		return Integer.BYTES + Long.BYTES * nonVirtualBaseKeys.length
 			+ Integer.BYTES + Long.BYTES * virtualBaseKeys.length
@@ -142,15 +162,15 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		return LongStream.concat(
 			LongStream.of(nonVirtualBaseKeys),
 			LongStream.of(virtualBaseKeys)).mapToObj(manager::getClass)
-										   .toArray(ClassTypeInfo[]::new);
-						 
+				.toArray(ClassTypeInfo[]::new);
+
 	}
 
 	@Override
 	public Set<ClassTypeInfo> getVirtualParents() {
 		return LongStream.of(virtualBaseKeys)
-						 .mapToObj(manager::getClass)
-						 .collect(Collectors.toSet());
+			.mapToObj(manager::getClass)
+			.collect(Collectors.toSet());
 	}
 
 	@Override
@@ -169,7 +189,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		}
 		return vtable;
 	}
-	
+
 	public static long[] getBaseKeys(db.Record record) {
 		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
 		long[] nonVirtualBaseKeys = DataBaseUtils.getLongArray(buf);
@@ -178,7 +198,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			LongStream.of(nonVirtualBaseKeys),
 			LongStream.of(virtualBaseKeys)).toArray();
 	}
-	
+
 	public static int getBaseCount(db.Record record) {
 		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
 		long[] nonVirtualBaseKeys = DataBaseUtils.getLongArray(buf);
@@ -206,5 +226,18 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	@Override
 	protected int[] getOffsets() {
 		return baseOffsets;
+	}
+
+	protected long[] getNonVirtualBaseKeys() {
+		return nonVirtualBaseKeys;
+	}
+
+	protected long[] getVirtualBaseKeys() {
+		return virtualBaseKeys;
+	}
+
+	@Override
+	public Vtable getVtable() {
+		return super.getVtable();
 	}
 }

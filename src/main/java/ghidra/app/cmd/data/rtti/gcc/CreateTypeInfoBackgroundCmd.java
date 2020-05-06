@@ -12,6 +12,8 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.data.DataUtilities;
+import ghidra.program.model.data.Structure;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.app.cmd.data.rtti.TypeInfo;
@@ -33,7 +35,7 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 	/**
 	 * Constructs a command for applying a TypeInfo at an address
 	 * and its associated data.
-	 * 
+	 *
 	 * @param typeInfo the TypeInfo to be created.
 	 */
 	public CreateTypeInfoBackgroundCmd(TypeInfo typeInfo) {
@@ -62,10 +64,9 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 		try {
 			monitor.checkCanceled();
 			Data data = createData(typeInfo.getAddress(), typeInfo.getDataType());
-			if (typeInfo instanceof VmiClassTypeInfoModel) {
-				VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) typeInfo;
-				DataType array = vmi.getBaseArrayDataType();
-				Address arrayAddress = vmi.getBaseArrayAddress();
+			if (((Structure) typeInfo.getDataType()).hasFlexibleArrayComponent()) {
+				DataType array = VmiClassTypeInfoModel.getBaseArrayDataType(data);
+				Address arrayAddress = typeInfo.getAddress().add(data.getLength());
 				createData(arrayAddress, array);
 			}
 			return applyTypeInfoSymbols() && data != null;
@@ -86,10 +87,9 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 			program, typeInfo.getAddress().add(program.getDefaultPointerSize()));
 		try {
 			table.createLabel(typeInfo.getAddress(), TypeInfo.SYMBOL_NAME, ns, SourceType.ANALYSIS);
-			table.createLabel(typenameAddress, TypeInfo.SYMBOL_NAME+"_name", ns, SourceType.ANALYSIS);
+			table.createLabel(typenameAddress, TypeInfo.SYMBOL_NAME+"-name", ns, SourceType.ANALYSIS);
 		} catch (InvalidInputException e) {
-			Msg.trace(this, e);
-			return false;
+			throw new AssertException("Ghidra-Cpp-Class-Analyzer: unexpected exception", e);
 		}
 		return true;
 	}

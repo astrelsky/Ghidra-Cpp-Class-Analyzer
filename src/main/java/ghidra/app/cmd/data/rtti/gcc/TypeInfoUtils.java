@@ -1,5 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -10,48 +11,34 @@ import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.symbol.*;
-import ghidra.program.model.util.CodeUnitInsertionException;
+import ghidra.util.StringUtilities;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 import ghidra.program.model.data.*;
 import ghidra.program.util.ProgramMemoryUtil;
-import ghidra.program.model.data.DataUtilities.ClearDataMode;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.demangler.DemangledObject;
+import ghidra.docking.settings.Settings;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.app.util.demangler.DemanglerUtil.demangle;
-import static ghidra.program.model.data.DataUtilities.createData;
 
 public class TypeInfoUtils {
 
 	private TypeInfoUtils() {
 	}
 
-	private static Data createString(Program program, Address address) {
-		try {
-			Integer id = null;
-			if (program.getCurrentTransaction() == null) {
-				id = program.startTransaction("creating string at "+address.toString());
-			}
-			DataType dt = new TerminatedStringDataType();
-			Data data = createData(
-				program, address, dt, -1, false, ClearDataMode.CLEAR_ALL_CONFLICT_DATA);
-			if (id != null) {
-				program.endTransaction(id, true);
-			}
-			return data;
-		} catch (CodeUnitInsertionException e) {
-			return null;
-		}
+	private static boolean isValidTypeName(String s) {
+		return s.chars().allMatch(c -> StringUtilities.isValidCLanguageChar((char) c));
 	}
 
 	/**
@@ -66,22 +53,22 @@ public class TypeInfoUtils {
 		if (nameAddress == null) {
 			return "";
 		}
-		Data data = program.getListing().getDataAt(nameAddress);
-		if (data == null) {
-			data = createString(program, nameAddress);
-		} else if (Undefined.isUndefined(data.getDataType())) {
-			data = createString(program, nameAddress);
-		}
-		if (data == null) {
-			return "";
-		}
-		if (data.hasStringValue()) {
-			String result = (String) data.getValue();
+		DataType dt = TerminatedStringDataType.dataType;
+		Settings settings = dt.getDefaultSettings();
+		MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), nameAddress);
+		StringDataInstance string = new StringDataInstance(dt, settings, buf, -1);
+		if (string.getStringLength() != -1) {
+			string = new StringDataInstance(dt, settings, buf, string.getStringLength());
+			String result = string.getStringValue();
+
 			/*
 			 * Some anonymous namespaces typename strings start with * Unfortunately the *
 			 * causes issues with demangling so exclude it
 			 */
-			return result.startsWith("*") ? result.substring(1) : result;
+			result = result.startsWith("*") ? result.substring(1) : result;
+			if (isValidTypeName(result)) {
+				return result;
+			}
 		}
 		return "";
 	}
@@ -205,7 +192,7 @@ public class TypeInfoUtils {
 		if (baseTypeInfoAddress == null) {
 			return "";
 		}
-		return TypeInfoUtils.getTypeName(program, baseTypeInfoAddress);
+		return getTypeName(program, baseTypeInfoAddress);
 	}
 
 	/**
@@ -329,28 +316,8 @@ public class TypeInfoUtils {
 	}
 
 	/**
-	 * Attempts to fetch the TypeInfo instance referenced by the provided relocation
-	 * @param program the program containing the relocation
-	 * @param reloc the relocation
-	 * @return a TypeInfo instance if the relocation can be resolved
-	 */
-	public static TypeInfo getExternalTypeInfo(Program program, Relocation reloc) {
-			Program extProgram = GnuUtils.getExternalProgram(program, reloc);
-			if (extProgram != null) {
-				TypeInfoManager manager = TypeInfoManager.getManager(extProgram);
-				SymbolTable table = extProgram.getSymbolTable();
-				for (Symbol symbol : table.getSymbols(reloc.getSymbolName())) {
-					if (manager.isTypeInfo(symbol.getAddress())) {
-						return manager.getTypeInfo(symbol.getAddress());
-					}
-				}
-			}
-			return new ExternalClassTypeInfo(program, reloc);
-	}
-
-	/**
 	 * Generates an appropriate error message for when an invalid type_info is encountered
-	 * 
+	 *
 	 * @param program the program containing the data
 	 * @param address the address of the data
 	 * @param id the expected type_info identification string
@@ -361,16 +328,47 @@ public class TypeInfoUtils {
 		builder.append(String.format("The TypeInfo at %s is not valid\n", address));
 		builder.append(
 			String.format("Expected %s to match identifier %s\n",
-						  TypeInfoUtils.getIDString(program, address),
+						  getIDString(program, address),
 						  id))
 			   .append("Potential typename: ")
-			   .append(TypeInfoUtils.getTypeName(program, address));
+			   .append(getTypeName(program, address));
 		Relocation reloc = program.getRelocationTable().getRelocation(address);
 		if (reloc != null) {
 			builder.append(String.format(
 				"\nrelocation at %s to symbol %s", reloc.getAddress(), reloc.getSymbolName()));
 		}
 		return builder.toString();
+	}
+
+	/**
+	 * Gets the program this TypeInfo is in
+	 *
+	 * @param type the TypeInfo
+	 * @return the program containing the TypeInfo
+	 */
+	public static Program getProgram(TypeInfo type) {
+		return type.getNamespace().getSymbol().getProgram();
+	}
+
+
+	private static boolean isMangled(String s) {
+		return s.startsWith("_ZTI") && !s.contains("@");
+	}
+
+	/**
+	 * Gets the symbol name for the ClassTypeInfo
+	 *
+	 * @param type the ClassTypeInfo
+	 * @return the type info symbol nane
+	 */
+	public static String getSymbolName(TypeInfo type) {
+		Program program = getProgram(type);
+		SymbolTable table = program.getSymbolTable();
+		return Arrays.stream(table.getSymbols(type.getAddress()))
+			.map(Symbol::getName)
+			.filter(TypeInfoUtils::isMangled)
+			.findFirst()
+			.orElseGet(() -> { return "_ZTV" + type.getTypeName(); });
 	}
 
 }

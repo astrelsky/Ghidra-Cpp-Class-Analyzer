@@ -46,7 +46,7 @@ public interface Vtable {
 	public boolean containsFunction(Function function);
 
 	static class InvalidVtable implements GnuVtable {
-		
+
 		private static final String MESSAGE = "Invalid Vtable";
 
 		private InvalidVtable() {
@@ -83,17 +83,12 @@ public interface Vtable {
 		}
 
 		@Override
-		public long[] getBaseOffsetArray() {
-			throw new UnsupportedOperationException(MESSAGE);
-		}
-
-		@Override
-		public long[] getBaseOffsetArray(int index) {
-			throw new UnsupportedOperationException(MESSAGE);
-		}
-
-		@Override
 		public List<DataType> getDataTypes() {
+			throw new UnsupportedOperationException(MESSAGE);
+		}
+
+		@Override
+		public List<VtablePrefix> getPrefixes() {
 			throw new UnsupportedOperationException(MESSAGE);
 		}
 	}

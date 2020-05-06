@@ -17,11 +17,17 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
+/**
+ * Representation of a dynamically linked ClassTypeInfo
+ * @deprecated
+ * @see ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo
+ * ArchivedGnuClassTypeInfo
+ */
 public class ExternalClassTypeInfo implements ClassTypeInfo {
 
 	private final Program program;
 	private final Relocation reloc;
-	
+
 	public ExternalClassTypeInfo(Program program, Relocation reloc) {
 		this.program = program;
 		this.reloc = reloc;
@@ -99,7 +105,7 @@ public class ExternalClassTypeInfo implements ClassTypeInfo {
 		throw new UnsupportedOperationException(
 			String.format("Cannot determine if an %s is abstract", getClass().getSimpleName()));
 	}
-	
+
 	@Override
 	public Vtable getVtable() {
 		return Vtable.NO_VTABLE;

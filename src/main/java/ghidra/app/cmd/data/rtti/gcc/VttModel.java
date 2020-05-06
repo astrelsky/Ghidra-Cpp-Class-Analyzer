@@ -53,7 +53,7 @@ public class VttModel {
 				elementCount = 0;
 			} else {
 				pointee =  getAbsoluteAddress(program, pointee);
-				this.typeinfo = manager.getClassTypeInfo(pointee);
+				this.typeinfo = manager.getType(pointee);
 				if (!typeinfo.hasParent()) {
 					elementCount = 0;
 				}
@@ -67,7 +67,7 @@ public class VttModel {
 			elementCount = 0;
 		}
 	}
-	
+
 	private Program getProgram() {
 		return manager.getProgram();
 	}
@@ -125,7 +125,7 @@ public class VttModel {
 		Address pointee = getElementPointee(ordinal);
 		if (pointee != null) {
 			Address typeAddress = getAbsoluteAddress(getProgram(), pointee);
-			return manager.getClassTypeInfo(typeAddress);
+			return manager.getType(typeAddress);
 		}
 		return null;
 	}
@@ -209,11 +209,11 @@ public class VttModel {
 		int tableSize = 0;
 		Program program = getProgram();
 		Address currentAddress = address;
-		Set<ClassTypeInfo> validTypes = new HashSet<>(Arrays.asList(typeinfo.getParentModels()));
+		Set<ClassTypeInfo> validTypes = new HashSet<>(List.of(typeinfo.getParentModels()));
 		Set<ClassTypeInfo> vParents = typeinfo.getVirtualParents();
 		if (!validTypes.containsAll(vParents)) {
 			for (ClassTypeInfo parent : new HashSet<>(validTypes)) {
-				validTypes.addAll(Arrays.asList(parent.getParentModels()));
+				validTypes.addAll(List.of(parent.getParentModels()));
 			}
 			validTypes.addAll(vParents);
 		}
@@ -228,7 +228,7 @@ public class VttModel {
 			if (tiAddress == null || tiAddress.equals(Address.NO_ADDRESS)) {
 				break;
 			}
-			ClassTypeInfo currentType = manager.getClassTypeInfo(tiAddress);
+			ClassTypeInfo currentType = manager.getType(tiAddress);
 			if (!validTypes.contains((currentType))) {
 				break;
 			}
@@ -245,7 +245,7 @@ public class VttModel {
 			constructionModels.add(cvtable);
 		} return tableSize;
 	}
-	
+
 	/**
 	 * Gets the number of elements in this VttModel
 	 * @return the number of VTable Table elements or 0 if invalid
@@ -273,7 +273,7 @@ public class VttModel {
 		}
 		return dataType;
 	}
-	
+
 	@Override
 	public String toString() {
 		return "VTT for " + typeinfo.getName();

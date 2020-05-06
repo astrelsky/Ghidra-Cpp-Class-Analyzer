@@ -129,10 +129,13 @@ class TypeInfoFactory {
 	 */
 	static boolean isTypeInfo(Program program, Address address) {
 		try {
-			return COPY_MAP.containsKey(TypeInfoUtils.getIDString(program, address));
+			if (COPY_MAP.containsKey(TypeInfoUtils.getIDString(program, address))) {
+				return !TypeInfoUtils.getTypeName(program, address).isBlank();
+			}
 		} catch (AddressOutOfBoundsException e) {
 			return false;
 		}
+		return false;
 	}
 
 	/**

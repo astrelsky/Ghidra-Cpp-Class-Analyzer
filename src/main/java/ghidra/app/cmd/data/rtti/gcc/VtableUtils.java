@@ -1,9 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
@@ -23,8 +20,11 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
+import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolTable;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -195,7 +195,7 @@ public class VtableUtils {
 		int numPtrDiffs = getNumPtrDiffs(program, address);
 		Address currentAddress = address.add(ptrDiffSize * numPtrDiffs);
 		if (TypeInfoUtils.isTypeInfoPointer(program, currentAddress)) {
-			return manager.getClassTypeInfo(getAbsoluteAddress(program, currentAddress));
+			return manager.getType(getAbsoluteAddress(program, currentAddress));
 		}
 		return null;
 	}
@@ -320,5 +320,25 @@ public class VtableUtils {
 			}
 		}
 		return VttModel.INVALID;
+	}
+
+	public static boolean isMangled(String s) {
+		return s.startsWith("_ZTV") && !s.contains("@");
+	}
+
+	public static String getSymbolName(Vtable vtable) {
+		ClassTypeInfo type = vtable.getTypeInfo();
+		Program program = TypeInfoUtils.getProgram(type);
+		SymbolTable table = program.getSymbolTable();
+		return Arrays.stream(table.getSymbols(vtable.getAddress()))
+			.map(Symbol::getName)
+			.filter(VtableUtils::isMangled)
+			.findFirst()
+			.orElseGet(() -> { return "_ZTV" + type.getTypeName(); });
+	}
+
+	public static Program getProgram(Vtable vtable) {
+		ClassTypeInfo type = vtable.getTypeInfo();
+		return TypeInfoUtils.getProgram(type);
 	}
 }

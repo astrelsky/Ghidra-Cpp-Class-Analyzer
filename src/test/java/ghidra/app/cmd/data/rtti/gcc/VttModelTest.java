@@ -32,7 +32,7 @@ public class VttModelTest extends GenericGccRttiTest {
 		Set<Address> addresses = builder.getVttStream()
 										.map(VttModel::getAddress)
 										.collect(Collectors.toSet());
-		for (Vtable vtable : manager.getVtableIterable()) {
+		for (Vtable vtable : manager.getVtables()) {
 			VttModel vtt = VtableUtils.getVttModel(program, (GnuVtable) vtable);
 			if (vtt.isValid()) {
 				assert addresses.remove(vtt.getAddress())

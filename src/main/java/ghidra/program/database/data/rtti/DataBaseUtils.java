@@ -2,12 +2,14 @@ package ghidra.program.database.data.rtti;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 public class DataBaseUtils {
 
 	private DataBaseUtils() {
 	}
-	
+
 	public static void putLongArray(ByteBuffer buf, long[] keys) {
 		buf.putInt(keys.length);
 		for (long key : keys) {
@@ -15,15 +17,25 @@ public class DataBaseUtils {
 		}
 	}
 
+	public static void putLongArray(db.Record record, long[] keys, int ordinal) {
+		ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES + Long.BYTES * keys.length);
+		putLongArray(buf, keys);
+		record.setBinaryData(ordinal, buf.array());
+	}
+
 	public static long[] getLongArray(ByteBuffer buf) {
-		if (buf.array().length == 0) {
-			return new long[0];
-		}
-		long[] keys = new long[buf.getInt()];
-		for (int i = 0; i < keys.length; i++) {
-			keys[i] = buf.getLong();
-		}
-		return keys;
+		int size = buf.getInt();
+		return LongStream.generate(buf::getLong)
+			.limit(size)
+			.toArray();
+	}
+
+	public static long[] getLongArray(db.Record record, int ordinal) {
+		return getLongArray(ByteBuffer.wrap(record.getBinaryData(ordinal)));
+	}
+
+	public static int[] getIntArray(db.Record record, int ordinal) {
+		return getIntArray(ByteBuffer.wrap(record.getBinaryData(ordinal)));
 	}
 
 	public static void putIntArray(ByteBuffer buf, int[] keys) {
@@ -33,17 +45,19 @@ public class DataBaseUtils {
 		}
 	}
 
-	public static int[] getIntArray(ByteBuffer buf) {
-		if (buf.array().length == 0) {
-			return new int[0];
-		}
-		int[] keys = new int[buf.getInt()];
-		for (int i = 0; i < keys.length; i++) {
-			keys[i] = buf.getInt();
-		}
-		return keys;
+	public static void putIntArray(db.Record record, int[] values, int ordinal) {
+		ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES * (values.length + 1));
+		putIntArray(buf, values);
+		record.setBinaryData(ordinal, buf.array());
 	}
-	
+
+	public static int[] getIntArray(ByteBuffer buf) {
+		int size = buf.getInt();
+		return IntStream.generate(buf::getInt)
+			.limit(size)
+			.toArray();
+	}
+
 	public static void putObjectArray(ByteBuffer buf, ByteConvertable[] obj) {
 		byte[][] data = Arrays.stream(obj)
 							  .map(ByteConvertable::toBytes)
@@ -53,7 +67,7 @@ public class DataBaseUtils {
 			buf.put(bytes);
 		}
 	}
-	
+
 	public interface ByteConvertable {
 		byte[] toBytes();
 	}

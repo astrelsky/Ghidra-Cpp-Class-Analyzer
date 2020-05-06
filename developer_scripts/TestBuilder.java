@@ -3,6 +3,7 @@
 import ghidra.app.script.GhidraScript;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.TypeInfo;
@@ -398,7 +399,7 @@ public class TestBuilder extends GhidraScript {
 
 			if (type instanceof ClassTypeInfo) {
 				ClassTypeInfo classType = (ClassTypeInfo) type;
-				Vtable vtable = classType.getVtable();
+				GnuVtable vtable = (GnuVtable) classType.getVtable();
 				if (!Vtable.isValid(vtable)) {
 					continue;
 				}

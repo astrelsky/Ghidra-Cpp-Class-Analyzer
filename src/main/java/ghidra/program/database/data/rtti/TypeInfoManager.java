@@ -1,10 +1,11 @@
 package ghidra.program.database.data.rtti;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.program.database.ProgramDB;
 import ghidra.program.model.address.Address;
@@ -17,8 +18,8 @@ import ghidra.program.model.listing.Program;
 public interface TypeInfoManager {
 
 	static final Map<Program, TypeInfoManager> MANAGERS =
-		Collections.synchronizedMap(new HashMap<>());
-	
+		Collections.synchronizedMap(new WeakHashMap<>());
+
 	static TypeInfoManager getManager(Program program) {
 		if (MANAGERS.containsKey(program)) {
 			return MANAGERS.get(program);
@@ -33,7 +34,7 @@ public interface TypeInfoManager {
 	 * @param address the address of the TypeInfo
 	 * @return the TypeInfo at the specified address or null if none exists.
 	 */
-	TypeInfo getTypeInfo(Address address);
+	TypeInfo getTypeInfo(Address address) throws UnresolvedClassTypeInfoException;
 
 	/**
 	 * Checks if a valid TypeInfo is located at the address in the program.

@@ -107,11 +107,11 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
 	private void addAddresses(Set<Address> addresses, Collection<ClassTypeInfo> parents) {
 		for (ClassTypeInfo parent : parents) {
-			addAddresses(addresses, Arrays.asList(parent.getParentModels()));
+			addAddresses(addresses, List.of(parent.getParentModels()));
 			addAddresses(addresses, parent.getVirtualParents());
 			Vtable parentVtable = parent.getVtable();
 			if (parentVtable != Vtable.NO_VTABLE) {
-				addresses.addAll(Arrays.asList(parentVtable.getTableAddresses()));
+				addresses.addAll(List.of(parentVtable.getTableAddresses()));
 			}
 		}
 	}
@@ -129,8 +129,8 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 		ClassTypeInfo typeinfo = vtable.getTypeInfo();
 		List<Reference> references = Arrays.asList(XReferenceUtil.getOffcutXReferences(data, -1));
 		Collections.reverse(references);
-		Set<Address> addresses = new HashSet<>(Arrays.asList(tableAddresses));
-		addAddresses(addresses, Arrays.asList(typeinfo.getParentModels()));
+		Set<Address> addresses = new HashSet<>(List.of(tableAddresses));
+		addAddresses(addresses, List.of(typeinfo.getParentModels()));
 		addAddresses(addresses, typeinfo.getVirtualParents());
 		detectVirtualDestructors(addresses, vtable);
 		for (Reference reference : references) {

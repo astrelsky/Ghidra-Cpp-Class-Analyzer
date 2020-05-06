@@ -1,11 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 
-import java.util.Arrays;
-import java.util.stream.Stream;
-
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.ExternalClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -23,7 +19,6 @@ import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.util.SymbolicPropogator;
-import ghidra.util.Msg;
 import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
 
@@ -50,7 +45,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	protected Program program;
 	private TaskMonitor monitor;
 	private SymbolicPropogator symProp;
-	
+
 	protected ClassTypeInfoManager manager;
 
 	protected AbstractConstructorAnalysisCmd constructorAnalyzer;
@@ -59,9 +54,9 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
 	/**
 	 * Constructs an AbstractCppClassAnalyzer.
-	 * 
+	 *
 	 * @param name The name of the analyzer
-	 * 
+	 *
 	 */
 	public AbstractCppClassAnalyzer(String name) {
 		super(name, DESCRIPTION, AnalyzerType.BYTE_ANALYZER);
@@ -109,7 +104,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		constructorAnalyzer = null;
 		super.analysisEnded(program);
 	}
-	
+
 	private static void ensureThisCall(Function fun) {
 		PrototypeModel cc = fun.getCallingConvention();
 		if (cc == null || !cc.getGenericCallingConvention().equals(thiscall)) {
@@ -128,28 +123,17 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	}
 
 	private void repairInheritance() throws CancelledException, InvalidDataTypeException {
-		monitor.initialize(manager.getClassTypeInfoCount());
+		monitor.initialize(manager.getTypeCount());
 		monitor.setMessage("Fixing Class Inheritance...");
-		for (ClassTypeInfo type : manager.getIterable()) {
+		for (ClassTypeInfo type : manager.getTypes()) {
 			monitor.checkCanceled();
 			if (type.getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
 				// this works for both vs and gcc
+				monitor.incrementProgress(1);
 				continue;
 			}
-			try {
-				type.getClassDataType();
-				Stream<ClassTypeInfo> external =
-					Arrays.stream(type.getParentModels())
-						  .filter(ExternalClassTypeInfo.class::isInstance);
-				if (external.findAny().isPresent()) {
-					String msg = type.getName()
-						+ " requires a missing external library."
-						+ " Its inheritance model may be inaccurate.";
-					log.appendMsg(msg);
-				}
-			} catch (IndexOutOfBoundsException e) {
-				Msg.trace(this, e);
-			}
+			// this takes care of everything
+			type.getClassDataType();
 			monitor.incrementProgress(1);
 		}
 	}
@@ -159,7 +143,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			symProp = new SymbolicPropogator(program);
 			monitor.initialize(manager.getVtableCount());
 			monitor.setMessage("Filling Class Structures...");
-			for (Vtable vtable : manager.getVtableIterable()) {
+			for (Vtable vtable : manager.getVtables()) {
 				monitor.checkCanceled();
 				ClassTypeInfo type = vtable.getTypeInfo();
 				if (type.getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
@@ -184,7 +168,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		if (auto.getDataType() instanceof Pointer) {
 			Pointer pointer = (Pointer) auto.getDataType();
 			if (pointer.getDataType() instanceof Structure) {
-				return (Structure) pointer.getDataType();   
+				return (Structure) pointer.getDataType();
 			}
 		}
 		return VariableUtilities.findExistingClassStruct(
@@ -206,7 +190,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
-	private void propagateConstants(Function function, ClassTypeInfo type) 
+	private void propagateConstants(Function function, ClassTypeInfo type)
 		throws CancelledException {
 			Parameter auto = function.getParameter(0);
 			if (auto != null && !auto.isStackVariable()) {
@@ -285,7 +269,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	protected void analyzeVftables() throws Exception {
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Analyzing Vftables");
-		for (Vtable vtable : manager.getVtableIterable()) {
+		for (Vtable vtable : manager.getVtables()) {
 			monitor.checkCanceled();
 			analyzeVftable(vtable.getTypeInfo());
 			monitor.incrementProgress(1);
@@ -308,7 +292,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			monitor.incrementProgress(1);
 		}
 	}
-	
+
 	@Override
 	public void optionsChanged(Options options, Program program) {
 		super.optionsChanged(options, program);
@@ -323,10 +307,4 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			options.getBoolean(OPTION_FILLER_ANALYSIS_NAME, OPTION_DEFAULT_FILLER_ANALYSIS);
 	}
 
-	/**
-	 * @return the monitor
-	 */
-	protected TaskMonitor getMonitor() {
-		return monitor;
-	}
 }

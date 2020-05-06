@@ -2,7 +2,9 @@ package ghidra.app.cmd.data.rtti;
 
 import java.util.List;
 
+import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.listing.Function;
 
 public interface GnuVtable extends Vtable {
 
@@ -16,30 +18,35 @@ public interface GnuVtable extends Vtable {
 	long getOffset(int index, int ordinal);
 
 	/**
-	 * Gets the whole ptrdiff_t array.
-	 *
-	 * @return the whole ptrdiff_t array.
-	 */
-	long[] getBaseOffsetArray();
-
-	/**
-	 * Gets the whole ptrdiff_t array for the specified prefix index
-	 *
-	 * @param index the vtable prefix index
-	 * @return the whole ptrdiff_t array
-	 */
-	long[] getBaseOffsetArray(int index);
-
-	/**
 	 * Gets the DataTypes that compose this Vtable
-	 * 
+	 *
 	 * @return the list of DataTypes this Vtable is made of
 	 */
 	List<DataType> getDataTypes();
-	
+
+	/**
+	 * Gets the vtable prefixes that compose this vtable
+	 *
+	 * @return the list of vtable prefixes
+	 */
+	List<VtablePrefix> getPrefixes();
+
 	default int getLength() {
 		return getDataTypes().stream()
 							 .mapToInt(DataType::getLength)
 							 .sum();
+	}
+
+	interface VtablePrefix {
+
+		/**
+		 * Gets the whole ptrdiff_t array.
+		 *
+		 * @return the whole ptrdiff_t array.
+		 */
+		List<Long> getOffsets();
+		List<Function> getFunctionTable();
+		List<DataType> getDataTypes();
+		Address getAddress();
 	}
 }

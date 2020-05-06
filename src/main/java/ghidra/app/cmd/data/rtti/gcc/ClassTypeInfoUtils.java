@@ -2,16 +2,7 @@ package ghidra.app.cmd.data.rtti.gcc;
 
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
@@ -21,41 +12,22 @@ import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.services.DataTypeManagerService;
+import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.CategoryPath;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeConflictHandler;
-import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.DataTypePath;
-import ghidra.program.model.data.DefaultDataType;
-import ghidra.program.model.data.FunctionDefinitionDataType;
-import ghidra.program.model.data.GenericCallingConvention;
-import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.Pointer;
-import ghidra.program.model.data.PointerDataType;
-import ghidra.program.model.data.ProgramBasedDataTypeManager;
-import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.StructureDataType;
-import ghidra.program.model.data.VoidDataType;
-import ghidra.program.model.listing.Data;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.FunctionManager;
-import ghidra.program.model.listing.Listing;
-import ghidra.program.model.listing.Program;
-import ghidra.program.model.listing.VariableUtilities;
+import ghidra.program.model.data.*;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.scalar.Scalar;
+import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.Msg;
-import ghidra.util.exception.AssertException;
-import ghidra.util.exception.CancelledException;
-import ghidra.util.exception.DuplicateNameException;
+import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
 
 public class ClassTypeInfoUtils {
@@ -71,7 +43,7 @@ public class ClassTypeInfoUtils {
 
 	/**
 	 * Finds the Vtable for the corresponding TypeInfo
-	 * 
+	 *
 	 * @param program the program to be searched
 	 * @param address the address of the TypeInfo Model's DataType
 	 * @param monitor the taskmonitor to be used while searching for the vtable
@@ -81,7 +53,7 @@ public class ClassTypeInfoUtils {
 	public static Vtable findVtable(Program program, Address address, TaskMonitor monitor)
 		throws CancelledException {
 			ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(program);
-			ClassTypeInfo type = manager.getClassTypeInfo(address);
+			ClassTypeInfo type = manager.getType(address);
 			if (type != null) {
 				return findVtable(program, type, monitor);
 			}
@@ -90,7 +62,7 @@ public class ClassTypeInfoUtils {
 
 	/**
 	 * Finds the Vtable for the corresponding TypeInfo
-	 * 
+	 *
 	 * @param program the program to be searched
 	 * @param type the typeinfo to find the vtable for
 	 * @param monitor the taskmonitor to be used while searching for the vtable
@@ -113,7 +85,7 @@ public class ClassTypeInfoUtils {
 			Set<Address> references = Collections.emptySet();
 			Data tiData = listing.getDataAt(type.getAddress());
 			if (tiData != null) {
-				List<Address> referenceList = Arrays.asList(XReferenceUtil.getXRefList(tiData));
+				List<Address> referenceList = List.of(XReferenceUtil.getXRefList(tiData));
 				references = GnuUtils.getDirectDataReferences(program, type.getAddress());
 				references.removeAll(referenceList);
 			}
@@ -183,8 +155,6 @@ public class ClassTypeInfoUtils {
 				continue;
 			}
 		}
-		Msg.trace(ClassTypeInfoUtils.class,
-			"Unable to find vtable for "+typeinfo.getNamespace().getName(true));
 		return VtableModel.NO_VTABLE;
 	}
 
@@ -229,7 +199,7 @@ public class ClassTypeInfoUtils {
 		dtm.endTransaction(id, true);
 		return (Structure) struct;
 	}
-	
+
 	private static boolean isDebug(DataTypePath dtPath) {
 		final String path = dtPath.toString();
 		if (path.contains(".pdb") || path.contains(".xml")) {
@@ -271,7 +241,7 @@ public class ClassTypeInfoUtils {
 
 	/**
 	 * Returns true if the Structure is a "placeholder" structure.
-	 * 
+	 *
 	 * @param struct the Structure to check.
 	 * @return true if the Structure is a "placeholder" structure.
 	 */
@@ -285,7 +255,7 @@ public class ClassTypeInfoUtils {
 
 	/**
 	 * Gets the function for the ClassTypeInfo at the specified address.
-	 * 
+	 *
 	 * @param program the Program the function is in.
 	 * @param type the ClassTypeInfo for the function.
 	 * @param address the Address of the function.
@@ -370,7 +340,7 @@ public class ClassTypeInfoUtils {
 	}
 
 	/**
-	 * Gets the DataType representation of the _vptr for the specified ClassTypeInfo. 
+	 * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
 	 * @param program the program containing the ClassTypeInfo
 	 * @param type the ClassTypeInfo
 	 * @param path The category path to place the datatype in.
@@ -412,13 +382,13 @@ public class ClassTypeInfoUtils {
 			struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
 			return dtm.getPointer(struct, program.getDefaultPointerSize());
 		} catch (DuplicateNameException e) {
-			return null;
+			throw new AssertException("Ghidra-Cpp-Class-Analyzer: "+e.getMessage(), e);
 		}
 	}
 
 	/**
 	 * Determines if the class is an abstract base
-	 * 
+	 *
 	 * @param type the __class_type_info to check
 	 * @return true if abstract
 	 */
@@ -465,7 +435,25 @@ public class ClassTypeInfoUtils {
 			}
 			return result;
 		}
-		return null;
+		throw new IllegalArgumentException("Ghidra-Cpp-Class-Analyzer: type must be a GNU ClassTypeInfo");
+	}
+
+	public static GhidraClass getGhidraClassFromTypeName(Program program, String typename) {
+		Namespace ns = TypeInfoUtils.getNamespaceFromTypeName(program, typename);
+		if (ns instanceof GhidraClass) {
+			return (GhidraClass) ns;
+		}
+		try {
+			if (!ns.isGlobal()) {
+				return NamespaceUtils.convertNamespaceToClass(ns);
+			}
+		} catch (InvalidInputException e) {
+			// impossible
+			throw new AssertException(e);
+		}
+		throw new AssertException(
+			"Ghidra-Cpp-Class-Analyzer: failed to get GhidraClass from typename "
+			+ typename);
 	}
 
 }

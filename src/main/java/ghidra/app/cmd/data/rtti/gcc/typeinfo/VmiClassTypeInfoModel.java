@@ -8,12 +8,13 @@ import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.util.Msg;
 import ghidra.util.datastruct.LongArrayList;
+import ghidra.util.exception.AssertException;
+import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
-import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 
 import static ghidra.program.model.data.DataTypeConflictHandler.*;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.getCxxAbiCategoryPath;
@@ -53,7 +54,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
 	private BaseClassTypeInfoModel[] bases;
 	private Flags flags;
-	
+
 	public static VmiClassTypeInfoModel getModel(Program program, Address address)
 		throws InvalidDataTypeException {
 			if (isValid(program, address, ID_STRING)) {
@@ -190,9 +191,15 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		}
 	}
 
+	public int getDataSize() {
+		DataTypeManager dtm = program.getDataTypeManager();
+		DataType baseDt = BaseClassTypeInfoModel.getDataType(dtm);
+		return getDataType().getLength() + baseDt.getLength() * getBaseCount();
+	}
+
 	/**
 	 * Gets this {@value #STRUCTURE_NAME}'s {@value BaseClassTypeInfoModel#STRUCTURE_NAME} array
-	 * @return the BaseClassTypeInfo[] representation of 
+	 * @return the BaseClassTypeInfo[] representation of
 	 * the {@value BaseClassTypeInfoModel#STRUCTURE_NAME} array.
 	 */
 	public BaseClassTypeInfoModel[] getBases() {
@@ -221,13 +228,10 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 			}
 		}
 		if (Vtable.isValid(findVtable())) {
-			long[] offsets = ((VtableModel) getVtable()).getBaseOffsetArray();
-			if (offsets.length > 0) {
-				Arrays.sort(offsets);
-				for (int i = 1; i < offsets.length; i++) {
-					result.add(offsets[i]);
-				}
-				return result;
+			List<Long> offsets = new ArrayList<>(getVtable().getPrefixes().get(0).getOffsets());
+			if (offsets.size() > 0) {
+				offsets.sort(null);
+				result.addAll(offsets);
 			}
 		}
 		return result;
@@ -283,6 +287,22 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		int baseCount = getBaseCount();
 		DataType base = BaseClassTypeInfoModel.getDataType(program.getDataTypeManager());
 		return new ArrayDataType(base, baseCount, base.getLength(), program.getDataTypeManager());
+	}
+
+	public static DataType getBaseArrayDataType(Data data) {
+		DataType dt = data.getDataType();
+		DataTypeManager dtm = dt.getDataTypeManager();
+		if (!dt.equals(getDataType(dtm))) {
+			return null;
+		}
+		try {
+			int baseCount = data.getComponent(BASE_COUNT_ORDINAL).getInt(0);
+			dt = BaseClassTypeInfoModel.getDataType(dtm);
+			return new ArrayDataType(dt, baseCount, dt.getLength(), dtm);
+		} catch (MemoryAccessException e) {
+			// shouldn't occur
+			throw new AssertException(e);
+		}
 	}
 
 	/**

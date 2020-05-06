@@ -43,6 +43,9 @@ import static ghidra.app.util.demangler.DemanglerUtil.demangle;
 import static ghidra.plugins.fsbrowser.FSBUtils.getProgramManager;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
+/**
+ * Static Utility Class for GNU Binaries
+ */
 public final class GnuUtils {
 
 	private static final String PTRDIFF = "ptrdiff_t";
@@ -338,6 +341,18 @@ public final class GnuUtils {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Checks if the provided address is located within the {@value MemoryBlock#EXTERNAL_BLOCK_NAME}
+	 * memory block.
+	 *
+	 * @return true if it is an external address
+	 */
+	public static boolean isExternal(Program program, Address address) {
+		Memory mem = program.getMemory();
+		MemoryBlock block = mem.getBlock(address);
+		return block.getName().equals(MemoryBlock.EXTERNAL_BLOCK_NAME);
 	}
 
 }

@@ -28,7 +28,7 @@ public class VtableModelTest extends GenericGccRttiTest {
 		Set<Address> addresses = builder.getVtableStream()
 										.map(Vtable::getAddress)
 										.collect(Collectors.toSet());
-		for (Vtable vtable : manager.getVtableIterable()) {
+		for (Vtable vtable : manager.getVtables()) {
 			assert addresses.remove(vtable.getAddress())
 				: String.format("Vtable for %s was incorrectly located. It should not be at %s",
 					vtable.getTypeInfo().getName(), vtable.getAddress());

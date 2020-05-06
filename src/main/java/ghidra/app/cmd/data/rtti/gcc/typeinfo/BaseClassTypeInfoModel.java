@@ -10,9 +10,7 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryBufferImpl;
-import ghidra.program.model.reloc.Relocation;
 import ghidra.util.Msg;
-import ghidra.util.exception.AssertException;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.Program;
 
@@ -20,7 +18,7 @@ import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
 /**
  * Model for the {@value #STRUCTURE_NAME} helper class.
@@ -123,16 +121,10 @@ public final class BaseClassTypeInfoModel {
 	public ClassTypeInfo getClassModel() {
 		Program program = manager.getProgram();
 		Address classAddress = getClassAddress();
-		if (program.getMemory().getBlock(classAddress).isInitialized()) {
-			return manager.getClassTypeInfo(classAddress);
+		if (!GnuUtils.isExternal(program, classAddress)) {
+			return manager.getType(classAddress);
 		}
-		Relocation reloc = program.getRelocationTable().getRelocation(getAddress());
-		if (reloc != null && reloc.getSymbolName() != null) {
-			return (ClassTypeInfo) TypeInfoUtils.getExternalTypeInfo(program, reloc);
-		}
-		throw new AssertException(
-			String.format("Failed to retreive __class_type_info at %s in file %s",
-						  getAddress().toString(), program.getName()));
+		return manager.getExternalClassTypeInfo(classAddress);
 	}
 
 	/**
@@ -143,7 +135,7 @@ public final class BaseClassTypeInfoModel {
 	public String getName() {
 		return getClassModel().getName();
 	}
-	
+
 	/**
 	 * Gets the base ClassTypeInfo's address
 	 * @return the base ClassTypeInfo's address

@@ -13,6 +13,7 @@ import ghidra.program.model.address.Address;
 public interface TypeInfo {
 
 	static final String SYMBOL_NAME = "typeinfo";
+	static final String TYPENAME_SYMBOL_NAME = SYMBOL_NAME + "-name";
 
 	/**
 	 * Gets name for the TypeInfo DataType Model
@@ -54,7 +55,7 @@ public interface TypeInfo {
 	/**
 	 * Gets the address of this TypeInfo structure.
 	 * @return the TypeInfo's address.
-	 */ 
+	 */
 	Address getAddress();
 
 }
