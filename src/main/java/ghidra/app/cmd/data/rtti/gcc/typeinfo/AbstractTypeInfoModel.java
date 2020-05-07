@@ -180,7 +180,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 			}
 		} return null;
 	}
-	
+
 	@Override
 	public String toString() {
 		return new StringBuilder()

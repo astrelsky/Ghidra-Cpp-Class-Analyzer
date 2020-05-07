@@ -15,19 +15,17 @@ import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.Union;
-import ghidra.program.model.data.UnionDataType;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.util.CompositeDataTypeElementInfo;
 import ghidra.util.InvalidNameException;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.DuplicateNameException;
 
 public abstract class AbstractCppClassBuilder {
 
 	protected static final String SUPER = "super_";
-	private static final String INTERFACES = "interfaces";
 
 	private Program program;
 	protected Structure struct;
@@ -54,6 +52,10 @@ public abstract class AbstractCppClassBuilder {
 		return type;
 	}
 
+	protected CategoryPath getPath() {
+		return path;
+	}
+
 	protected final Program getProgram() {
 		return program;
 	}
@@ -73,34 +75,28 @@ public abstract class AbstractCppClassBuilder {
 			id = program.startTransaction("creating datatype for "+type.getName());
 		}
 		stashComponents();
-		int i = 0;
+		int pointerSize = program.getDefaultPointerSize();
 		Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
+		int primaryBaseCount = 0;
 		for (ClassTypeInfo parent : baseMap.keySet()) {
 			AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
+			Structure parentStruct = parentBuilder.getSuperClassDataType();
 			int offset = baseMap.get(parent);
-			if (offset == 0 && 0 < i++) {
+			if (offset == 0 && parentStruct.getLength() > pointerSize) {
 				// it is an empty class, interface or essentially a namespace.
-				DataTypeComponent comp;
-				Union interfaces = getInterfacesUnion();
-				if (struct.getNumComponents() > 0) {
-					comp = struct.getComponent(0);
-				} else {
-					struct.add(interfaces);
-					comp = struct.getComponent(0);
+				if (primaryBaseCount++ > 0) {
+					String msg = getType().getName()
+						+ " has multiple base classes at offset 0"
+						+ " with components other than _vptr";
+					throw new AssertException(msg);
 				}
-				if (!(comp.getDataType() instanceof Union)) {
-					interfaces.add(comp.getDataType(), comp.getFieldName(), null);
-					replaceComponent(struct, interfaces, SUPER+INTERFACES, 0);
-				}
-				interfaces.add(parentBuilder.getSuperClassDataType(),
-								SUPER+parent.getName(), null);
+				replaceComponent(struct, parentStruct, SUPER+parent.getName(), 0);
 			} else if (offset < 0) {
 				// it is contained within another base class
 				// or unable to resolve and already reported
 				continue;
 			} else {
-				replaceComponent(struct, parentBuilder.getSuperClassDataType(),
-					SUPER+parent.getName(), baseMap.get(parent));
+				replaceComponent(struct, parentStruct, SUPER+parent.getName(), offset);
 			}
 		}
 		addVptr();
@@ -111,16 +107,6 @@ public abstract class AbstractCppClassBuilder {
 			program.endTransaction(id, true);
 		}
 		return struct;
-	}
-
-	private Union getInterfacesUnion() {
-		final DataTypeManager dtm = program.getDataTypeManager();
-		final DataTypePath dtPath = new DataTypePath(path, INTERFACES);
-		final DataType dt = dtm.getDataType(dtPath);
-		if (dt != null && dt instanceof Union) {
-			return (Union) dt;
-		}
-		return new UnionDataType(path, INTERFACES, dtm);
 	}
 
 	protected void setSuperStructureCategoryPath(Structure parent) {

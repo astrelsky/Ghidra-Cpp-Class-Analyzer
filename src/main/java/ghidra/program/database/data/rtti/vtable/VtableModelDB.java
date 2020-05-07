@@ -132,7 +132,7 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 			this.offsets = Longs.toArray(prefix.getOffsets());
 			this.functions = prefix.getFunctionTable()
 				.stream()
-				.map(Function::getEntryPoint)
+				.map(f -> {return f != null ? f.getEntryPoint() : Address.NO_ADDRESS;})
 				.mapToLong(manager::encodeAddress)
 				.toArray();
 		}

@@ -18,6 +18,7 @@ import ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo;
 import ghidra.program.database.data.rtti.typeinfo.GnuClassTypeInfoDB;
 import ghidra.program.database.data.rtti.vtable.ArchivedGnuVtable;
 import ghidra.program.database.map.AddressMap;
+import ghidra.program.model.data.FileBasedDataTypeManager;
 import ghidra.program.model.data.StandAloneDataTypeManager;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
@@ -36,7 +37,8 @@ import db.*;
 import generic.jar.ResourceFile;
 
 // from ghidra.program.database.data.rtti import ArchiveClassTypeInfoManager
-public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager implements RttiManager {
+public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
+	implements FileBasedDataTypeManager, RttiManager {
 
 	private static final String MANGLED_TYPEINFO_PREFIX = "_ZTI";
 	public final static String EXTENSION = "gcti"; // Ghidra Class Type Infos
@@ -51,8 +53,6 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 	private final RecordManager recordManager = new RecordManager();
 
 	private final Lock lock;
-	private long transactionId = -1;
-
 	private ArchiveClassTypeInfoManager(File file, int openMode)
 			throws IOException {
 		super(new ResourceFile(file), openMode);
@@ -101,6 +101,11 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 		return openFileArchive(file, false);
 	}
 
+	@Override
+	public String getPath() {
+		return file.getAbsolutePath();
+	}
+
 	/**
 	 * Open an existing data-type file archive
 	 * @param packedDbfile archive file (filename must end with DataTypeFileManager.SUFFIX)
@@ -138,8 +143,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 			}
 		} catch (IOException e) {
 			dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 		throw new IllegalArgumentException(
@@ -163,8 +167,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 			}
 		} catch (IOException e) {
 			dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 	}
@@ -177,8 +180,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 			}
 		} catch (IOException e) {
 			dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 		return null;
@@ -192,8 +194,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 			}
 		} catch (IOException e) {
 			dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 		return null;
@@ -286,35 +287,6 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 			return ((ArchivedGnuVtable) vtable).getKey();
 		}
 		return getVtableKey(VtableUtils.getSymbolName(vtable));
-	}
-
-	public boolean openForEditing() {
-		if (transactionId == -1) {
-			lock.acquire();
-			try {
-				transactionId = dbHandle.startTransaction();
-			}
-			finally {
-				lock.release();
-			}
-		}
-		return transactionId != -1;
-	}
-
-	public boolean closeForEditing() {
-		if (transactionId == -1) {
-			lock.acquire();
-			try {
-				dbHandle.endTransaction(transactionId, true);
-				transactionId = -1;
-			} catch (IOException e) {
-				dbError(e);
-			}
-			finally {
-				lock.release();
-			}
-		}
-		return transactionId == -1;
 	}
 
 	@Override
@@ -466,7 +438,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager imple
 		}
 		lock.acquire();
 		try {
-			Field f = new StringField(typeName);
+			db.Field f = new StringField(typeName);
 			long[] keys = classTable.findRecords(
 				f, ArchivedClassTypeInfo.SchemaOrdinals.TYPENAME.ordinal());
 			if (keys.length == 1) {

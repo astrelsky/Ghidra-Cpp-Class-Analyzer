@@ -353,7 +353,8 @@ public final class VtableModel implements GnuVtable {
 
 		@Override
 		public List<Function> getFunctionTable() {
-			return List.of(VtableUtils.getFunctionTable(program, prefixAddress));
+			Function[] result = VtableUtils.getFunctionTable(program, getTableAddress());
+			return Collections.unmodifiableList(Arrays.asList(result));
 		}
 
 		@Override

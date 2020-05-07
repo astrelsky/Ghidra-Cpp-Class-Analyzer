@@ -2,6 +2,7 @@ package ghidra.program.database.data.rtti.vtable;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -15,10 +16,12 @@ import ghidra.program.database.data.rtti.DataBaseUtils;
 import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager.RecordManager;
 import ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.FunctionDefinition;
 import ghidra.program.model.data.FunctionDefinitionDataType;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.FunctionSignature;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
@@ -29,6 +32,7 @@ import db.*;
 public class ArchivedGnuVtable extends DatabaseObject {
 
 	private static final int VERSION = 0;
+	private static final UniversalID BAD_ID = new UniversalID(-1);
 	public static final String TABLE_NAME = "Vtable Archive Table";
 
 	public static enum SchemaOrdinals {
@@ -195,9 +199,8 @@ public class ArchivedGnuVtable extends DatabaseObject {
 				.toArray();
 			this.functions = prefix.getFunctionTable()
 				.stream()
-				.map(Function::getSignature)
-				.map(f -> new FunctionDefinitionDataType(f, manager.getManager()))
-				.map(FunctionDefinition::getUniversalID)
+				.map(Optional::ofNullable)
+				.map(this::getFunctionId)
 				.mapToLong(UniversalID::getValue)
 				.toArray();
 		}
@@ -205,6 +208,19 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		ArchivedVtablePrefix(ByteBuffer buf) {
 			this.offsets = DataBaseUtils.getLongArray(buf);
 			this.functions = DataBaseUtils.getLongArray(buf);
+		}
+
+		private UniversalID getFunctionId(Optional<Function> fun) {
+			return fun.map(Function::getSignature)
+			.map(this::resolve)
+			.map(FunctionDefinition::getUniversalID)
+			.orElseGet(() -> {return BAD_ID;});
+		}
+
+		private FunctionDefinition resolve(FunctionSignature sig) {
+			DataTypeManager dtm = manager.getManager();
+			FunctionDefinition def = new FunctionDefinitionDataType(sig, dtm);
+			return (FunctionDefinition) dtm.resolve(def, DataTypeConflictHandler.KEEP_HANDLER);
 		}
 
 		int getSize() {

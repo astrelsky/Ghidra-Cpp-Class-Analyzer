@@ -33,6 +33,8 @@ import ghidra.util.task.TaskMonitor;
 
 import db.*;
 
+import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
+
 public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeInfo {
 
 	private static final int VERSION = 0;
@@ -117,11 +119,11 @@ public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeIn
 		this.typeName = type.getTypeName();
 		this.symbolName = TypeInfoUtils.getSymbolName(type);
 		this.classId = type.getClassID();
-		this.struct = (Structure) type.getClassDataType().clone(classManager);
+		this.struct = (Structure) classManager.resolve(type.getClassDataType(), KEEP_HANDLER);
 		DataTypeManager dtm = struct.getDataTypeManager();
 		DataType superDt = dtm.getDataType(getCategoryPath(), "super_" + struct.getName());
 		if (superDt != null) {
-			this.superStruct = (Structure) superDt.clone(classManager);
+			this.superStruct = (Structure) classManager.resolve(superDt, KEEP_HANDLER);
 		} else {
 			this.superStruct = this.struct;
 		}

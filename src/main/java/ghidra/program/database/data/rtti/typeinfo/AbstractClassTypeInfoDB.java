@@ -11,6 +11,7 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
+import ghidra.app.util.NamespaceUtils;
 import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
 import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
@@ -253,10 +254,19 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 			ns = s.getParentNamespace();
 		}
 		if (!(ns instanceof GhidraClass)) {
-			throw new AssertException(
-				String.format(
-					"Ghidra-Cpp-Class-Analyzer: %s should have already been a GhidraClass",
-					ns.getName()));
+			if (ns.isGlobal()) {
+				throw new AssertException(
+					"Ghidra-Cpp-Class-Analyzer: unexpected global namespace at "
+					+address.toString());
+			}
+			try {
+				ns = NamespaceUtils.convertNamespaceToClass(ns);
+			} catch (InvalidInputException e) {
+				String msg = String.format(
+					"Ghidra-Cpp-Class-Analyzer: %s should be a valid GhidraClass",
+					ns.getName(true));
+				throw new AssertException(msg);
+			}
 		}
 		return (GhidraClass) ns;
 	}

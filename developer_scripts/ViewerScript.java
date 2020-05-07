@@ -5,6 +5,7 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.model.data.DataType;
 
 public class ViewerScript extends GhidraScript{
 
@@ -17,7 +18,8 @@ public class ViewerScript extends GhidraScript{
 		monitor.initialize(aman.getTypeCount());
 		for (ClassTypeInfo type : aman.getTypes()) {
 			monitor.checkCanceled();
-			println(type.getName());
+			DataType dt = type.getClassDataType();
+			println(dt != null ? dt.getName() : "null");
 			monitor.incrementProgress(1);
 		}
 		aman.close();
