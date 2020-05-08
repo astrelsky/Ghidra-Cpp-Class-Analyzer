@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.task.TaskMonitor;
@@ -27,7 +27,7 @@ public class VttModelTest extends GenericGccRttiTest {
 	public void locationTest() throws Exception {
 		X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
 		Program program = builder.getProgram();
-		ClassTypeInfoManager manager = builder.getManager();
+		ProgramClassTypeInfoManager manager = builder.getManager();
 		manager.findVtables(TaskMonitor.DUMMY);
 		Set<Address> addresses = builder.getVttStream()
 										.map(VttModel::getAddress)

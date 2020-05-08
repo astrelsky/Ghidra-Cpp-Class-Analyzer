@@ -2,15 +2,17 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.core.analysis.ConstantPropagationContextEvaluator;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalyzerType;
+import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.options.Options;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.*;
@@ -46,7 +48,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	private TaskMonitor monitor;
 	private SymbolicPropogator symProp;
 
-	protected ClassTypeInfoManager manager;
+	protected ProgramClassTypeInfoManager manager;
 
 	protected AbstractConstructorAnalysisCmd constructorAnalyzer;
 
@@ -65,6 +67,11 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		setPrototype();
 	}
 
+	@Override
+	public boolean canAnalyze(Program program) {
+		return ClassTypeInfoManagerService.isEnabled(program);
+	}
+
 	protected abstract boolean hasVtt();
 	protected abstract AbstractConstructorAnalysisCmd getConstructorAnalyzer();
 	protected abstract boolean analyzeVftable(ClassTypeInfo type);
@@ -79,7 +86,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		this.log = log;
 		this.constructorAnalyzer = getConstructorAnalyzer();
 
-		this.manager = ClassTypeInfoManager.getManager(program);
+		this.manager = ClassTypeInfoUtils.getManager(program);
 
 		try {
 			analyzeVftables();

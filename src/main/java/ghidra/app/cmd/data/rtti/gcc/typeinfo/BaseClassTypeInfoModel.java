@@ -1,6 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.DataType;
@@ -18,6 +18,7 @@ import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
 /**
@@ -30,12 +31,12 @@ public final class BaseClassTypeInfoModel {
 	static final String STRUCTURE_NAME = "__base_class_type_info";
 	static final int FLAGS_ORDINAL = 1;
 
-	private final ClassTypeInfoManager manager;
+	private final ProgramClassTypeInfoManager manager;
 	private MemoryBufferImpl buf;
 	private DataTypeManager dtm;
 
 	BaseClassTypeInfoModel(Program program, Address address) {
-		this.manager = ClassTypeInfoManager.getManager(program);
+		this.manager = ClassTypeInfoUtils.getManager(program);
 		this.buf = new MemoryBufferImpl(program.getMemory(), address);
 		this.dtm = program.getDataTypeManager();
 	}

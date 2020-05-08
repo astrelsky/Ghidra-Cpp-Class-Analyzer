@@ -25,7 +25,7 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	@Override
 	public boolean canAnalyze(Program program) {
-		return isGnuCompiler(program);
+		return super.canAnalyze(program) && isGnuCompiler(program);
 	}
 
 	@Override

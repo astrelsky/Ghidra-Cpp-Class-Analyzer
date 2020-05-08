@@ -4,11 +4,12 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.app.util.demangler.DemangledObject;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
@@ -37,7 +38,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 
 	protected final Program program;
 	protected final Address address;
-	protected final ClassTypeInfoManager manager;
+	protected final ProgramClassTypeInfoManager manager;
 	private DataType dataType = null;
 
 	protected String typeName = DEFAULT_TYPENAME;
@@ -51,7 +52,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 	private static final Pattern FUNCTION_PATTERN = Pattern.compile("(.*)\\S*?\\((.*)\\)");
 
 	protected AbstractTypeInfoModel(Program program, Address address) {
-		this.manager = ClassTypeInfoManager.getManager(program);
+		this.manager = ClassTypeInfoUtils.getManager(program);
 		this.program = program;
 		this.address = address;
 		this.buf = new MemoryBufferImpl(program.getMemory(), address);

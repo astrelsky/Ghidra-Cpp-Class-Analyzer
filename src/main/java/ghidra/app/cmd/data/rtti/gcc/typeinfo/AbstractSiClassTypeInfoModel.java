@@ -2,7 +2,6 @@ package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import java.util.Set;
 
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -40,8 +39,7 @@ abstract class AbstractSiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 					return new ClassTypeInfo[] { parent };
 				}
 		}
-		ClassTypeInfoManager man = ClassTypeInfoManager.getManager(program);
-		return new ClassTypeInfo[] { man.getExternalClassTypeInfo(baseAddress) };
+		return new ClassTypeInfo[] { manager.getExternalClassTypeInfo(baseAddress) };
 	}
 
 	@Override

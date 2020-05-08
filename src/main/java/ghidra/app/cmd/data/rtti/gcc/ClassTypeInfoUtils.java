@@ -15,7 +15,7 @@ import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.framework.plugintool.PluginTool;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
@@ -52,7 +52,7 @@ public class ClassTypeInfoUtils {
 	 */
 	public static Vtable findVtable(Program program, Address address, TaskMonitor monitor)
 		throws CancelledException {
-			ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(program);
+			ProgramClassTypeInfoManager manager = getManager(program);
 			ClassTypeInfo type = manager.getType(address);
 			if (type != null) {
 				return findVtable(program, type, monitor);
@@ -454,6 +454,15 @@ public class ClassTypeInfoUtils {
 		throw new AssertException(
 			"Ghidra-Cpp-Class-Analyzer: failed to get GhidraClass from typename "
 			+ typename);
+	}
+
+	/**
+	 * Gets the ClassTypeInfoManager for the specified program
+	 *
+	 * @return the program's ClassTypeInfoManager
+	 */
+	public static ProgramClassTypeInfoManager getManager(Program program) {
+		return (ProgramClassTypeInfoManager) TypeInfoUtils.getManager(program);
 	}
 
 }

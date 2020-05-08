@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.List;
 
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
@@ -18,7 +19,7 @@ import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.program.database.ProgramBuilder;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
@@ -32,7 +33,7 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 	private Map<Long, String> vtableMap;
 	private Map<Long, String> vttMap;
 	private Long[] functionOffsets;
-	private ClassTypeInfoManager manager;
+	private ProgramClassTypeInfoManager manager;
 
 	protected AbstractTypeInfoProgramBuilder(String languageName, String compilerSpecID)
 		throws Exception {
@@ -41,12 +42,12 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 	}
 
 	protected abstract void setupMemory();
-	
+
 	private void setupProgram() {
 		setupMemory();
 		Program program = getProgram();
 		startTransaction();
-		manager = ClassTypeInfoManager.getManager(program);
+		manager = ClassTypeInfoUtils.getManager(program);
 		typeMap = getTypeInfoMap();
 		nameMap = getTypeNameMap();
 		vtableMap = getVtableMap();
@@ -106,13 +107,13 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 							   .map(manager::getTypeInfo)
 							   .collect(Collectors.toList());
 	}
-	
+
 	public Stream<TypeInfo> getTypeInfoStream() {
 		return typeMap.keySet().stream()
 							   .map(this::addr)
 							   .map(manager::getTypeInfo);
 	}
-	
+
 	private void buildTypes() {
 		typeMap.keySet().stream()
 						.map(this::addr)
@@ -128,7 +129,7 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 		}
 		return list;
 	}
-	
+
 	public Stream<Vtable> getVtableStream() {
 		return vtableMap.keySet().stream()
 								 .map(this::addr)
@@ -141,7 +142,7 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 		vttMap.keySet().forEach((a) -> list.add(new VttModel(program, addr(a))));
 		return list;
 	}
-	
+
 	public Stream<VttModel> getVttStream() {
 		return vttMap.keySet().stream()
 							  .map(this::addr)
@@ -151,13 +152,13 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 	protected static Entry<Long, String> getEntry(Long offset, String bytes) {
 		return new AbstractMap.SimpleImmutableEntry<>(offset, bytes);
 	}
-	
+
 	private void createString(String address, String string) throws Exception {
 		createString(address, string, StandardCharsets.US_ASCII,
 				true, StringDataType.dataType);
 	}
-	
-	public ClassTypeInfoManager getManager() {
+
+	public ProgramClassTypeInfoManager getManager() {
 		return manager;
 	}
 

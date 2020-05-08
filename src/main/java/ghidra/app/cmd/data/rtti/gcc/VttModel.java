@@ -5,7 +5,7 @@ import java.util.*;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSet;
@@ -29,7 +29,7 @@ public class VttModel {
 	private ClassTypeInfo typeinfo;
 	private int pointerSize;
 	private List<GnuVtable> constructionModels;
-	private final ClassTypeInfoManager manager;
+	private final ProgramClassTypeInfoManager manager;
 	private Set<Address> validAddresses;
 
 	private VttModel() {
@@ -44,7 +44,7 @@ public class VttModel {
 	 * @param address the address of the VttModel
 	 */
 	public VttModel(Program program, Address address) {
-		this.manager = ClassTypeInfoManager.getManager(program);
+		this.manager = ClassTypeInfoUtils.getManager(program);
 		this.address = address;
 		this.pointerSize = program.getDefaultPointerSize();
 		if (GnuUtils.isValidPointer(program, address)) {

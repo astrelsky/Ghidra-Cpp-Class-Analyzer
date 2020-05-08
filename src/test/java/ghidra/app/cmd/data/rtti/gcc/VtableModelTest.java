@@ -8,7 +8,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.Ppc64TypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.util.task.TaskMonitor;
 
@@ -23,7 +23,7 @@ public class VtableModelTest extends GenericGccRttiTest {
 	}
 
 	private void locationTest(AbstractTypeInfoProgramBuilder builder) throws Exception {
-		ClassTypeInfoManager manager = builder.getManager();
+		ProgramClassTypeInfoManager manager = builder.getManager();
 		manager.findVtables(TaskMonitor.DUMMY);
 		Set<Address> addresses = builder.getVtableStream()
 										.map(Vtable::getAddress)

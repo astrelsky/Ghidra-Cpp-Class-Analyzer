@@ -38,7 +38,7 @@ import generic.jar.ResourceFile;
 
 // from ghidra.program.database.data.rtti import ArchiveClassTypeInfoManager
 public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
-	implements FileBasedDataTypeManager, RttiManager {
+	implements FileBasedDataTypeManager, ClassTypeInfoManager {
 
 	private static final String MANGLED_TYPEINFO_PREFIX = "_ZTI";
 	public final static String EXTENSION = "gcti"; // Ghidra Class Type Infos
@@ -457,7 +457,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return null;
 	}
 
-	public void populate(ClassTypeInfoManager manager) {
+	public void populate(ProgramClassTypeInfoManager manager) {
 		try {
 			populate(manager, TaskMonitor.DUMMY);
 		}
@@ -466,7 +466,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		}
 	}
 
-	public void populate(ClassTypeInfoManager manager, TaskMonitor monitor)
+	public void populate(ProgramClassTypeInfoManager manager, TaskMonitor monitor)
 			throws CancelledException {
 		lock.acquire();
 		long id = dbHandle.startTransaction();

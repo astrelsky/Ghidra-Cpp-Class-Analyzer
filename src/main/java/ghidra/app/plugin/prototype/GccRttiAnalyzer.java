@@ -8,11 +8,12 @@ import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 import ghidra.framework.options.Options;
 import ghidra.app.services.AnalyzerType;
+import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.docking.settings.SettingsDefinition;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
@@ -73,7 +74,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		IosFailTypeInfoModel.ID_STRING
 	};
 
-	private ClassTypeInfoManager manager;
+	private ProgramClassTypeInfoManager manager;
 	private boolean relocatable;
 
 	// if a typename contains this, vftable components index >= 2 point to __cxa_pure_virtual
@@ -92,7 +93,10 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 
 	@Override
 	public boolean canAnalyze(Program program) {
-		return GnuUtils.isGnuCompiler(program);
+		if (ClassTypeInfoManagerService.isEnabled(program)) {
+			return GnuUtils.isGnuCompiler(program);
+		}
+		return false;
 	}
 
 	@Override
@@ -101,7 +105,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			this.program = program;
 			this.monitor = monitor;
 
-			this.manager = ClassTypeInfoManager.getManager(program);
+			this.manager = ClassTypeInfoUtils.getManager(program);
 
 			this.relocatable = program.getRelocationTable().isRelocatable();
 

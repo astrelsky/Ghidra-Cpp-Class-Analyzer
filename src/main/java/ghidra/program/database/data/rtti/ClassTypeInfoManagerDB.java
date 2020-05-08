@@ -55,7 +55,7 @@ import db.*;
 import db.util.ErrorHandler;
 
 // man = ghidra.program.database.data.rtti.ClassTypeInfoManagerDB(currentProgram)
-public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, ErrorHandler {
+public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoManager, ErrorHandler {
 
 	private DBObjectCache<AbstractClassTypeInfoDB> classCache;
 	private DBObjectCache<AbstractVtableDB> vtableCache;
@@ -74,29 +74,29 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ClassTypeInfoManager, 
 		lock = new Lock(getClass().getSimpleName());
 		classTable = handle.getTable(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
 		vtableTable = handle.getTable(AbstractVtableDB.VTABLE_TABLE_NAME);
-		try {
-			if (classTable == null) {
-				classTable = getNewClassTable(handle);
-			}
-			if (vtableTable == null) {
-				vtableTable = getNewVtableTable(handle);
-			}
-		}
-		catch (IOException e) {
-			dbError(e);
+		if (classTable == null || vtableTable == null) {
+			resetDatabase();
 		}
 	}
 
-	public void deleteDatabase() {
+	public void resetDatabase() {
 		lock.acquire();
 		try {
 			DBHandle handle = program.getDBHandle();
-			handle.deleteTable(classTable.getName());
-			handle.deleteTable(vtableTable.getName());
+			long id = handle.isTransactionActive() ? -1 : handle.startTransaction();
+			if (classTable != null) {
+				handle.deleteTable(classTable.getName());
+			}
+			if (vtableTable != null) {
+				handle.deleteTable(vtableTable.getName());
+			}
 			classCache.invalidate();
 			vtableCache.invalidate();
 			classTable = getNewClassTable(handle);
 			vtableTable = getNewVtableTable(handle);
+			if (id != -1) {
+				handle.endTransaction(id, true);
+			}
 		} catch (IOException e) {
 			dbError(e);
 		} finally {

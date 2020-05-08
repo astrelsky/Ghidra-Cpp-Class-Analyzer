@@ -7,6 +7,7 @@ import java.util.stream.StreamSupport;
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
@@ -14,7 +15,7 @@ import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapp
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
@@ -45,7 +46,10 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	@Override
 	public boolean canAnalyze(Program program) {
-		return PEUtil.canAnalyze(program) && !GnuUtils.isGnuCompiler(program);
+		if (super.canAnalyze(program)) {
+			return PEUtil.canAnalyze(program) && !GnuUtils.isGnuCompiler(program);
+		}
+		return false;
 	}
 
 	private boolean hasGuardedVftables() {
@@ -64,14 +68,14 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	}
 
 	/**
-	 * @deprecated use {@link ClassTypeInfoManager#getTypes()}
+	 * @deprecated use {@link ProgramClassTypeInfoManager#getTypes()}
 	 * after invoking {@link #buildClassTypeInfoDatabase(Program, TaskMonitor)} or having run
 	 * the WindowsCppClassAnalyzer.
 	 */
 	@Deprecated
 	public static List<ClassTypeInfo> getClassTypeInfoList(Program program, TaskMonitor monitor)
 			throws CancelledException {
-		ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(program);
+		ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(program);
 		if (manager.getTypeCount() == 0) {
 			buildClassTypeInfoDatabase(program, monitor);
 		}
@@ -80,8 +84,8 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	public static void buildClassTypeInfoDatabase(Program program, TaskMonitor monitor)
 			throws CancelledException {
-		ClassTypeInfoManager manager = null;
-		manager = ClassTypeInfoManager.getManager(program);
+		ProgramClassTypeInfoManager manager = null;
+		manager = ClassTypeInfoUtils.getManager(program);
 		final SymbolTable table = program.getSymbolTable();
 		final AddressSet addrSet = new AddressSet();
 		GnuUtils.getAllDataBlocks(program).forEach(

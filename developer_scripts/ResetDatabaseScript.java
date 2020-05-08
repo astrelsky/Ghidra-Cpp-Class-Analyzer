@@ -9,6 +9,6 @@ public class ResetDatabaseScript extends GhidraScript {
 	public void run() throws Exception {
 		ClassTypeInfoManagerDB man =
 			(ClassTypeInfoManagerDB) ClassTypeInfoManager.getManager(currentProgram);
-		man.deleteDatabase();
+		man.resetDatabase();
 	}
 }
