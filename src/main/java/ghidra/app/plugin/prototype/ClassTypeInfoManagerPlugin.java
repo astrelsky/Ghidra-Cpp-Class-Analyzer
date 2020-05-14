@@ -6,7 +6,8 @@ import java.util.*;
 
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
-import ghidra.app.plugin.core.datamgr.archive.DuplicateIdException;
+import ghidra.app.plugin.prototype.typemgr.AddressableTreeNode;
+import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.framework.model.DomainFile;
@@ -21,9 +22,10 @@ import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
 import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
-import ghidra.program.model.data.DataTypeManagerChangeListener;
 import ghidra.program.model.data.StandAloneDataTypeManager;
 import ghidra.program.model.listing.Program;
+import ghidra.util.SystemUtilities;
+import ghidra.util.exception.AssertException;
 
 import docking.ActionContext;
 import docking.Tool;
@@ -54,65 +56,101 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	private static final Set<ClassTypeInfoManagerPlugin> plugins =
 		Collections.synchronizedSet(new HashSet<>());
 	private final List<ClassTypeInfoManager> managers;
+	private final List<TypeInfoManagerListener> listeners;
+	private final TypeInfoTreeProvider provider;
 
 	public ClassTypeInfoManagerPlugin(PluginTool tool) {
 		super(tool, true, true);
 		plugins.add(this);
+		this.listeners = new ArrayList<>();
 		this.managers = new ArrayList<>();
+		this.provider = new TypeInfoTreeProvider(tool, this);
+	}
+
+	@Override
+	public List<ClassTypeInfoManager> getManagers() {
+		return Collections.unmodifiableList(managers);
 	}
 
 	@Override
 	public List<DockingActionIf> getPopupActions(Tool tool, ActionContext context) {
 		// TODO Auto-generated method stub
-		return null;
+		return Collections.emptyList();
 	}
 
 	@Override
 	public void domainObjectChanged(DomainObjectChangedEvent ev) {
-		// TODO Auto-generated method stub
-		System.out.println("domainObjectChanged");
+		// do nothing
 	}
 
 	@Override
-	public void addClassTypeInfoManagerChangeListener(DataTypeManagerChangeListener listener) {
-		// TODO Auto-generated method stub
-		System.out.println("addClassTypeInfoManagerChangeListener");
+	public void addTypeInfoManagerChangeListener(TypeInfoManagerListener listener) {
+		listeners.add(listener);
 	}
 
 	@Override
-	public void removeClassTypeInfoManagerChangeListener(DataTypeManagerChangeListener listener) {
-		// TODO Auto-generated method stub
-		System.out.println("removeClassTypeInfoManagerChangeListener");
+	public void removeTypeInfoManagerChangeListener(TypeInfoManagerListener listener) {
+		listeners.remove(listener);
 	}
 
 	@Override
 	public void closeArchive(ClassTypeInfoManager manager) {
 		managers.remove(manager);
+		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
 		if (manager instanceof StandAloneDataTypeManager) {
 			((StandAloneDataTypeManager) manager).close();
 		}
 	}
 
 	@Override
-	public ClassTypeInfoManager openClassTypeInfoArchive(String archiveName)
-			throws IOException, DuplicateIdException {
-		File file = new File(archiveName);
-		if (!file.exists()) {
-			throw new IOException(archiveName + " does not exist");
-		}
-		return ArchiveClassTypeInfoManager.open(file);
+	public ClassTypeInfoManager openArchive(File file) throws IOException {
+		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.open(file);
+		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
+		return manager;
 	}
 
 	@Override
 	protected void programOpened(Program program) {
 		program.addListener(this);
-		managers.add(new ClassTypeInfoManagerDB((ProgramDB) program));
+		managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
 	}
 
 	@Override
 	protected void programClosed(Program program) {
 		program.removeListener(this);
 		managers.remove(getManager(program));
+	}
+
+	@Override
+	protected void programActivated(Program program) {
+		ClassTypeInfoManager manager = getManager(program);
+		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
+	}
+
+	@Override
+	protected void programDeactivated(Program program) {
+		ClassTypeInfoManager manager = getManager(program);
+		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
+	}
+
+	public void fireArchiveChanged(TypeInfoArchiveChangeRecord record) {
+		switch(record.getChangeType()) {
+			case TYPE_ADDED:
+				SystemUtilities.runSwingLater(
+				() -> listeners.forEach(l -> l.typeAdded(record.getType())));
+				break;
+			case TYPE_REMOVED:
+				SystemUtilities.runSwingLater(
+					() -> listeners.forEach(l -> l.typeRemoved(record.getType())));
+				break;
+			case TYPE_UPDATED:
+				// running now will cause deadlock
+				SystemUtilities.runSwingLater(
+					() -> listeners.forEach(l -> l.typeUpdated(record.getType())));
+				break;
+			default:
+				throw new AssertException("Unknown change type");
+		}
 	}
 
 	@Override
@@ -138,5 +176,17 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	@Override
 	protected void dispose() {
 		plugins.remove(this);
+		tool.removeComponentProvider(provider);
+		provider.dispose();
+	}
+
+	public TypeInfoTreeProvider getProvider() {
+		return provider;
+	}
+
+	public void goTo(AddressableTreeNode node) {
+		if (node.hasAddress()) {
+			goTo(node.getAddress());
+		}
 	}
 }

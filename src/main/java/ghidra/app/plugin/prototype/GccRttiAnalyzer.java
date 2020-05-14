@@ -14,6 +14,7 @@ import ghidra.docking.settings.SettingsDefinition;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
@@ -168,8 +169,8 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		return type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING);
 	}
 
-	private Stream<ClassTypeInfo> getStream() {
-		Iterable<ClassTypeInfo> iter = manager.getTypes();
+	private Stream<ClassTypeInfoDB> getStream() {
+		Iterable<ClassTypeInfoDB> iter = manager.getTypes();
 		return StreamSupport.stream(iter.spliterator(), false);
 	}
 

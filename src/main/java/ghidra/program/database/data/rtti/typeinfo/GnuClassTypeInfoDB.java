@@ -32,30 +32,15 @@ import db.Record;
 
 public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
-	private final long[] nonVirtualBaseKeys;
-	private final long[] virtualBaseKeys;
-	private final long[] baseKeys;
-	private final int[] baseOffsets;
+	private long[] nonVirtualBaseKeys;
+	private long[] virtualBaseKeys;
+	private long[] baseKeys;
+	private int[] baseOffsets;
 
 	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager,
 		DBObjectCache<AbstractClassTypeInfoDB> cache, db.Record record) {
 		super(manager, cache, record);
-		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
-		nonVirtualBaseKeys = DataBaseUtils.getLongArray(buf);
-		virtualBaseKeys = DataBaseUtils.getLongArray(buf);
-		long[] tmpBaseKeys = DataBaseUtils.getLongArray(buf);
-		int[] tmpBaseOffsets = DataBaseUtils.getIntArray(buf);
-		if (tmpBaseKeys.length == 0 && tmpBaseOffsets.length == 0 && getVtableSearched()) {
-			LongArrayList keys = new LongArrayList();
-			IntArrayList offsets = new IntArrayList();
-			fillBaseOffsets(keys, offsets);
-			baseKeys = keys.toLongArray();
-			baseOffsets = offsets.toArray();
-			fillRecord(record);
-		} else {
-			baseKeys = new long[0];
-			baseOffsets = new int[0];
-		}
+		refresh(record);
 	}
 
 	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractClassTypeInfoDB> cache,
@@ -158,11 +143,11 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	}
 
 	@Override
-	public ClassTypeInfo[] getParentModels() {
+	public ClassTypeInfoDB[] getParentModels() {
 		return LongStream.concat(
 			LongStream.of(nonVirtualBaseKeys),
 			LongStream.of(virtualBaseKeys)).mapToObj(manager::getClass)
-				.toArray(ClassTypeInfo[]::new);
+				.toArray(ClassTypeInfoDB[]::new);
 
 	}
 
@@ -239,5 +224,29 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	@Override
 	public Vtable getVtable() {
 		return super.getVtable();
+	}
+
+	@Override
+	protected boolean refresh(db.Record record) {
+		if (super.refresh(record)) {
+			ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
+			nonVirtualBaseKeys = DataBaseUtils.getLongArray(buf);
+			virtualBaseKeys = DataBaseUtils.getLongArray(buf);
+			long[] tmpBaseKeys = DataBaseUtils.getLongArray(buf);
+			int[] tmpBaseOffsets = DataBaseUtils.getIntArray(buf);
+			if (tmpBaseKeys.length == 0 && tmpBaseOffsets.length == 0 && getVtableSearched()) {
+				LongArrayList keys = new LongArrayList();
+				IntArrayList offsets = new IntArrayList();
+				fillBaseOffsets(keys, offsets);
+				baseKeys = keys.toLongArray();
+				baseOffsets = offsets.toArray();
+				fillRecord(record);
+			} else {
+				baseKeys = tmpBaseKeys;
+				baseOffsets = tmpBaseOffsets;
+			}
+			return true;
+		}
+		return false;
 	}
 }

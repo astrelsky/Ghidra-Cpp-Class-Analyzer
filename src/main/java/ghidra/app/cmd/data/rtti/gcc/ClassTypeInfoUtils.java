@@ -393,12 +393,8 @@ public class ClassTypeInfoUtils {
 	 * @return true if abstract
 	 */
 	public static boolean isAbstract(ClassTypeInfo type) {
-		Vtable vtable = Vtable.NO_VTABLE;
-		try {
-			type.findVtable(TaskMonitor.DUMMY);
-		} catch (CancelledException e) {
-		}
-		if (vtable == Vtable.NO_VTABLE) {
+		Vtable vtable = type.getVtable();
+		if (!Vtable.isValid(vtable)) {
 			return false;
 		}
 		for (Function[] functionTable : vtable.getFunctionTables()) {

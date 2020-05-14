@@ -15,6 +15,7 @@ import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.framework.store.db.PackedDBHandle;
 import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo;
+import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
 import ghidra.program.database.data.rtti.typeinfo.GnuClassTypeInfoDB;
 import ghidra.program.database.data.rtti.vtable.ArchivedGnuVtable;
 import ghidra.program.database.map.AddressMap;
@@ -32,6 +33,8 @@ import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
+
+import org.apache.commons.io.FilenameUtils;
 
 import db.*;
 import generic.jar.ResourceFile;
@@ -53,6 +56,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	private final RecordManager recordManager = new RecordManager();
 
 	private final Lock lock;
+
 	private ArchiveClassTypeInfoManager(File file, int openMode)
 			throws IOException {
 		super(new ResourceFile(file), openMode);
@@ -68,6 +72,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		if (vtableTable == null) {
 			createVtableTable();
 		}
+		this.name = FilenameUtils.removeExtension(file.getName());
 	}
 
 	private void createClassTable() throws IOException {
@@ -395,7 +400,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	}
 
 	@Override
-	public ClassTypeInfo getType(GhidraClass gc) throws UnresolvedClassTypeInfoException {
+	public ClassTypeInfoDB getType(GhidraClass gc) throws UnresolvedClassTypeInfoException {
 		Program program = gc.getSymbol().getProgram();
 		SymbolTable table = program.getSymbolTable();
 		return table.getSymbols(TypeInfo.TYPENAME_SYMBOL_NAME, gc)
@@ -408,7 +413,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	}
 
 	@Override
-	public ClassTypeInfo getType(Function fun) throws UnresolvedClassTypeInfoException {
+	public ClassTypeInfoDB getType(Function fun) throws UnresolvedClassTypeInfoException {
 		Namespace ns = fun.getParentNamespace();
 		if (ns instanceof GhidraClass) {
 			return getType((GhidraClass) ns);
@@ -417,7 +422,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	}
 
 	@Override
-	public ClassTypeInfo getType(String name, Namespace namespace)
+	public ClassTypeInfoDB getType(String name, Namespace namespace)
 			throws UnresolvedClassTypeInfoException {
 		Program program = namespace.getSymbol().getProgram();
 		SymbolTable table = program.getSymbolTable();
@@ -429,7 +434,7 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	}
 
 	@Override
-	public ClassTypeInfo getType(String typeName) throws UnresolvedClassTypeInfoException {
+	public ClassTypeInfoDB getType(String typeName) throws UnresolvedClassTypeInfoException {
 		if (typeName.isBlank()) {
 			return null;
 		}
@@ -507,12 +512,12 @@ public class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	}
 
 	@Override
-	public Iterable<ClassTypeInfo> getTypes() {
+	public Iterable<ClassTypeInfoDB> getTypes() {
 		return () -> getTypeStream().iterator();
 	}
 
 	@Override
-	public Stream<ClassTypeInfo> getTypeStream() {
+	public Stream<ClassTypeInfoDB> getTypeStream() {
 		long maxKey = classTable.getMaxKey();
 		return LongStream.iterate(0, i -> i <= maxKey, i -> i + 1)
 				.mapToObj(this::getClass);

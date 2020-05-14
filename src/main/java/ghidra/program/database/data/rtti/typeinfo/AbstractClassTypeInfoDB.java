@@ -15,6 +15,7 @@ import ghidra.app.util.NamespaceUtils;
 import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
 import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager.RecordManager;
 import ghidra.program.database.data.rtti.vtable.ArchivedGnuVtable;
 import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.address.Address;
@@ -37,7 +38,7 @@ import db.*;
 
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 
-public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements ClassTypeInfo {
+public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	private static final int VERSION = 0;
 	public static final String CLASS_TYPEINFO_TABLE_NAME = "ClassTypeInfo Table";
@@ -88,7 +89,7 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 	);
 
 	protected final ClassTypeInfoManagerDB manager;
-	protected Address address;
+	protected final Address address;
 	protected final String typename;
 	protected final GhidraClass gc;
 	protected boolean vtableSearched;
@@ -145,11 +146,16 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 			this.address = type.getAddress(program);
 			this.typename = type.getTypeName();
 			this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(program, typename);
-			ArchivedGnuVtable vtable = type.getArchivedVtable();
-			if (vtable == null) {
+			ArchivedGnuVtable archivedVtable = type.getArchivedVtable();
+			if (archivedVtable == null) {
 				this.vtableKey = AddressMap.INVALID_ADDRESS_KEY;
 			} else {
-				this.vtableKey = manager.resolve(vtable).getKey();
+				Vtable vtable = manager.resolve(archivedVtable);
+				if (vtable instanceof DatabaseObject) {
+					this.vtableKey = ((DatabaseObject) vtable).getKey();
+				} else {
+					this.vtableKey = AddressMap.INVALID_ADDRESS_KEY;
+				}
 			}
 			DataTypeManager dtm = program.getDataTypeManager();
 			this.struct = (Structure) dtm.resolve(type.getDataType(), REPLACE_HANDLER);
@@ -224,13 +230,6 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 	protected boolean getVtableSearched() {
 		db.Record record = getRecord();
 		return record.getBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal());
-	}
-
-	protected void setVtableSearched() {
-		vtableSearched = true;
-		db.Record record = getRecord();
-		record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), true);
-		manager.updateRecord(record);
 	}
 
 	public static int getBaseCount(db.Record record) {
@@ -345,9 +344,6 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 
 	@Override
 	public boolean equals(Object o) {
-		if (o instanceof AbstractClassTypeInfoDB) {
-			return getKey() == ((AbstractClassTypeInfoDB) o).getKey();
-		}
 		if (o instanceof ClassTypeInfo) {
 			return getAddress().equals(((ClassTypeInfo) o).getAddress());
 		}
@@ -361,6 +357,22 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 
 	@Override
 	protected boolean refresh() {
+		return refresh(getRecord());
+	}
+
+	@Override
+	protected boolean refresh(db.Record record) {
+		if (record == null) {
+			return false;
+		}
+		Address addr = manager.decodeAddress(
+				record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
+		if (address.equals(addr)) {
+			vtableSearched = record.getBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal());
+			vtableKey = record.getLongValue(SchemaOrdinals.VTABLE_KEY.ordinal());
+			struct = fetchDataType(record);
+			return true;
+		}
 		return false;
 	}
 
@@ -494,6 +506,15 @@ public abstract class AbstractClassTypeInfoDB extends DatabaseObject implements 
 	@Override
 	public String toString() {
 		return getName();
+	}
+
+	@Override
+	public ClassTypeInfoManagerDB getManager() {
+		return manager;
+	}
+
+	public void keyChanged(RecordManager manager, long newKey) {
+		keyChanged(newKey);
 	}
 
 }

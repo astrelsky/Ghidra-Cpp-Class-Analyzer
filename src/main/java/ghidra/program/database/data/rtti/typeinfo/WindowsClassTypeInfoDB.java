@@ -80,10 +80,10 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	}
 
 	@Override
-	public ClassTypeInfo[] getParentModels() {
+	public ClassTypeInfoDB[] getParentModels() {
 		return LongStream.of(baseKeys)
 						 .mapToObj(manager::getClass)
-						 .toArray(ClassTypeInfo[]::new);
+						 .toArray(ClassTypeInfoDB[]::new);
 	}
 
 	static boolean isVirtual(Rtti1Model model) throws InvalidDataTypeException {
@@ -167,5 +167,11 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	@Override
 	protected int[] getOffsets() {
 		return baseOffsets;
+	}
+
+	@Override
+	protected boolean refresh() {
+		// no refresh required
+		return true;
 	}
 }

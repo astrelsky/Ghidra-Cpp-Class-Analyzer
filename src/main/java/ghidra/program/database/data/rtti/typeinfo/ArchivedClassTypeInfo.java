@@ -9,10 +9,11 @@ import javax.help.UnsupportedOperationException;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
+import ghidra.app.util.SymbolPath;
+import ghidra.app.util.SymbolPathParser;
 import ghidra.app.util.demangler.Demangled;
 import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.program.database.DBObjectCache;
-import ghidra.program.database.DatabaseObject;
 import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
 import ghidra.program.database.data.rtti.DataBaseUtils;
 import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager.RecordManager;
@@ -35,7 +36,7 @@ import db.*;
 
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
-public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeInfo {
+public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 
 	private static final int VERSION = 0;
 	public static final String TABLE_NAME = "ClassTypeInfo Archive Table";
@@ -103,8 +104,7 @@ public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeIn
 	private final int[] baseOffsets;
 	private final long[] baseKeys;
 	private final long[] virtualKeys;
-
-	private String name;
+	private final Demangled demangled;
 
 	public ArchivedClassTypeInfo(RecordManager manager,
 			DBObjectCache<ArchivedClassTypeInfo> cache, GnuClassTypeInfoDB type,
@@ -155,7 +155,7 @@ public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeIn
 			record.setLongValue(SchemaOrdinals.VTABLE_KEY.ordinal(), -1);
 		}
 		manager.updateRecord(record);
-		this.name = type.getName();
+		this.demangled = doDemangle(symbolName);
 	}
 
 	public ArchivedClassTypeInfo(RecordManager manager,
@@ -185,6 +185,16 @@ public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeIn
 			record, SchemaOrdinals.BASE_OFFSETS.ordinal());
 		this.virtualKeys = DataBaseUtils.getLongArray(
 			record, SchemaOrdinals.VIRTUAL_BASE_KEYS.ordinal());
+		this.demangled = doDemangle(symbolName);
+	}
+
+	private static Demangled doDemangle(String symbolName) {
+		Demangled demangled = DemanglerUtil.demangle(symbolName);
+		if (demangled == null) {
+			throw new AssertException("ArchivedClassTypeInfo symbol "
+				+ symbolName + " failed to demangle");
+		}
+		return demangled.getNamespace();
 	}
 
 	public static db.Record createRecord(long key) {
@@ -200,6 +210,7 @@ public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeIn
 		return false;
 	}
 
+	@Override
 	public ArchiveClassTypeInfoManager getManager() {
 		return manager.getManager();
 	}
@@ -269,15 +280,7 @@ public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeIn
 
 	@Override
 	public String getName() {
-		if (name == null) {
-			Demangled demangled = DemanglerUtil.demangle(symbolName);
-			if (demangled == null) {
-				throw new AssertException("ArchivedClassTypeInfo symbol "
-					+ symbolName + " failed to demangle");
-			}
-			name = demangled.getNamespace().getDemangledName();
-		}
-		return name;
+		return demangled.getDemangledName();
 	}
 
 	private static UnsupportedOperationException getUnsupportedMsg(Method method) {
@@ -342,6 +345,11 @@ public class ArchivedClassTypeInfo extends DatabaseObject implements ClassTypeIn
 	public Structure getClassDataType() {
 		long id = manager.getClassRecord(key).getLongValue(SchemaOrdinals.DATATYPE_ID.ordinal());
 		return (Structure) manager.getManager().findDataTypeForID(new UniversalID(id));
+	}
+
+	@Override
+	public SymbolPath getSymbolPath() {
+		return new SymbolPath(SymbolPathParser.parse(demangled.getNamespaceString()));
 	}
 
 }

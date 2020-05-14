@@ -6,6 +6,7 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo;
+import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
 import ghidra.program.database.data.rtti.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
@@ -18,28 +19,27 @@ import ghidra.util.task.TaskMonitor;
 public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeInfoManager {
 
 	Program getProgram();
-	ClassTypeInfo getType(Address address) throws UnresolvedClassTypeInfoException;
-	ClassTypeInfo resolve(ClassTypeInfo type);
+	ClassTypeInfoDB getType(Address address) throws UnresolvedClassTypeInfoException;
 	Vtable resolve(Vtable vtable);
-	default Iterable<ClassTypeInfo> getTypes() {
+	default Iterable<ClassTypeInfoDB> getTypes() {
 		return getTypes(false);
 	}
-	Iterable<ClassTypeInfo> getTypes(boolean reverse);
+	Iterable<ClassTypeInfoDB> getTypes(boolean reverse);
 	default Iterable<Vtable> getVtables() {
 		return getVtableIterable(false);
 	}
 	Iterable<Vtable> getVtableIterable(boolean reverse);
 	int getVtableCount();
-	default Stream<ClassTypeInfo> getTypeStream() {
+	default Stream<ClassTypeInfoDB> getTypeStream() {
 		return getTypeStream(false);
 	}
-	Stream<ClassTypeInfo> getTypeStream(boolean reverse);
+	Stream<ClassTypeInfoDB> getTypeStream(boolean reverse);
 	Stream<Vtable> getVtableStream();
-	ClassTypeInfo getExternalClassTypeInfo(Address address);
+	ClassTypeInfoDB getExternalClassTypeInfo(Address address);
 
 	void findVtables(TaskMonitor monitor) throws CancelledException;
 
-	ClassTypeInfo resolve(ArchivedClassTypeInfo type);
+	ClassTypeInfoDB resolve(ArchivedClassTypeInfo type);
 	Vtable resolve(ArchivedGnuVtable vtable);
 
 }

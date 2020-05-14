@@ -77,9 +77,16 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 
 	@Override
 	public Address[] getTableAddresses() {
-		return Arrays.stream(records)
-				.map(VtableModelPrefixRecord::getAddress)
-				.toArray(Address[]::new);
+		Program program = getProgram();
+		int pointerSize = program.getDefaultPointerSize();
+		int ptrdiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
+		Address[] addresses = new Address[records.length];
+		for (int i = 0; i < records.length; i++) {
+			VtableModelPrefixRecord record = records[i];
+			int offset = pointerSize + ptrdiffSize * record.offsets.length;
+			addresses[i] = record.getAddress().add(offset);
+		}
+		return addresses;
 	}
 
 	@Override

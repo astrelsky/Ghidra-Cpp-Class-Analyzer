@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Set;
 
 import ghidra.app.util.NamespaceUtils;
+import ghidra.app.util.SymbolPath;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -56,7 +57,7 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
 		}
 		return builder.getDataType();
 	}
-	
+
 	@Override
 	public GnuVtable getVtable() {
 		if (vtable == null) {
@@ -115,6 +116,11 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
 	@Override
 	public Set<ClassTypeInfo> getVirtualParents() {
 		return Collections.emptySet();
+	}
+
+	@Override
+	public SymbolPath getSymbolPath() {
+		return new SymbolPath(getGhidraClass().getSymbol());
 	}
 
 }

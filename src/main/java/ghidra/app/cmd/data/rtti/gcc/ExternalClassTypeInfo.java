@@ -23,6 +23,7 @@ import ghidra.util.task.TaskMonitor;
  * @see ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo
  * ArchivedGnuClassTypeInfo
  */
+@Deprecated(since = "1.5", forRemoval = true)
 public class ExternalClassTypeInfo implements ClassTypeInfo {
 
 	private final Program program;

@@ -1,13 +1,14 @@
 package ghidra.app.services;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
-import ghidra.app.plugin.core.datamgr.archive.DuplicateIdException;
+import ghidra.app.plugin.prototype.TypeInfoManagerListener;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.framework.plugintool.ServiceInfo;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
-import ghidra.program.model.data.*;
 import ghidra.program.model.listing.Program;
 
 //@formatter:off
@@ -18,16 +19,19 @@ import ghidra.program.model.listing.Program;
 //@formatter:on
 public interface ClassTypeInfoManagerService {
 
-	public void addClassTypeInfoManagerChangeListener(DataTypeManagerChangeListener listener);
+// man = state.tool.getService(ghidra.app.services.ClassTypeInfoManagerService).getManager(currentProgram)
 
-	public void removeClassTypeInfoManagerChangeListener(DataTypeManagerChangeListener listener);
+	public void addTypeInfoManagerChangeListener(TypeInfoManagerListener listener);
+
+	public void removeTypeInfoManagerChangeListener(TypeInfoManagerListener listener);
 
 	public void closeArchive(ClassTypeInfoManager manager);
 
-	public ClassTypeInfoManager openClassTypeInfoArchive(String archiveName)
-			throws IOException, DuplicateIdException;
+	public ClassTypeInfoManager openArchive(File archive) throws IOException;
 
 	public ProgramClassTypeInfoManager getManager(Program program);
+
+	public List<ClassTypeInfoManager> getManagers();
 
 	public static boolean isEnabled(Program program) {
 		return ClassTypeInfoManagerPlugin.isEnabled(program);

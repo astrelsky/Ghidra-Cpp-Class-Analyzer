@@ -2,6 +2,7 @@ package ghidra.app.cmd.data.rtti;
 
 import java.util.Set;
 
+import ghidra.app.util.SymbolPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.GhidraClass;
@@ -98,6 +99,10 @@ public interface ClassTypeInfo extends TypeInfo {
 
 	default boolean isExternal() {
 		return false;
+	}
+
+	default SymbolPath getSymbolPath() {
+		return new SymbolPath(getGhidraClass().getSymbol());
 	}
 
 }
