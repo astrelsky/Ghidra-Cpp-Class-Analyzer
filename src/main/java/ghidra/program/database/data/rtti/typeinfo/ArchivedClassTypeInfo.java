@@ -13,10 +13,9 @@ import ghidra.app.util.SymbolPath;
 import ghidra.app.util.SymbolPathParser;
 import ghidra.app.util.demangler.Demangled;
 import ghidra.app.util.demangler.DemanglerUtil;
-import ghidra.program.database.DBObjectCache;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.ArchiveClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ArchiveRttiRecordManager;
 import ghidra.program.database.data.rtti.DataBaseUtils;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager.RecordManager;
 import ghidra.program.database.data.rtti.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.CategoryPath;
@@ -36,12 +35,14 @@ import db.*;
 
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
-public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
+public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 
 	private static final int VERSION = 0;
 	public static final String TABLE_NAME = "ClassTypeInfo Archive Table";
 
 	public static enum SchemaOrdinals {
+		/** Name of the Program the type originated from */
+		PROGRAM_NAME,
 		TYPENAME,
 		/** Address within the external program */
 		ADDRESS,
@@ -67,6 +68,7 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 			"Key",
 			new Class[] {
 				StringField.class,
+				StringField.class,
 				LongField.class,
 				StringField.class,
 				ByteField.class,
@@ -78,6 +80,7 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 				BinaryField.class
 			},
 			new String[] {
+				"program name",
 				"type name",
 				"address",
 				"symbol name",
@@ -93,8 +96,9 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	private static final Set<String> PURE_VIRTUAL_FUNCTION_NAMES =
 		Set.of("__cxa_pure_virtual", "_purecall");
 
-	private final RecordManager manager;
+	private final ArchiveRttiRecordManager manager;
 	private final long address;
+	private final String programName;
 	private final String typeName;
 	private final String symbolName;
 	private final byte classId;
@@ -106,30 +110,30 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	private final long[] virtualKeys;
 	private final Demangled demangled;
 
-	public ArchivedClassTypeInfo(RecordManager manager,
-			DBObjectCache<ArchivedClassTypeInfo> cache, GnuClassTypeInfoDB type,
+	public ArchivedClassTypeInfo(ArchiveRttiRecordManager manager, GnuClassTypeInfoDB type,
 			db.Record record) {
-		super(cache, record.getKey());
+		super(manager, record);
 		this.manager = manager;
-		ArchiveClassTypeInfoManager classManager = manager.getManager();
+		DataTypeManager archiveDtm = (DataTypeManager) manager.getManager();
 		this.address = type.getRecord()
-				.getLongValue(
-					AbstractClassTypeInfoDB.SchemaOrdinals.ADDRESS.ordinal());
+			.getLongValue(AbstractClassTypeInfoDB.SchemaOrdinals.ADDRESS.ordinal());
 		record.setLongValue(SchemaOrdinals.ADDRESS.ordinal(), address);
+		this.programName = type.getProgram().getName();
 		this.typeName = type.getTypeName();
 		this.symbolName = TypeInfoUtils.getSymbolName(type);
 		this.classId = type.getClassID();
-		this.struct = (Structure) classManager.resolve(type.getClassDataType(), KEEP_HANDLER);
+		this.struct = (Structure) archiveDtm.resolve(type.getClassDataType(), KEEP_HANDLER);
 		DataTypeManager dtm = struct.getDataTypeManager();
 		DataType superDt = dtm.getDataType(getCategoryPath(), "super_" + struct.getName());
 		if (superDt != null) {
-			this.superStruct = (Structure) classManager.resolve(superDt, KEEP_HANDLER);
+			this.superStruct = (Structure) archiveDtm.resolve(superDt, KEEP_HANDLER);
 		} else {
 			this.superStruct = this.struct;
 		}
 		this.baseKeys = type.getNonVirtualBaseKeys();
 		this.baseOffsets = type.getOffsets();
 		this.virtualKeys = type.getVirtualBaseKeys();
+		record.setString(SchemaOrdinals.PROGRAM_NAME.ordinal(), programName);
 		record.setString(SchemaOrdinals.TYPENAME.ordinal(), typeName);
 		record.setString(SchemaOrdinals.SYMBOL_NAME.ordinal(), symbolName);
 		record.setByteValue(SchemaOrdinals.CLASS_ID.ordinal(), classId);
@@ -148,7 +152,7 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		if (Vtable.isValid(type.getVtable())) {
 			// must update first or face infinite recursion
 			manager.updateRecord(record);
-			this.vtable = classManager.resolve(type.getVtable());
+			this.vtable = this.manager.resolve(type.getVtable());
 			record.setLongValue(SchemaOrdinals.VTABLE_KEY.ordinal(), vtable.getKey());
 		} else {
 			this.vtable = null;
@@ -158,12 +162,12 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		this.demangled = doDemangle(symbolName);
 	}
 
-	public ArchivedClassTypeInfo(RecordManager manager,
-			DBObjectCache<ArchivedClassTypeInfo> cache, db.Record record) {
-		super(cache, record.getKey());
+	public ArchivedClassTypeInfo(ArchiveRttiRecordManager manager, db.Record record) {
+		super(manager, record);
 		this.manager = manager;
-		ArchiveClassTypeInfoManager classManager = manager.getManager();
+		DataTypeManager classManager = (DataTypeManager) manager.getManager();
 		this.address = record.getLongValue(SchemaOrdinals.ADDRESS.ordinal());
+		this.programName = record.getString(SchemaOrdinals.PROGRAM_NAME.ordinal());
 		this.typeName = record.getString(SchemaOrdinals.TYPENAME.ordinal());
 		this.symbolName = record.getString(SchemaOrdinals.SYMBOL_NAME.ordinal());
 		this.classId = record.getByteValue(SchemaOrdinals.CLASS_ID.ordinal());
@@ -175,7 +179,7 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		this.superStruct = (Structure) classManager.findDataTypeForID(id);
 		long vtableKey = record.getLongValue(SchemaOrdinals.VTABLE_KEY.ordinal());
 		if (vtableKey != -1) {
-			this.vtable = classManager.getVtable(vtableKey);
+			this.vtable = this.manager.getVtable(vtableKey);
 		}
 		else {
 			this.vtable = null;
@@ -186,6 +190,10 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		this.virtualKeys = DataBaseUtils.getLongArray(
 			record, SchemaOrdinals.VIRTUAL_BASE_KEYS.ordinal());
 		this.demangled = doDemangle(symbolName);
+	}
+
+	public String getProgramName() {
+		return programName;
 	}
 
 	private static Demangled doDemangle(String symbolName) {
@@ -212,7 +220,7 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 
 	@Override
 	public ArchiveClassTypeInfoManager getManager() {
-		return manager.getManager();
+		return (ArchiveClassTypeInfoManager) manager.getManager();
 	}
 
 	public byte getClassId() {
@@ -247,14 +255,14 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	}
 
 	public ArchivedClassTypeInfo[] getParentModels() {
-		ArchiveClassTypeInfoManager classManager = manager.getManager();
+		ArchiveClassTypeInfoManager classManager = getManager();
 		return Arrays.stream(baseKeys)
 				.mapToObj(classManager::getClass)
 				.toArray(ArchivedClassTypeInfo[]::new);
 	}
 
 	public ArchivedClassTypeInfo[] getArchivedVirtualParents() {
-		ArchiveClassTypeInfoManager classManager = manager.getManager();
+		ArchiveClassTypeInfoManager classManager = getManager();
 		return Arrays.stream(virtualKeys)
 				.mapToObj(classManager::getClass)
 				.toArray(ArchivedClassTypeInfo[]::new);
@@ -343,8 +351,8 @@ public class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 
 	@Override
 	public Structure getClassDataType() {
-		long id = manager.getClassRecord(key).getLongValue(SchemaOrdinals.DATATYPE_ID.ordinal());
-		return (Structure) manager.getManager().findDataTypeForID(new UniversalID(id));
+		long id = manager.getTypeRecord(key).getLongValue(SchemaOrdinals.DATATYPE_ID.ordinal());
+		return (Structure) getManager().findDataTypeForID(new UniversalID(id));
 	}
 
 	@Override

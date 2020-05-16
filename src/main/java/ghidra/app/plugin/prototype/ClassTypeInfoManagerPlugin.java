@@ -18,9 +18,9 @@ import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.database.ProgramDB;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.ArchiveClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
-import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.manager.ClassTypeInfoManagerDB;
 import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.model.data.StandAloneDataTypeManager;
 import ghidra.program.model.listing.Program;
@@ -103,8 +103,15 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	}
 
 	@Override
-	public ClassTypeInfoManager openArchive(File file) throws IOException {
-		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.open(file);
+	public ClassTypeInfoManager openArchive(File file, boolean updateable) throws IOException {
+		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.open(file, updateable);
+		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
+		return manager;
+	}
+
+	@Override
+	public ClassTypeInfoManager createArchive(File file) throws IOException {
+		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.createManager(file);
 		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
 		return manager;
 	}

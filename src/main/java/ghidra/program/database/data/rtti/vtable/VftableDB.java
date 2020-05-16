@@ -4,10 +4,10 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsVtableModel;
-import ghidra.program.database.DBObjectCache;
-import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
 import ghidra.program.database.data.rtti.DataBaseUtils;
 import ghidra.program.database.data.rtti.DataBaseUtils.ByteConvertable;
+import ghidra.program.database.data.rtti.manager.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Listing;
@@ -17,10 +17,9 @@ import db.Record;
 public class VftableDB extends AbstractVtableDB {
 
 	private final VftableRecord[] records;
-	
-	public VftableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-			long key) {
-		super(manager, cache, key);
+
+	public VftableDB(ProgramRttiRecordManager worker, db.Record record) {
+		super(worker, record);
 		ByteBuffer buf = ByteBuffer.wrap(getModelData());
 		this.records = new VftableRecord[buf.getInt()];
 		for (int i = 0; i < records.length; i++) {
@@ -28,9 +27,8 @@ public class VftableDB extends AbstractVtableDB {
 		}
 	}
 
-	public VftableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-			WindowsVtableModel vtable, Record record) {
-		super(manager, cache, vtable, record);
+	public VftableDB(ProgramRttiRecordManager worker, WindowsVtableModel vtable, Record record) {
+		super(worker, vtable, record);
 		Address[] addresses = vtable.getTableAddresses();
 		Function[][] functions = vtable.getFunctionTables();
 		this.records = new VftableRecord[addresses.length];
@@ -59,25 +57,26 @@ public class VftableDB extends AbstractVtableDB {
 					 .map(VftableRecord::getFunctions)
 					 .toArray(Function[][]::new);
 	}
-	
+
 	private class VftableRecord implements ByteConvertable {
-		
+
 		private final long address;
 		private final long[] functions;
-		
+
 		VftableRecord(ByteBuffer buf) {
 			this.address = buf.getLong();
 			this.functions = DataBaseUtils.getLongArray(buf);
 		}
-		
+
 		VftableRecord(Address address, Function[] functions) {
-			this.address = manager.encodeAddress(address);
+			ClassTypeInfoManagerDB typeManager = getManager();
+			this.address = typeManager.encodeAddress(address);
 			this.functions = Arrays.stream(functions)
 								   .map(Function::getEntryPoint)
-								   .mapToLong(manager::encodeAddress)
+								   .mapToLong(typeManager::encodeAddress)
 								   .toArray();
 		}
-		
+
 		public int getSize() {
 			return Long.BYTES
 				+ Integer.BYTES
@@ -91,15 +90,16 @@ public class VftableDB extends AbstractVtableDB {
 			DataBaseUtils.putLongArray(buf, functions);
 			return buf.array();
 		}
-		
+
 		Address getAddress() {
-			return manager.decodeAddress(address);
+			return getManager().decodeAddress(address);
 		}
-		
+
 		Function[] getFunctions() {
+			ClassTypeInfoManagerDB typeManager = getManager();
 			Listing listing = getProgram().getListing();
 			return Arrays.stream(functions)
-						 .mapToObj(manager::decodeAddress)
+						 .mapToObj(typeManager::decodeAddress)
 						 .map(listing::getFunctionAt)
 						 .toArray(Function[]::new);
 		}

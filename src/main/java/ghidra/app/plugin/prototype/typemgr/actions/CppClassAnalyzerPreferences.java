@@ -4,6 +4,7 @@ import java.io.File;
 
 import ghidra.framework.Application;
 import ghidra.framework.preferences.Preferences;
+import ghidra.util.filechooser.ExtensionFileFilter;
 
 import generic.jar.ResourceFile;
 import utility.application.ApplicationLayout;
@@ -11,12 +12,19 @@ import utility.application.ApplicationLayout;
 class CppClassAnalyzerPreferences {
 
 	private static final String EXTENSION_NAME = "Ghidra-Cpp-Class-Analyzer";
+	static final String ARCHIVE_EXTENSION = "cdb";
+	static final ExtensionFileFilter EXTENSION_FILTER =
+		new ExtensionFileFilter(
+			new String[]{ CppClassAnalyzerPreferences.ARCHIVE_EXTENSION },
+			"Ghidra Type Info Archive Files");
 	static final String LAST_OPENED_TYPE_INFO_ARCHIVE_PATH = "LastOpenedTypeInfoArchiveDirectory";
+	static final String LAST_USER_TYPE_INFO_ARCHIVE_PATH = "LastUserTypeInfoArchiveDirectory";
+	static final File DEFAULT_ARCHIVE_PATH =  new File(getExtensionRoot(), "data");
 
 	private CppClassAnalyzerPreferences() {
 	}
 
-	private static File getRoot() {
+	static File getExtensionRoot() {
 		ApplicationLayout layout = Application.getApplicationLayout();
 		ResourceFile path = layout.getExtensionInstallationDir();
 		return new File(path.getFile(false), EXTENSION_NAME);
@@ -27,11 +35,12 @@ class CppClassAnalyzerPreferences {
 		if (path != null) {
 			return new File(path);
 		}
-		return new File(getRoot(), "data");
+		return DEFAULT_ARCHIVE_PATH;
 	}
 
 	static void setLastOpenedArchivePath(File path) {
 		Preferences.setProperty(LAST_OPENED_TYPE_INFO_ARCHIVE_PATH, path.getAbsolutePath());
+		Preferences.store();
 	}
 
 }

@@ -9,11 +9,9 @@ import java.util.stream.Stream;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.GnuVtable.VtablePrefix;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
-import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ArchiveRttiRecordManager;
 import ghidra.program.database.data.rtti.DataBaseUtils;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager.RecordManager;
 import ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataTypeConflictHandler;
@@ -66,21 +64,19 @@ public class ArchivedGnuVtable extends DatabaseObject {
 			}
 	);
 
-	private final RecordManager manager;
+	private final ArchiveRttiRecordManager manager;
 	private final long address;
 	private final ArchivedClassTypeInfo type;
 	private final String symbolName;
 	private final ArchivedVtablePrefix[] prefixes;
 
-	public ArchivedGnuVtable(RecordManager manager,
-			DBObjectCache<ArchivedGnuVtable> cache, GnuVtable vtable,
-			db.Record record) {
-		super(cache, record.getKey());
-		this.manager = manager;
+	public ArchivedGnuVtable(ArchiveRttiRecordManager worker, GnuVtable vtable, db.Record record) {
+		super(worker.getVtableCache(), record.getKey());
+		this.manager = worker;
 		this.symbolName = VtableUtils.getSymbolName(vtable);
 		Program program = VtableUtils.getProgram(vtable);
 		this.address = program.getAddressMap().getKey(vtable.getAddress(), true);
-		this.type = manager.getManager().resolve(vtable.getTypeInfo());
+		this.type = (ArchivedClassTypeInfo) manager.getManager().resolve(vtable.getTypeInfo());
 		this.prefixes = vtable.getPrefixes()
 			.stream()
 			.map(ArchivedVtablePrefix::new)
@@ -92,14 +88,12 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		manager.updateRecord(record);
 	}
 
-	public ArchivedGnuVtable(RecordManager manager,
-			DBObjectCache<ArchivedGnuVtable> cache, db.Record record) {
-		super(cache, record.getKey());
-		this.manager = manager;
-		ArchiveClassTypeInfoManager classManager = manager.getManager();
+	public ArchivedGnuVtable(ArchiveRttiRecordManager worker, db.Record record) {
+		super(worker.getVtableCache(), record.getKey());
+		this.manager = worker;
 		this.address = record.getLongValue(SchemaOrdinals.ADDRESS.ordinal());
 		this.symbolName = record.getString(SchemaOrdinals.SYMBOL_NAME.ordinal());
-		this.type = classManager.getClass(
+		this.type = manager.getType(
 			record.getLongValue(SchemaOrdinals.TYPE_KEY.ordinal()));
 		byte[] data = record.getBinaryData(SchemaOrdinals.DATA.ordinal());
 		this.prefixes = getArray(data);
@@ -218,7 +212,7 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		}
 
 		private FunctionDefinition resolve(FunctionSignature sig) {
-			DataTypeManager dtm = manager.getManager();
+			DataTypeManager dtm = (DataTypeManager) manager.getManager();
 			FunctionDefinition def = new FunctionDefinitionDataType(sig, dtm);
 			return (FunctionDefinition) dtm.resolve(def, DataTypeConflictHandler.KEEP_HANDLER);
 		}
@@ -237,7 +231,7 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		}
 
 		FunctionDefinition[] getDefinitions() {
-			DataTypeManager dtm = manager.getManager();
+			DataTypeManager dtm = (DataTypeManager) manager.getManager();
 			return Arrays.stream(functions)
 				.mapToObj(UniversalID::new)
 				.map(dtm::findDataTypeForID)

@@ -1,19 +1,19 @@
-package ghidra.program.database.data.rtti;
+package ghidra.program.database.data.rtti.manager;
 
 import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.LongStream;
+import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
-import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
@@ -23,9 +23,11 @@ import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord.ChangeType;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.ManagerDB;
 import ghidra.program.database.ProgramDB;
+import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.caches.ProgramRttiCachePair;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.database.data.rtti.typeinfo.AbstractClassTypeInfoDB;
 import ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo;
 import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
@@ -56,58 +58,50 @@ import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
 import db.*;
-import db.util.ErrorHandler;
 
 // man = ghidra.program.database.data.rtti.ClassTypeInfoManagerDB(currentProgram)
-public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoManager, ErrorHandler {
+public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoManager {
+
 
 	private final ClassTypeInfoManagerPlugin plugin;
-	private DBObjectCache<AbstractClassTypeInfoDB> classCache;
-	private DBObjectCache<AbstractVtableDB> vtableCache;
 	private final Lock lock;
 	private ProgramDB program;
 	private final AddressMap map;
-	private Table classTable;
-	private Table vtableTable;
+	private final RttiRecordWorker worker;
 
 	public ClassTypeInfoManagerDB(ClassTypeInfoManagerPlugin plugin, ProgramDB program) {
 		this.plugin = plugin;
 		this.program = program;
 		this.map = program.getAddressMap();
 		DBHandle handle = program.getDBHandle();
-		classCache = new DBObjectCache<>(100);
-		vtableCache = new DBObjectCache<>(100);
 		lock = new Lock(getClass().getSimpleName());
-		classTable = handle.getTable(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
-		vtableTable = handle.getTable(AbstractVtableDB.VTABLE_TABLE_NAME);
+		Table classTable = handle.getTable(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
+		Table vtableTable = handle.getTable(AbstractVtableDB.VTABLE_TABLE_NAME);
 		if (classTable == null || vtableTable == null) {
-			resetDatabase();
+			try {
+				long id = handle.isTransactionActive() ? -1 : handle.startTransaction();
+				classTable = getNewClassTable(handle);
+				vtableTable = getNewVtableTable(handle);
+				if (id != -1) {
+					handle.endTransaction(id, true);
+				}
+			} catch (IOException e) {
+				program.dbError(e);
+			}
 		}
+		ProgramRttiCachePair caches = new ProgramRttiCachePair();
+		RttiTablePair tables = new RttiTablePair(classTable, vtableTable);
+		this.worker = doGetWorker(tables, caches);
 	}
 
-	public void resetDatabase() {
-		lock.acquire();
-		try {
-			DBHandle handle = program.getDBHandle();
-			long id = handle.isTransactionActive() ? -1 : handle.startTransaction();
-			if (classTable != null) {
-				handle.deleteTable(classTable.getName());
-			}
-			if (vtableTable != null) {
-				handle.deleteTable(vtableTable.getName());
-			}
-			classCache.invalidate();
-			vtableCache.invalidate();
-			classTable = getNewClassTable(handle);
-			vtableTable = getNewVtableTable(handle);
-			if (id != -1) {
-				handle.endTransaction(id, true);
-			}
-		} catch (IOException e) {
-			dbError(e);
-		} finally {
-			lock.release();
+	private RttiRecordWorker doGetWorker(RttiTablePair tables, ProgramRttiCachePair caches) {
+		if (isGnu()) {
+			return new GnuRttiRecordWorker(tables, caches);
 		}
+		if (isVs()) {
+			return new WindowsRttiRecordWorker(tables, caches);
+		}
+		throw new AssertException("Unknown/Unsupported Compiler");
 	}
 
 	private static Table getNewClassTable(DBHandle handle) throws IOException {
@@ -142,12 +136,15 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		return getProgram().getName();
 	}
 
-	public long getClassKey(Address address) {
+	public long getTypeKey(Address address) {
 		lock.acquire();
 		try {
 			long addrKey = encodeAddress(address);
-			long[] keys = classTable.findRecords(
-				new LongField(addrKey), AbstractClassTypeInfoDB.SchemaOrdinals.ADDRESS.ordinal());
+			long[] keys = worker.getTables()
+					.getTypeTable()
+					.findRecords(
+						new LongField(addrKey),
+						AbstractClassTypeInfoDB.SchemaOrdinals.ADDRESS.ordinal());
 			if (keys.length == 1) {
 				return keys[0];
 			}
@@ -155,22 +152,22 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 				throw new AssertException(
 					"Ghidra-Cpp-Class-Analyzer: duplicate ClassTypeInfo detected");
 			}
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			program.dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
-		return AddressMap.INVALID_ADDRESS_KEY;
+		return INVALID_KEY;
 	}
 
 	public long getVtableKey(Address address) {
 		lock.acquire();
 		try {
 			long addrKey = encodeAddress(address);
-			long[] keys = vtableTable.findRecords(
-				new LongField(addrKey), AbstractVtableDB.SchemaOrdinals.ADDRESS.ordinal());
+			long[] keys = worker.getTables()
+					.getVtableTable()
+					.findRecords(
+						new LongField(addrKey), AbstractVtableDB.SchemaOrdinals.ADDRESS.ordinal());
 			if (keys.length == 1) {
 				return keys[0];
 			}
@@ -178,18 +175,12 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 				throw new AssertException(
 					"Ghidra-Cpp-Class-Analyzer: duplicate Vtable detected");
 			}
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			program.dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
-		return AddressMap.INVALID_ADDRESS_KEY;
-	}
-
-	long getKey(ClassTypeInfo type) {
-		return getClassKey(type.getAddress());
+		return INVALID_KEY;
 	}
 
 	public Address decodeAddress(long offset) {
@@ -199,6 +190,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	public long encodeAddress(Address address) {
 		return map.getKey(address, true);
 	}
+
 	AbstractCppClassBuilder getBuilder(ClassTypeInfo type) {
 		if (GnuUtils.isGnuCompiler(program)) {
 			return new GccCppClassBuilder(type);
@@ -212,98 +204,19 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		throw new AssertException("Ghidra-Cpp-Class-Analyzer: unknown program rtti");
 	}
 
-	long getClassKey() {
-		return classTable.getKey();
-	}
-
-	long getVtableKey() {
-		return vtableTable.getKey();
-	}
-
-	db.Record getClassRecord() {
-		lock.acquire();
-		try {
-			db.Record record = AbstractClassTypeInfoDB.SCHEMA.createRecord(getClassKey());
-			classTable.putRecord(record);
-			return record;
-		} catch (IOException e) {
-			dbError(e);
-		} finally {
-			lock.release();
-		}
-		return null;
-	}
-
 	private boolean containsClassKey(Address address) {
 		lock.acquire();
 		try {
-			long key = getClassKey(address);
-			if (key != AddressMap.INVALID_ADDRESS_KEY) {
-				return classTable.hasRecord(key);
+			long key = getTypeKey(address);
+			if (key != INVALID_KEY) {
+				return worker.getTables().getTypeTable().hasRecord(key);
 			}
-		}
-		catch (IOException e) {
-			dbError(e);
-		}
-		finally {
+		} catch (IOException e) {
+			program.dbError(e);
+		} finally {
 			lock.release();
 		}
 		return false;
-	}
-
-	public db.Record getClassRecord(long key) {
-		lock.acquire();
-		try {
-			return classTable.getRecord(key);
-		}
-		catch (IOException e) {
-			program.dbError(e);
-			return null;
-		}
-		finally {
-			lock.release();
-		}
-	}
-
-	db.Record getRecord(AbstractClassTypeInfoDB type) {
-		return getClassRecord(type.getKey());
-	}
-
-	public db.Record getRecord(AbstractVtableDB vtable) {
-		lock.acquire();
-		try {
-			return vtableTable.getRecord(vtable.getKey());
-		}
-		catch (IOException e) {
-			program.dbError(e);
-			return null;
-		}
-		finally {
-			lock.release();
-		}
-	}
-
-	public void updateRecord(db.Record record) {
-		lock.acquire();
-		int id = startTransaction("Updating Record");
-		try {
-			if (record.hasSameSchema(AbstractClassTypeInfoDB.SCHEMA)) {
-				classTable.putRecord(record);
-			}
-			else if (record.hasSameSchema(AbstractVtableDB.SCHEMA)) {
-				vtableTable.putRecord(record);
-			}
-			else {
-				throw new AssertException("Ghidra-Cpp-Class-Analyzer: unexpected record");
-			}
-		}
-		catch (IOException e) {
-			program.dbError(e);
-		}
-		finally {
-			endTransaction(id);
-			lock.release();
-		}
 	}
 
 	boolean hasVtable(long key) {
@@ -312,13 +225,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		}
 		lock.acquire();
 		try {
-			return vtableTable.hasRecord(key);
-		}
-		catch (IOException e) {
+			return worker.getTables().getVtableTable().hasRecord(key);
+		} catch (IOException e) {
 			program.dbError(e);
 			return false;
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 	}
@@ -331,86 +242,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		return PEUtil.canAnalyze(getProgram());
 	}
 
-	public Vtable getVtable(long key) {
-		if (key == AddressMap.INVALID_ADDRESS_KEY) {
-			return Vtable.NO_VTABLE;
-		}
-		lock.acquire();
-		try {
-			if (vtableTable.hasRecord(key)) {
-				AbstractVtableDB vtable = vtableCache.get(key);
-				if (vtable == null) {
-					if (isGnu()) {
-						vtable = new VtableModelDB(this, vtableCache, key);
-					}
-					else if (isVs()) {
-						vtable = new VftableDB(this, vtableCache, key);
-					}
-					else {
-						throw new AssertException(
-							"Ghidra-Cpp-Class-Analyzer: unknown/unsupported compiler");
-					}
-				}
-				return vtable;
-			}
-		}
-		catch (IOException e) {
-			program.dbError(e);
-		}
-		finally {
-			lock.release();
-		}
-		return Vtable.NO_VTABLE;
-	}
-
-	boolean containsRecord(AbstractClassTypeInfoDB type) {
-		lock.acquire();
-		try {
-			return classTable.hasRecord(type.getKey());
-		}
-		catch (IOException e) {
-			program.dbError(e);
-			return false;
-		}
-		finally {
-			lock.release();
-		}
-	}
-
 	public boolean containsRecord(AbstractVtableDB vtable) {
-		lock.acquire();
-		try {
-			return vtableTable.hasRecord(vtable.getKey());
-		}
-		catch (IOException e) {
-			program.dbError(e);
-			return false;
-		}
-		finally {
-			lock.release();
-		}
-	}
-
-	public AbstractClassTypeInfoDB getClass(long key) {
-		lock.acquire();
-		try {
-			if (!classTable.hasRecord(key)) {
-				throw new AssertException(
-					"Ghidra-Cpp-Class-Analyzer: db doesn't contain key " + Long.toString(key));
-			}
-			AbstractClassTypeInfoDB type = classCache.get(key);
-			if (type != null) {
-				return type;
-			}
-			return buildType(getClassRecord(key));
-		}
-		catch (IOException e) {
-			program.dbError(e);
-			return null;
-		}
-		finally {
-			lock.release();
-		}
+		return hasVtable(vtable.getKey());
 	}
 
 	@Override
@@ -418,32 +251,14 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		return program;
 	}
 
-	public DBLongIterator getClassRecordIterator() {
-		lock.acquire();
-		try {
-			return classTable.longKeyIterator();
-		}
-		catch (IOException e) {
-			program.dbError(e);
-		}
-		finally {
-			lock.release();
-		}
-		return null;
-	}
-
 	public void deleteAll() {
 		lock.acquire();
 		try {
-			classCache.invalidate();
-			vtableCache.invalidate();
-			classTable.deleteAll();
-			vtableTable.deleteAll();
-		}
-		catch (IOException e) {
+			worker.getCaches().invalidate();
+			worker.getTables().deleteAll();
+		} catch (IOException e) {
 			program.dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 	}
@@ -462,8 +277,42 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	@Override
 	public void invalidateCache(boolean all) {
 		lock.acquire();
-		classCache.invalidate();
-		lock.release();
+		try {
+			worker.getCaches().invalidate();
+		} finally {
+			lock.release();
+		}
+	}
+
+	private LongArrayList getTypeKeys(Address startAddr, Address endAddr, TaskMonitor monitor)
+			throws CancelledException {
+		return getRangedKeys(startAddr, endAddr, this::getTypeKey, monitor);
+	}
+
+	private LongArrayList getVtableKeys(Address startAddr, Address endAddr, TaskMonitor monitor)
+			throws CancelledException {
+		return getRangedKeys(startAddr, endAddr, this::getVtableKey, monitor);
+	}
+
+	private LongArrayList getRangedKeys(Address startAddr, Address endAddr,
+			ToLongFunction<Address> keyFinder, TaskMonitor monitor)
+			throws CancelledException {
+		lock.acquire();
+		try {
+			LongArrayList keys = new LongArrayList();
+			Address currentAddress = startAddr;
+			while (currentAddress.compareTo(endAddr) < 0) {
+				monitor.checkCanceled();
+				long key = keyFinder.applyAsLong(currentAddress);
+				if (key != INVALID_KEY) {
+					keys.add(key);
+				}
+				currentAddress.add(currentAddress.getPointerSize());
+			}
+			return keys;
+		} finally {
+			lock.release();
+		}
 	}
 
 	@Override
@@ -471,12 +320,19 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			throws CancelledException {
 		lock.acquire();
 		try {
-			classTable.deleteRecords(startAddr.getOffset(), endAddr.getOffset());
-		}
-		catch (IOException e) {
+			Table table = worker.getTables().getTypeTable();
+			for (long key : getTypeKeys(startAddr, endAddr, monitor)) {
+				monitor.checkCanceled();
+				table.deleteRecord(key);
+			}
+			table = worker.getTables().getVtableTable();
+			for (long key : getVtableKeys(startAddr, endAddr, monitor)) {
+				monitor.checkCanceled();
+				table.deleteRecord(key);
+			}
+		} catch (IOException e) {
 			program.dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 	}
@@ -486,72 +342,27 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			throws AddressOverflowException, CancelledException {
 		lock.acquire();
 		try {
-			long offset = toAddr.getOffset() - fromAddr.getOffset();
-			long endAddress = fromAddr.getOffset() + length;
-			db.Record startRecord = classTable.getRecordAtOrAfter(fromAddr.getOffset());
-			DBLongIterator iter = classTable.longKeyIterator(
-				fromAddr.getOffset(), fromAddr.getOffset() + length, startRecord.getKey());
-
-			List<Long> keys = new LinkedList<>();
-			while (iter.hasNext()) {
-				keys.add(iter.next());
+			Address endAddr = fromAddr.add(length);
+			Table table = worker.getTables().getTypeTable();
+			int ordinal = AbstractClassTypeInfoDB.SchemaOrdinals.ADDRESS.ordinal();
+			for (long key : getTypeKeys(fromAddr, endAddr, monitor)) {
+				monitor.checkCanceled();
+				db.Record record = table.getRecord(key);
+				Address addr = decodeAddress(record.getLongValue(ordinal));
+				long offset = addr.subtract(fromAddr);
+				record.setLongValue(ordinal, encodeAddress(toAddr.add(offset)));
 			}
-
-			for (Long key : keys) {
-				if (key > endAddress) {
-					break;
-				}
-
-				db.Record record = classTable.getRecord(key);
-				record.setKey(key + offset);
+			table = worker.getTables().getVtableTable();
+			ordinal = AbstractVtableDB.SchemaOrdinals.ADDRESS.ordinal();
+			for (long key : getVtableKeys(fromAddr, endAddr, monitor)) {
+				monitor.checkCanceled();
+				db.Record record = table.getRecord(key);
+				Address addr = decodeAddress(record.getLongValue(ordinal));
+				long offset = addr.subtract(fromAddr);
+				record.setLongValue(ordinal, encodeAddress(toAddr.add(offset)));
 			}
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			program.dbError(e);
-		}
-		finally {
-			lock.release();
-		}
-	}
-
-	private AbstractClassTypeInfoDB buildType(ClassTypeInfo type, db.Record record) {
-		if (isGnu()) {
-			if (type instanceof ArchivedClassTypeInfo) {
-				return new GnuClassTypeInfoDB(this, classCache, (ArchivedClassTypeInfo) type, record);
-			}
-			return new GnuClassTypeInfoDB(this, classCache, type, record);
-		}
-		if (isVs()) {
-			return new WindowsClassTypeInfoDB(this, classCache, type, record);
-		}
-		throw new AssertException("Ghidra-Cpp-Class-Analyzer: unknown/unsupported compiler");
-	}
-
-	private AbstractClassTypeInfoDB buildType(db.Record record) {
-		lock.acquire();
-		try {
-			if (isGnu()) {
-				return new GnuClassTypeInfoDB(this, classCache, record);
-			}
-			if (isVs()) {
-				return new WindowsClassTypeInfoDB(this, classCache, record);
-			}
-			throw new AssertException("Ghidra-Cpp-Class-Analyzer: unknown/unsupported compiler");
-		} finally {
-			lock.release();
-		}
-	}
-
-	private AbstractClassTypeInfoDB buildType(ClassTypeInfo type) {
-		lock.acquire();
-		try {
-			db.Record record = getClassRecord();
-			type = buildType(type, record);
-			updateRecord(record);
-			TypeInfoArchiveChangeRecord changeRecord =
-				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, (ClassTypeInfoDB) type);
-			plugin.fireArchiveChanged(changeRecord);
-			return (AbstractClassTypeInfoDB) type;
 		} finally {
 			lock.release();
 		}
@@ -561,24 +372,18 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	public ClassTypeInfoDB getType(Address address) {
 		lock.acquire();
 		try {
-			long key = getClassKey(address);
-			ClassTypeInfoDB type = classCache.get(key);
-			if (type != null) {
-				return type;
+			long key = getTypeKey(address);
+			if (key != INVALID_KEY) {
+				return worker.getType(key);
 			}
-			if (key != AddressMap.INVALID_ADDRESS_KEY) {
-				db.Record record = getClassRecord(key);
-				type = buildType(record);
-			} else {
-				if (!isTypeInfo(address)) {
-					return null;
-				}
-				TypeInfo ti = getTypeInfo(address, false);
-				if (ti instanceof ClassTypeInfo) {
-					type = buildType((ClassTypeInfo) ti);
-				}
+			if (!isTypeInfo(address)) {
+				return null;
 			}
-			return type;
+			TypeInfo ti = getTypeInfo(address, false);
+			if (ti instanceof ClassTypeInfo) {
+				return worker.resolve((ClassTypeInfo) ti);
+			}
+			return null;
 		} finally {
 			lock.release();
 		}
@@ -589,11 +394,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		SymbolTable table = program.getSymbolTable();
 		List<Symbol> symbols = table.getSymbols("typeinfo", gc);
 		OptionalLong key = symbols.stream()
-			.map(Symbol::getAddress)
-			.mapToLong(this::encodeAddress)
-			.findFirst();
+				.map(Symbol::getAddress)
+				.mapToLong(this::encodeAddress)
+				.findFirst();
 		if (key.isPresent()) {
-			return getClass(key.getAsLong());
+			return worker.getType(key.getAsLong());
 		}
 		return null;
 	}
@@ -626,72 +431,20 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	@Override
 	public AbstractClassTypeInfoDB resolve(ClassTypeInfo type) {
-		if (type instanceof AbstractClassTypeInfoDB) {
-			AbstractClassTypeInfoDB typeDb = (AbstractClassTypeInfoDB) type;
-			if (typeDb.checkIsValid()) {
-				return typeDb;
-			}
-			return (AbstractClassTypeInfoDB) getType(type.getAddress());
-		}
-		lock.acquire();
-		int id = startTransaction("Resolving " + type.getName());
-		try {
-			long key = getClassKey(type.getAddress());
-			if (key != AddressMap.INVALID_ADDRESS_KEY) {
-				return getClass(key);
-			}
-			type = buildType(type);
-		} finally {
-			lock.release();
-			endTransaction(id);
-		}
-		return (AbstractClassTypeInfoDB) type;
+		return (AbstractClassTypeInfoDB) worker.resolve(type);
 	}
 
 	@Override
 	public Vtable resolve(Vtable vtable) {
-		if (vtable instanceof AbstractVtableDB) {
-			return vtable;
-		}
-		lock.acquire();
-		try {
-			db.Record record;
-			long key = getVtableKey(vtable.getAddress());
-			if (key != AddressMap.INVALID_ADDRESS_KEY) {
-				return getVtable(key);
-			}
-			else {
-				record = AbstractVtableDB.SCHEMA.createRecord(getVtableKey());
-			}
-			AbstractClassTypeInfoDB type = (AbstractClassTypeInfoDB) vtable.getTypeInfo();
-			if (vtable instanceof VtableModel) {
-				vtable = new VtableModelDB(this, vtableCache, (VtableModel) vtable, record);
-			}
-			else if (vtable instanceof WindowsVtableModel) {
-				vtable = new VftableDB(this, vtableCache, (WindowsVtableModel) vtable, record);
-			}
-			else {
-				throw new AssertException(
-					"Ghidra-Cpp-Class-Analyzer: unknown/unsupported compiler");
-			}
-			vtableTable.putRecord(record);
-			type.setVtable(vtable);
-		}
-		catch (IOException e) {
-			program.dbError(e);
-		}
-		finally {
-			lock.release();
-		}
-		return vtable;
+		return (Vtable) worker.resolve(vtable);
 	}
 
 	@Override
 	public AbstractClassTypeInfoDB resolve(ArchivedClassTypeInfo type) {
 		Address address = type.getAddress(program);
-		long key = getClassKey(address);
-		if (key != AddressMap.INVALID_ADDRESS_KEY) {
-			return getClass(key);
+		long key = getTypeKey(address);
+		if (key != INVALID_KEY) {
+			return (AbstractClassTypeInfoDB) worker.getType(key);
 		}
 		SymbolTable table = program.getSymbolTable();
 		Symbol s = table.getExternalSymbol(type.getSymbolName());
@@ -708,24 +461,21 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		}
 		lock.acquire();
 		try {
-			key = getClassKey();
+			key = worker.getClassKey();
 			db.Record record = AbstractClassTypeInfoDB.SCHEMA.createRecord(key);
-			classTable.putRecord(record);
-			return new GnuClassTypeInfoDB(this, classCache, type, record);
-		} catch (IOException e) {
-			dbError(e);
+			worker.updateRecord(record);
+			return new GnuClassTypeInfoDB(worker, type, record);
 		} finally {
 			lock.release();
 		}
-		return null;
 	}
 
 	@Override
 	public Vtable resolve(ArchivedGnuVtable vtable) {
 		Address address = vtable.getAddress(program);
 		long key = getVtableKey(address);
-		if (key != AddressMap.INVALID_ADDRESS_KEY) {
-			return getVtable(key);
+		if (key != INVALID_KEY) {
+			return (Vtable) worker.getVtable(key);
 		}
 		SymbolTable table = program.getSymbolTable();
 		Symbol s = table.getExternalSymbol(vtable.getSymbolName());
@@ -742,31 +492,28 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		}
 		lock.acquire();
 		try {
-			key = getVtableKey();
+			key = worker.getVtableKey();
 			db.Record record = AbstractVtableDB.SCHEMA.createRecord(key);
-			vtableTable.putRecord(record);
-			return new VtableModelDB(this, vtableCache, vtable, record);
-		} catch (IOException e) {
-			dbError(e);
+			worker.updateRecord(record);
+			return new VtableModelDB(worker, vtable, record);
 		} finally {
 			lock.release();
 		}
-		return null;
 	}
 
 	@Override
 	public int getTypeCount() {
-		return classTable.getRecordCount();
+		return worker.getTables().getTypeTable().getRecordCount();
 	}
 
 	@Override
 	public int getVtableCount() {
-		return vtableTable.getRecordCount();
+		return worker.getTables().getVtableTable().getRecordCount();
 	}
 
 	@Override
 	public Iterable<ClassTypeInfoDB> getTypes(boolean reverse) {
-		return () -> getTypeStream(reverse).iterator();
+		return worker.getTypes(reverse);
 	}
 
 	@Override
@@ -778,44 +525,31 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	@Override
-	public void dbError(IOException e) {
-		program.dbError(e);
-	}
-
-	@Override
 	public Stream<ClassTypeInfoDB> getTypeStream(boolean reverse) {
-		long maxKey = classTable.getMaxKey();
-		if (reverse) {
-			return LongStream.iterate(maxKey, i -> i >= 0, i -> i - 1)
-					.mapToObj(this::getClass);
-		}
-		return LongStream.iterate(0, i -> i <= maxKey, i -> i + 1)
-				.mapToObj(this::getClass);
+		return worker.getTypeStream(reverse);
 	}
 
 	@Override
 	public Stream<Vtable> getVtableStream() {
 		// vtableTable is NOT sorted
 		return getTypeStream()
-				.map(ClassTypeInfo::getVtable)
-				.filter(Vtable::isValid);
+			.map(ClassTypeInfo::getVtable)
+			.filter(Vtable::isValid);
 	}
 
 	private db.Record[] getClassRecords() {
 		lock.acquire();
 		try {
 			db.Record[] keys = new db.Record[getTypeCount()];
-			RecordIterator iter = classTable.iterator();
+			RecordIterator iter = worker.getTables().getTypeTable().iterator();
 			for (int i = 0; i < keys.length && iter.hasNext(); i++) {
 				keys[i] = iter.next();
 			}
 			return keys;
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			program.dbError(e);
 			return null;
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 	}
@@ -843,6 +577,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	private void sort(TaskMonitor monitor) throws CancelledException {
 		lock.acquire();
 		try {
+			Table classTable = worker.getTables().getTypeTable();
 			classTable.rebuild(monitor);
 			if (classTable.getMaxKey() > Integer.MAX_VALUE) {
 				throw new AssertException(
@@ -867,7 +602,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			rebuildTable(newKeys, monitor);
 			for (long key = 0; key < classTable.getMaxKey(); key++) {
 				monitor.checkCanceled();
-				db.Record record = getClassRecord(key);
+				db.Record record = worker.getTypeRecord(key);
 				for (long baseKey : AbstractClassTypeInfoDB.getBaseKeys(record)) {
 					monitor.checkCanceled();
 					if (baseKey > key) {
@@ -880,7 +615,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			TypeInfoArchiveChangeRecord changeRecord = null;
 			for (db.Record record : getClassRecords()) {
 				monitor.checkCanceled();
-				AbstractClassTypeInfoDB type = getClass(record.getKey());
+				AbstractClassTypeInfoDB type =
+					(AbstractClassTypeInfoDB) worker.getType(record.getKey());
 				Vtable vtable = type.getVtable();
 				if (vtable instanceof AbstractVtableDB) {
 					AbstractVtableDB vtableDB = (AbstractVtableDB) vtable;
@@ -889,11 +625,9 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 				changeRecord = new TypeInfoArchiveChangeRecord(ChangeType.TYPE_UPDATED, type);
 				plugin.fireArchiveChanged(changeRecord);
 			}
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			program.dbError(e);
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 	}
@@ -902,10 +636,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		lock.acquire();
 		try {
 			DBHandle handle = program.getDBHandle();
+			Table classTable = worker.getTables().getTypeTable();
 			try {
 				classTable.setName("old" + classTable.getName());
-			}
-			catch (DuplicateNameException e) {
+			} catch (DuplicateNameException e) {
 				throw new AssertException(
 					"Ghidra-Cpp-Class-Analyzer: cannot create temporary table");
 			}
@@ -925,19 +659,24 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 					AbstractClassTypeInfoDB.updateRecord(record, keyMap);
 					tmpTable.putRecord(record);
 				}
-			}
-			catch (NoValueException e) {
+			} catch (NoValueException e) {
 				// impossible. this should not be a checked exception!
 				throw new AssertException(e);
 			}
-			handle.deleteTable(classTable.getName());
-			classTable = tmpTable;
-			classCache.invalidate();
-		}
-		catch (IOException e) {
-			dbError(e);
-		}
-		finally {
+			worker.getTables().deleteAll();
+			worker.getCaches().invalidate();
+			iter = tmpTable.iterator();
+			while (iter.hasNext()) {
+				monitor.checkCanceled();
+				classTable.putRecord(iter.next().copy());
+			}
+			handle.deleteTable(tmpTable.getName());
+			classTable.setName(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
+		} catch (IOException e) {
+			program.dbError(e);
+		} catch (DuplicateNameException e) {
+			throw new AssertException(e);
+		} finally {
 			lock.release();
 		}
 	}
@@ -958,7 +697,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 				if (processed.containsKey(key)) {
 					continue;
 				}
-				db.Record record = getClassRecord(key);
+				db.Record record = worker.getTypeRecord(key);
 				boolean dirty = false;
 				for (long base : AbstractClassTypeInfoDB.getBaseKeys(record)) {
 					monitor.checkCanceled();
@@ -998,8 +737,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 				type = resolve((ClassTypeInfo) type);
 			}
 			return type;
-		}
-		finally {
+		} finally {
 			lock.release();
 		}
 	}
@@ -1082,5 +820,113 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 			return 0;
 		}
+	}
+
+	private abstract class RttiRecordWorker
+		extends AbstractRttiRecordWorker<AbstractClassTypeInfoDB, AbstractVtableDB>
+		implements ProgramRttiRecordManager {
+
+		int id = -1;
+
+		RttiRecordWorker(RttiTablePair tables, ProgramRttiCachePair caches) {
+			super(tables, caches);
+		}
+
+		@Override
+		public final void dbError(IOException e) {
+			program.dbError(e);
+		}
+
+		@Override
+		public final ClassTypeInfoManagerDB getManager() {
+			return ClassTypeInfoManagerDB.this;
+		}
+
+		@Override
+		final void acquireLock() {
+			lock.acquire();
+		}
+
+		@Override
+		final void releaseLock() {
+			lock.release();
+		}
+
+		@Override
+		final long getTypeKey(ClassTypeInfo type) {
+			return getManager().getTypeKey(type.getAddress());
+		}
+
+		@Override
+		final long getVtableKey(Vtable vtable) {
+			return getManager().getVtableKey(vtable.getAddress());
+		}
+
+		@Override
+		public final void startTransaction(String description) {
+			id = getManager().startTransaction(description);
+		}
+
+		@Override
+		public final void endTransaction() {
+			getManager().endTransaction(id);
+			id = -1;
+		}
+	}
+
+	private final class GnuRttiRecordWorker extends RttiRecordWorker {
+
+		GnuRttiRecordWorker(RttiTablePair tables, ProgramRttiCachePair caches) {
+			super(tables, caches);
+		}
+
+		@Override
+		GnuClassTypeInfoDB buildType(db.Record record) {
+			return new GnuClassTypeInfoDB(this, record);
+		}
+
+		@Override
+		GnuClassTypeInfoDB buildType(ClassTypeInfo type, db.Record record) {
+			return new GnuClassTypeInfoDB(this, type, record);
+		}
+
+		@Override
+		VtableModelDB buildVtable(db.Record record) {
+			return new VtableModelDB(this, record);
+		}
+
+		@Override
+		VtableModelDB buildVtable(Vtable vtable, db.Record record) {
+			return new VtableModelDB(this, (GnuVtable) vtable, record);
+		}
+
+	}
+
+	private final class WindowsRttiRecordWorker extends RttiRecordWorker {
+
+		WindowsRttiRecordWorker(RttiTablePair tables, ProgramRttiCachePair caches) {
+			super(tables, caches);
+		}
+
+		@Override
+		WindowsClassTypeInfoDB buildType(db.Record record) {
+			return new WindowsClassTypeInfoDB(this, record);
+		}
+
+		@Override
+		WindowsClassTypeInfoDB buildType(ClassTypeInfo type, db.Record record) {
+			return new WindowsClassTypeInfoDB(this, type, record);
+		}
+
+		@Override
+		VftableDB buildVtable(db.Record record) {
+			return new VftableDB(this, record);
+		}
+
+		@Override
+		VftableDB buildVtable(Vtable vtable, db.Record record) {
+			return new VftableDB(this, (WindowsVtableModel) vtable, record);
+		}
+
 	}
 }

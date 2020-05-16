@@ -15,10 +15,9 @@ import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
-import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
-import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.manager.ArchiveClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.database.data.rtti.DataBaseUtils;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.IntArrayList;
@@ -37,15 +36,13 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	private long[] baseKeys;
 	private int[] baseOffsets;
 
-	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-		DBObjectCache<AbstractClassTypeInfoDB> cache, db.Record record) {
-		super(manager, cache, record);
+	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, db.Record record) {
+		super(worker, record);
 		refresh(record);
 	}
 
-	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractClassTypeInfoDB> cache,
-			ClassTypeInfo type, db.Record record) {
-		super(manager, cache, type, record);
+	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfo type, db.Record record) {
+		super(worker, type, record);
 		if (type.hasParent()) {
 			virtualBaseKeys = type.getVirtualParents()
 				.stream()
@@ -86,10 +83,8 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		fillRecord(record);
 	}
 
-	public GnuClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-			DBObjectCache<AbstractClassTypeInfoDB> cache, ArchivedClassTypeInfo type,
-			Record record) {
-		super(manager, cache, type, record);
+	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ArchivedClassTypeInfo type, Record record) {
+		super(worker, type, record);
 		this.nonVirtualBaseKeys = type.getBaseKeys();
 		this.virtualBaseKeys = type.getVirtualKeys();
 		ArchiveClassTypeInfoManager aMan = type.getManager();
@@ -112,7 +107,9 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	}
 
 	private void fillBaseOffsets(LongArrayList keys, IntArrayList offsets) {
-		ClassTypeInfo type = (ClassTypeInfo) manager.getTypeInfo(address, false);
+		// Primitive TypeInfos are not database objects.
+		// Calling getTypeInfo results in a non-database object ClassTypeInfo
+		ClassTypeInfo type = (ClassTypeInfo) getManager().getTypeInfo(address, false);
 		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
 			ClassTypeInfoUtils.getBaseOffsets(type)
 			.entrySet()
@@ -146,7 +143,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	public ClassTypeInfoDB[] getParentModels() {
 		return LongStream.concat(
 			LongStream.of(nonVirtualBaseKeys),
-			LongStream.of(virtualBaseKeys)).mapToObj(manager::getClass)
+			LongStream.of(virtualBaseKeys)).mapToObj(manager::getType)
 				.toArray(ClassTypeInfoDB[]::new);
 
 	}
@@ -154,7 +151,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	@Override
 	public Set<ClassTypeInfo> getVirtualParents() {
 		return LongStream.of(virtualBaseKeys)
-			.mapToObj(manager::getClass)
+			.mapToObj(manager::getType)
 			.collect(Collectors.toSet());
 	}
 

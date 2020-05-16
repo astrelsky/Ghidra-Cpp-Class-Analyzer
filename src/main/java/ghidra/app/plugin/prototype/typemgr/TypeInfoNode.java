@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 import javax.swing.Icon;
 
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.ArchiveClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.database.data.rtti.typeinfo.AbstractClassTypeInfoDB;

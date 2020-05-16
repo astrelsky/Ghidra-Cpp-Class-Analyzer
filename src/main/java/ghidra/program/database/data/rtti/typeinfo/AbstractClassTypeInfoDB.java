@@ -12,12 +12,10 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
 import ghidra.app.util.NamespaceUtils;
-import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
-import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager.RecordManager;
+import ghidra.program.database.data.rtti.manager.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.database.data.rtti.vtable.ArchivedGnuVtable;
-import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
@@ -88,7 +86,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			}
 	);
 
-	protected final ClassTypeInfoManagerDB manager;
+	protected final ProgramRttiRecordManager manager;
 	protected final Address address;
 	protected final String typename;
 	protected final GhidraClass gc;
@@ -96,94 +94,74 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	protected long vtableKey;
 	private Structure struct;
 
-	protected AbstractClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-			DBObjectCache<AbstractClassTypeInfoDB> cache, AbstractClassTypeInfoDB type,
-			db.Record record) {
-		super(cache, record.getKey());
+	protected AbstractClassTypeInfoDB(ProgramRttiRecordManager manager, db.Record record) {
+		super(manager, record);
 		this.manager = manager;
-		this.address = type.address;
-		this.typename = type.typename;
-		this.gc = type.gc;
-		this.vtableSearched = type.vtableSearched;
-		this.vtableKey = type.vtableKey;
+		this.address = getManager().decodeAddress(
+			record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
+		this.typename = record.getString(SchemaOrdinals.TYPENAME.ordinal());
+		this.vtableSearched = record.getBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal());
+		this.vtableKey = record.getLongValue(SchemaOrdinals.VTABLE_KEY.ordinal());
+		this.gc = fetchGhidraClass();
+		this.struct = fetchDataType(record);
+	}
 
-		if (type.struct != null) {
-			DataTypeManager dtm = getProgram().getDataTypeManager();
-			this.struct = (Structure) type.struct.clone(dtm);
-		}
+	protected AbstractClassTypeInfoDB(ProgramRttiRecordManager manager, ClassTypeInfo type,
+			db.Record record) {
+		super(manager, record);
+		this.manager = manager;
+		this.address = type.getAddress();
+		this.typename = type.getTypeName();
+		this.gc = type.getGhidraClass();
 		setRecord(type, record);
 	}
 
-	protected AbstractClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-		DBObjectCache<AbstractClassTypeInfoDB> cache, db.Record record) {
-			super(cache, record.getKey());
-			this.manager = manager;
-			this.address = manager.decodeAddress(
-				record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
-			this.typename = record.getString(SchemaOrdinals.TYPENAME.ordinal());
-			this.vtableSearched = record.getBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal());
-			this.vtableKey = record.getLongValue(SchemaOrdinals.VTABLE_KEY.ordinal());
-			this.gc = fetchGhidraClass();
-			this.struct = fetchDataType(record);
-	}
-
-	protected AbstractClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-		DBObjectCache<AbstractClassTypeInfoDB> cache, ClassTypeInfo type, db.Record record) {
-			super(cache, record.getKey());
-			this.manager = manager;
-			this.address = type.getAddress();
-			this.typename = type.getTypeName();
-			this.gc = type.getGhidraClass();
-			setRecord(type, record);
-	}
-
-	protected AbstractClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-		DBObjectCache<AbstractClassTypeInfoDB> cache, ArchivedClassTypeInfo type,
-		db.Record record) {
-			super(cache, record.getKey());
-			Program program = manager.getProgram();
-			this.manager = manager;
-			this.address = type.getAddress(program);
-			this.typename = type.getTypeName();
-			this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(program, typename);
-			ArchivedGnuVtable archivedVtable = type.getArchivedVtable();
-			if (archivedVtable == null) {
-				this.vtableKey = AddressMap.INVALID_ADDRESS_KEY;
+	protected AbstractClassTypeInfoDB(ProgramRttiRecordManager manager, ArchivedClassTypeInfo type,
+			db.Record record) {
+		super(manager, record);
+		this.manager = manager;
+		Program program = getProgram();
+		this.address = type.getAddress(program);
+		this.typename = type.getTypeName();
+		this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(program, typename);
+		ArchivedGnuVtable archivedVtable = type.getArchivedVtable();
+		if (archivedVtable == null) {
+			this.vtableKey = INVALID_KEY;
+		} else {
+			Vtable vtable = getManager().resolve(archivedVtable);
+			if (vtable instanceof DatabaseObject) {
+				this.vtableKey = ((DatabaseObject) vtable).getKey();
 			} else {
-				Vtable vtable = manager.resolve(archivedVtable);
-				if (vtable instanceof DatabaseObject) {
-					this.vtableKey = ((DatabaseObject) vtable).getKey();
-				} else {
-					this.vtableKey = AddressMap.INVALID_ADDRESS_KEY;
-				}
+				this.vtableKey = INVALID_KEY;
 			}
-			DataTypeManager dtm = program.getDataTypeManager();
-			this.struct = (Structure) dtm.resolve(type.getDataType(), REPLACE_HANDLER);
-			dtm.resolve(type.getSuperDataType(), REPLACE_HANDLER);
-			record.setString(SchemaOrdinals.TYPENAME.ordinal(), typename);
-			record.setLongValue(
-				SchemaOrdinals.ADDRESS.ordinal(), manager.encodeAddress(address));
-			manager.updateRecord(record);
-			record.setByteValue(SchemaOrdinals.TYPEINFO_ID.ordinal(), type.getClassId());
-			record.setLongValue(
-				SchemaOrdinals.DATATYPE_ID.ordinal(), struct.getUniversalID().getValue());
-			this.vtableSearched = true;
-			record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), vtableSearched);
-			record.setLongValue(SchemaOrdinals.VTABLE_KEY.ordinal(), vtableKey);
-			manager.updateRecord(record);
+		}
+		DataTypeManager dtm = program.getDataTypeManager();
+		this.struct = (Structure) dtm.resolve(type.getDataType(), REPLACE_HANDLER);
+		dtm.resolve(type.getSuperDataType(), REPLACE_HANDLER);
+		record.setString(SchemaOrdinals.TYPENAME.ordinal(), typename);
+		record.setLongValue(
+			SchemaOrdinals.ADDRESS.ordinal(), getManager().encodeAddress(address));
+		manager.updateRecord(record);
+		record.setByteValue(SchemaOrdinals.TYPEINFO_ID.ordinal(), type.getClassId());
+		record.setLongValue(
+			SchemaOrdinals.DATATYPE_ID.ordinal(), struct.getUniversalID().getValue());
+		this.vtableSearched = true;
+		record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), vtableSearched);
+		record.setLongValue(SchemaOrdinals.VTABLE_KEY.ordinal(), vtableKey);
+		manager.updateRecord(record);
 	}
 
 	private void setRecord(ClassTypeInfo type, db.Record record) {
 		record.setString(SchemaOrdinals.TYPENAME.ordinal(), type.getTypeName());
 		record.setByteValue(SchemaOrdinals.TYPEINFO_ID.ordinal(), getClassId(type));
 		record.setLongValue(
-			SchemaOrdinals.ADDRESS.ordinal(), manager.encodeAddress(type.getAddress()));
+			SchemaOrdinals.ADDRESS.ordinal(), getManager().encodeAddress(type.getAddress()));
 		record.setLongValue(
-			SchemaOrdinals.DATATYPE_ID.ordinal(), AddressMap.INVALID_ADDRESS_KEY);
+			SchemaOrdinals.DATATYPE_ID.ordinal(), INVALID_KEY);
 		Vtable vtable = type.getVtable();
 		if (Vtable.isValid(vtable)) {
 			this.vtableSearched = true;
-			this.vtableKey = manager.getVtableKey(vtable.getAddress());
+			this.vtableKey = getManager().getVtableKey(vtable.getAddress());
 		} else {
 			this.vtableSearched = false;
 			this.vtableKey = -1;
@@ -191,6 +169,11 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		record.setBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal(), vtableSearched);
 		record.setLongValue(SchemaOrdinals.VTABLE_KEY.ordinal(), vtableKey);
 		manager.updateRecord(record);
+	}
+
+	@Override
+	public ClassTypeInfoManagerDB getManager() {
+		return (ClassTypeInfoManagerDB) manager.getManager();
 	}
 
 	protected abstract Namespace buildNamespace();
@@ -202,7 +185,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		int[] baseOffsets = getOffsets();
 		Map<ClassTypeInfo, Integer> map = new HashMap<>(baseKeys.length);
 		for (int i = 0; i < baseKeys.length; i++) {
-			map.put(manager.getClass(baseKeys[i]), baseOffsets[i]);
+			map.put(manager.getType(baseKeys[i]), baseOffsets[i]);
 		}
 		return Collections.unmodifiableMap(map);
 	}
@@ -272,7 +255,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	private Structure fetchDataType(db.Record record) {
 		long id = record.getLongValue(SchemaOrdinals.DATATYPE_ID.ordinal());
-		if (id != AddressMap.INVALID_ADDRESS_KEY) {
+		if (id != INVALID_KEY) {
 			DataType dt = getProgram().getDataTypeManager().findDataTypeForID(
 				new UniversalID(id));
 			if (dt instanceof Structure) {
@@ -339,7 +322,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	long getAddressKey() {
-		return manager.encodeAddress(address);
+		return getManager().encodeAddress(address);
 	}
 
 	@Override
@@ -365,7 +348,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		if (record == null) {
 			return false;
 		}
-		Address addr = manager.decodeAddress(
+		Address addr = getManager().decodeAddress(
 				record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
 		if (address.equals(addr)) {
 			vtableSearched = record.getBooleanValue(SchemaOrdinals.VTABLE_SEARCHED.ordinal());
@@ -377,7 +360,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	public Program getProgram() {
-		return manager.getProgram();
+		return getManager().getProgram();
 	}
 
 	@Override
@@ -396,7 +379,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	protected db.Record getRecord() {
-		db.Record record = manager.getClassRecord(key);
+		db.Record record = manager.getTypeRecord(key);
 		if (record != null) {
 			return record;
 		}
@@ -474,7 +457,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		db.Record record = getRecord();
 		if (struct != null) {
 			long dtKey = record.getLongValue(SchemaOrdinals.DATATYPE_ID.ordinal());
-			if (dtKey == AddressMap.INVALID_ADDRESS_KEY) {
+			if (dtKey == INVALID_KEY) {
 				record.setLongValue(
 					SchemaOrdinals.DATATYPE_ID.ordinal(), struct.getUniversalID().getValue());
 				manager.updateRecord(record);
@@ -506,15 +489,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	@Override
 	public String toString() {
 		return getName();
-	}
-
-	@Override
-	public ClassTypeInfoManagerDB getManager() {
-		return manager;
-	}
-
-	public void keyChanged(RecordManager manager, long newKey) {
-		keyChanged(newKey);
 	}
 
 }

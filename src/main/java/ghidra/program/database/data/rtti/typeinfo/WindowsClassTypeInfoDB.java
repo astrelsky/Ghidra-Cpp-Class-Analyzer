@@ -13,9 +13,8 @@ import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsClassTypeInfo;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
-import ghidra.program.database.DBObjectCache;
-import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
 import ghidra.program.database.data.rtti.DataBaseUtils;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.symbol.Namespace;
@@ -33,9 +32,8 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	private final long baseModelAddress;
 	private final long hierarchyDescriptorAddress;
 
-	public WindowsClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-			DBObjectCache<AbstractClassTypeInfoDB> cache, db.Record record) {
-		super(manager, cache, record);
+	public WindowsClassTypeInfoDB(ProgramRttiRecordManager worker, db.Record record) {
+		super(worker, record);
 		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
 		baseKeys = DataBaseUtils.getLongArray(buf);
 		baseOffsets = DataBaseUtils.getIntArray(buf);
@@ -43,9 +41,8 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 		hierarchyDescriptorAddress = buf.getLong();
 	}
 
-	public WindowsClassTypeInfoDB(ClassTypeInfoManagerDB manager,
-			DBObjectCache<AbstractClassTypeInfoDB> cache, ClassTypeInfo type, db.Record record) {
-		super(manager, cache, type, record);
+	public WindowsClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfo type, db.Record record) {
+		super(worker, type, record);
 		WindowsClassTypeInfo model = (WindowsClassTypeInfo) type;
 		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
 			model.getBaseOffsets().entrySet().stream().collect(Collectors.toList());
@@ -56,8 +53,8 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 			baseKeys[i] = manager.resolve(entry.getKey()).getKey();
 			baseOffsets[i] = entry.getValue();
 		}
-		baseModelAddress = manager.encodeAddress(model.getBaseModel().getAddress());
-		hierarchyDescriptorAddress = manager.encodeAddress(
+		baseModelAddress = getManager().encodeAddress(model.getBaseModel().getAddress());
+		hierarchyDescriptorAddress = getManager().encodeAddress(
 			model.getHierarchyDescriptor().getAddress());
 		ByteBuffer buf = ByteBuffer.allocate(getSize());
 		DataBaseUtils.putLongArray(buf, baseKeys);
@@ -82,7 +79,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	@Override
 	public ClassTypeInfoDB[] getParentModels() {
 		return LongStream.of(baseKeys)
-						 .mapToObj(manager::getClass)
+						 .mapToObj(manager::getType)
 						 .toArray(ClassTypeInfoDB[]::new);
 	}
 
@@ -98,10 +95,10 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 			Rtti2Model baseArray = rtti3.getRtti2Model();
 			for (int i = 1; i < rtti3.getRtti1Count(); i++) {
 				Rtti1Model model = baseArray.getRtti1Model(i);
-				ClassTypeInfo parent = manager.getClass(baseKeys[i]);
+				ClassTypeInfo parent = manager.getType(baseKeys[i]);
 				result.addAll(parent.getVirtualParents());
 				if (isVirtual(model)) {
-					result.add(manager.getType(model.getRtti0Address()));
+					result.add(getManager().getType(model.getRtti0Address()));
 				}
 			}
 			return result;
@@ -130,12 +127,12 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 
 	public Rtti1Model getBaseModel() {
 		return new Rtti1Model(
-			getProgram(), manager.decodeAddress(baseModelAddress), DEFAULT_OPTIONS);
+			getProgram(), getManager().decodeAddress(baseModelAddress), DEFAULT_OPTIONS);
 	}
 
 	@Override
 	public Rtti3Model getHierarchyDescriptor() {
-		Address rtti3Address = manager.decodeAddress(hierarchyDescriptorAddress);
+		Address rtti3Address = getManager().decodeAddress(hierarchyDescriptorAddress);
 		return new Rtti3Model(getProgram(), rtti3Address, DEFAULT_OPTIONS);
 	}
 

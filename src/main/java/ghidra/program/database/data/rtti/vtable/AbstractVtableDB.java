@@ -5,9 +5,9 @@ import java.util.Arrays;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
-import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
-import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.manager.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
@@ -21,6 +21,8 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 	public static final String VTABLE_TABLE_NAME = "Vtable Table";
 
 	public static enum SchemaOrdinals {
+		/** Name of the Program the type originated from */
+		PROGRAM_NAME,
 		ADDRESS,
 		CLASS,
 		RECORDS
@@ -34,39 +36,38 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 		new Schema(
 			VERSION,
 			"Key",
-			new Class[] { LongField.class, LongField.class, BinaryField.class },
-			new String[] { "Address", "ClassTypeInfo Key", "Sub Records" }
+			new Class[] { StringField.class, LongField.class, LongField.class, BinaryField.class },
+			new String[] { "Program Name", "Address", "ClassTypeInfo Key", "Sub Records" }
 		);
 
-	protected final ClassTypeInfoManagerDB manager;
+	protected final ProgramRttiRecordManager manager;
 
-	AbstractVtableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-		long key) {
-		super(cache, key);
-		this.manager = manager;
+	AbstractVtableDB(ProgramRttiRecordManager worker, db.Record record) {
+		super(worker.getVtableCache(), record.getKey());
+		this.manager = worker;
 	}
 
-	AbstractVtableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-			Vtable vtable, db.Record record) {
-		super(cache, record.getKey());
-		this.manager = manager;
-		long classKey = manager.getClassKey(vtable.getTypeInfo().getAddress());
+	AbstractVtableDB(ProgramRttiRecordManager worker, Vtable vtable, db.Record record) {
+		super(worker.getVtableCache(), record.getKey());
+		this.manager = worker;
+		long classKey = getManager().getTypeKey(vtable.getTypeInfo().getAddress());
 		Address address = null;
 		if (vtable instanceof VtableModel) {
 			address = ((VtableModel) vtable).getAddress();
 		} else {
 			address = vtable.getTableAddresses()[0];
 		}
-		record.setLongValue(SchemaOrdinals.ADDRESS.ordinal(), manager.encodeAddress(address));
+		record.setLongValue(SchemaOrdinals.ADDRESS.ordinal(), getManager().encodeAddress(address));
 		record.setLongValue(SchemaOrdinals.CLASS.ordinal(), classKey);
-		manager.updateRecord(record);
+		worker.updateRecord(record);
 	}
 
-	AbstractVtableDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-			ArchivedGnuVtable vtable, db.Record record) {
-		super(cache, record.getKey());
-		this.manager = manager;
+	AbstractVtableDB(ProgramRttiRecordManager worker, ArchivedGnuVtable vtable, db.Record record) {
+		this(worker, record);
+	}
 
+	protected final ClassTypeInfoManagerDB getManager() {
+		return (ClassTypeInfoManagerDB) manager.getManager();
 	}
 
 	public void setClassKey(long key) {
@@ -77,15 +78,15 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 
 	public Address getAddress() {
 		db.Record record = getRecord();
-		return manager.decodeAddress(record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
+		return getManager().decodeAddress(record.getLongValue(SchemaOrdinals.ADDRESS.ordinal()));
 	}
 
 	public Program getProgram() {
-		return manager.getProgram();
+		return getManager().getProgram();
 	}
 
 	protected db.Record getRecord() {
-		db.Record record = manager.getRecord(this);
+		db.Record record = manager.getVtableRecord(getKey());
 		if (record == null) {
 			throw new AssertException("Ghidra-Cpp-Class-Analyzer: vtable record no longer exists");
 		}
@@ -99,7 +100,7 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 	@Override
 	public ClassTypeInfo getTypeInfo() {
 		db.Record record = getRecord();
-		return manager.getClass(record.getLongValue(SchemaOrdinals.CLASS.ordinal()));
+		return manager.getType(record.getLongValue(SchemaOrdinals.CLASS.ordinal()));
 	}
 
 	@Override
@@ -112,7 +113,7 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 
 	@Override
 	protected boolean refresh() {
-		return manager.containsRecord(this);
+		return getManager().containsRecord(this);
 	}
 
 	protected static Address getEntryPoint(Function function) {

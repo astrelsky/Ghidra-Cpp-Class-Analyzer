@@ -1,4 +1,4 @@
-package ghidra.program.database.data.rtti;
+package ghidra.program.database.data.rtti.manager;
 
 import java.util.Map;
 import java.util.function.Function;

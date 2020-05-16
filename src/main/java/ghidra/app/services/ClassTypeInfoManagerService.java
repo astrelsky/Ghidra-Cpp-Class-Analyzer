@@ -27,7 +27,13 @@ public interface ClassTypeInfoManagerService {
 
 	public void closeArchive(ClassTypeInfoManager manager);
 
-	public ClassTypeInfoManager openArchive(File archive) throws IOException;
+	public default ClassTypeInfoManager openArchive(File archive)  throws IOException {
+		return openArchive(archive, false);
+	}
+
+	public ClassTypeInfoManager openArchive(File archive, boolean updateable) throws IOException;
+
+	public ClassTypeInfoManager createArchive(File archive) throws IOException;
 
 	public ProgramClassTypeInfoManager getManager(Program program);
 

@@ -8,11 +8,10 @@ import java.util.stream.Collectors;
 
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
-import ghidra.app.cmd.data.rtti.gcc.VtableModel;
-import ghidra.program.database.DBObjectCache;
-import ghidra.program.database.data.rtti.ClassTypeInfoManagerDB;
 import ghidra.program.database.data.rtti.DataBaseUtils;
 import ghidra.program.database.data.rtti.DataBaseUtils.ByteConvertable;
+import ghidra.program.database.data.rtti.manager.ClassTypeInfoManagerDB;
+import ghidra.program.database.data.rtti.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.database.data.rtti.vtable.ArchivedGnuVtable.ArchivedVtablePrefix;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.ArrayDataType;
@@ -29,9 +28,8 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 
 	private final VtableModelPrefixRecord[] records;
 
-	public VtableModelDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-			long key) {
-		super(manager, cache, key);
+	public VtableModelDB(ProgramRttiRecordManager worker, db.Record record) {
+		super(worker, record);
 		ByteBuffer buf = ByteBuffer.wrap(getModelData());
 		this.records = new VtableModelPrefixRecord[buf.getInt()];
 		for (int i = 0; i < records.length; i++) {
@@ -39,9 +37,8 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 		}
 	}
 
-	public VtableModelDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-			VtableModel vtable, db.Record record) {
-		super(manager, cache, vtable, record);
+	public VtableModelDB(ProgramRttiRecordManager worker, GnuVtable vtable, db.Record record) {
+		super(worker, vtable, record);
 		this.records = vtable.getPrefixes().stream()
 			.map(VtableModelPrefixRecord::new)
 			.toArray(VtableModelPrefixRecord[]::new);
@@ -54,10 +51,9 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 		manager.updateRecord(record);
 	}
 
-	public VtableModelDB(ClassTypeInfoManagerDB manager, DBObjectCache<AbstractVtableDB> cache,
-		ArchivedGnuVtable vtable, db.Record record) {
-		super(manager, cache, vtable, record);
-		Program program = manager.getProgram();
+	public VtableModelDB(ProgramRttiRecordManager worker, ArchivedGnuVtable vtable, db.Record record) {
+		super(worker, vtable, record);
+		Program program = getProgram();
 		Address address = vtable.getAddress(program);
 		ArchivedVtablePrefix[] prefixes = vtable.getPrefixes();
 		this.records = new VtableModelPrefixRecord[prefixes.length];
@@ -67,7 +63,6 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 			records[i] = new VtableModelPrefixRecord(address, functions, prefix.offsets);
 			address = address.add(records[i].getLength());
 		}
-
 	}
 
 	@Override
@@ -135,21 +130,23 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 		}
 
 		VtableModelPrefixRecord(VtablePrefix prefix) {
-			this.address = manager.encodeAddress(prefix.getAddress());
+			ClassTypeInfoManagerDB typeManager = getManager();
+			this.address = typeManager.encodeAddress(prefix.getAddress());
 			this.offsets = Longs.toArray(prefix.getOffsets());
 			this.functions = prefix.getFunctionTable()
 				.stream()
 				.map(f -> {return f != null ? f.getEntryPoint() : Address.NO_ADDRESS;})
-				.mapToLong(manager::encodeAddress)
+				.mapToLong(typeManager::encodeAddress)
 				.toArray();
 		}
 
 		VtableModelPrefixRecord(Address address, Function[] functions, long[] offsets) {
-			this.address = manager.encodeAddress(address);
+			ClassTypeInfoManagerDB typeManager = getManager();
+			this.address = typeManager.encodeAddress(address);
 			this.offsets = offsets;
 			this.functions = Arrays.stream(functions)
 				.map(Function::getEntryPoint)
-				.mapToLong(manager::encodeAddress)
+				.mapToLong(typeManager::encodeAddress)
 				.toArray();
 		}
 
@@ -176,15 +173,16 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 
 		@Override
 		public Address getAddress() {
-			return manager.decodeAddress(address);
+			return getManager().decodeAddress(address);
 		}
 
 		private Function[] getFunctions() {
+			ClassTypeInfoManagerDB typeManager = getManager();
 			Listing listing = getProgram().getListing();
 			return Arrays.stream(functions)
-					.mapToObj(manager::decodeAddress)
-					.map(listing::getFunctionAt)
-					.toArray(Function[]::new);
+				.mapToObj(typeManager::decodeAddress)
+				.map(listing::getFunctionAt)
+				.toArray(Function[]::new);
 		}
 
 		@Override

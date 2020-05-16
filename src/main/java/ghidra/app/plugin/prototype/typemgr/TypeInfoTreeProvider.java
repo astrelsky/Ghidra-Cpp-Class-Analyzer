@@ -10,11 +10,10 @@ import javax.swing.JPanel;
 import javax.swing.tree.TreePath;
 
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
-import ghidra.app.plugin.prototype.typemgr.actions.OpenArchiveAction;
+import ghidra.app.plugin.prototype.typemgr.actions.TypeInfoArchiveHandler;
 import ghidra.framework.plugintool.ComponentProviderAdapter;
 import ghidra.framework.plugintool.PluginTool;
 
-import docking.widgets.tree.GTree;
 import resources.ResourceManager;
 
 public class TypeInfoTreeProvider extends ComponentProviderAdapter {
@@ -42,7 +41,7 @@ public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 		return mainPanel;
 	}
 
-	public GTree getTree() {
+	public TypeInfoArchiveGTree getTree() {
 		return tree;
 	}
 
@@ -58,7 +57,12 @@ public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 
 	private void createActions() {
 		// TODO things like graph n stuff
-		addLocalAction(new OpenArchiveAction(plugin));
+		TypeInfoArchiveHandler handler = new TypeInfoArchiveHandler(plugin);
+		addLocalAction(handler.getOpenAction());
+		addLocalAction(handler.getCreateAction());
+		addLocalAction(handler.getCloseAction());
+		addLocalAction(handler.getOpenForEditAction());
+		addLocalAction(handler.getSaveAction());
 	}
 
 	public void dispose() {

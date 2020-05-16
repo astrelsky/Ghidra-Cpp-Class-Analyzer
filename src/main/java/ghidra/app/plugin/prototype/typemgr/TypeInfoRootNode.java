@@ -3,7 +3,7 @@ package ghidra.app.plugin.prototype.typemgr;
 import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
+import ghidra.program.database.data.rtti.manager.ArchiveClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
@@ -40,6 +40,14 @@ public class TypeInfoRootNode extends GTreeNode {
 	@Override
 	public boolean isLeaf() {
 		return manager.getTypeCount() == 0;
+	}
+
+	public boolean isProgramNode() {
+		return manager instanceof ProgramClassTypeInfoManager;
+	}
+
+	public ClassTypeInfoManager getManager() {
+		return manager;
 	}
 
 	public void addNode(ClassTypeInfoDB type) {
