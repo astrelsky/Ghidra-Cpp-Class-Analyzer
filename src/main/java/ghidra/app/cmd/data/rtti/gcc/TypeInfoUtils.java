@@ -1,8 +1,11 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ghidra.program.model.listing.Data;
 import ghidra.program.database.data.rtti.TypeInfoManager;
@@ -23,11 +26,13 @@ import ghidra.util.task.TaskMonitor;
 import ghidra.program.model.data.*;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.gcc.typeinfo.FunctionTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.NamespaceUtils;
+import ghidra.app.util.demangler.DemangledAddressTable;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.docking.settings.Settings;
 import ghidra.framework.plugintool.PluginTool;
@@ -36,6 +41,9 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddr
 import static ghidra.app.util.demangler.DemanglerUtil.demangle;
 
 public class TypeInfoUtils {
+
+	private static final Pattern DESCRIPTIVE_PREFIX_PATTERN =
+		Pattern.compile("((.+ )+(for|to) )(.+)");
 
 	private TypeInfoUtils() {
 	}
@@ -251,12 +259,53 @@ public class TypeInfoUtils {
 	}
 
 	/**
+	 * Gets the Namespace for the corresponding typeinfo
+	 * @param program the program containing the namespace
+	 * @param typename the typeinfo
+	 * @return the Namespace for the corresponding typeinfo
+	 */
+	public static Namespace getNamespaceFromTypeName(Program program, TypeInfo type) {
+		return getNamespaceFromTypeName(
+			program, type.getTypeName(), type instanceof FunctionTypeInfoModel);
+	}
+
+	/**
 	 * Gets the Namespace for the corresponding typename
 	 * @param program the program containing the namespace
 	 * @param typename the typename corresponding to the namespace
 	 * @return the Namespace for the corresponding typename
 	 */
 	public static Namespace getNamespaceFromTypeName(Program program, String typename) {
+		return getNamespaceFromTypeName(program, typename, false);
+	}
+
+	private static String extractSignature(DemangledObject demangled) {
+		if (!(demangled instanceof DemangledAddressTable)) {
+			throw new AssertException("Unexpected demangled result: "+demangled.getSignature());
+		}
+		try {
+			Field field = DemangledObject.class.getDeclaredField("signature");
+			field.setAccessible(true);
+			String signature = (String) field.get(demangled);
+			field.setAccessible(false);
+			Matcher matcher = DESCRIPTIVE_PREFIX_PATTERN.matcher(signature);
+			if (!matcher.matches()) {
+				throw new AssertException("Regex should have matched: "+signature);
+			}
+			return matcher.group(4).replaceAll(" ", "");
+		} catch (NoSuchFieldException | IllegalAccessException e) {
+			throw new AssertException(e);
+		}
+	}
+
+	/**
+	 * Gets the Namespace for the corresponding typename
+	 * @param program the program containing the namespace
+	 * @param typename the typename corresponding to the namespace
+	 * @return the Namespace for the corresponding typename
+	 */
+	private static Namespace getNamespaceFromTypeName(Program program, String typename,
+			boolean isFunction) {
 		DemangledObject demangled = typename.startsWith("_ZTI") ?
 			demangle(program, typename) : demangle(program, "_ZTI"+typename);
 		if (demangled != null) {
@@ -266,13 +315,13 @@ public class TypeInfoUtils {
 					id = program.startTransaction("creating namespace for "+typename);
 				}
 				Namespace ns = null;
-				if (demangled.getSignature().contains("(")) {
+				if (isFunction) {
 					ns = NamespaceUtils.createNamespaceHierarchy(
 						demangled.getSignature(),
 						null, program, SourceType.ANALYSIS);
 				} else {
 					ns = NamespaceUtils.createNamespaceHierarchy(
-						demangled.getNamespace().getSignature(),
+						extractSignature(demangled),
 						null, program, SourceType.ANALYSIS);
 				}
 				if (id != null) {

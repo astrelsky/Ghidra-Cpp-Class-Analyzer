@@ -104,14 +104,14 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	public ClassTypeInfoManager openArchive(File file, boolean updateable) throws IOException {
-		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.open(file, updateable);
+		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.open(this, file, updateable);
 		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
 		return manager;
 	}
 
 	@Override
 	public ClassTypeInfoManager createArchive(File file) throws IOException {
-		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.createManager(file);
+		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.createManager(this, file);
 		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
 		return manager;
 	}

@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
+import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.framework.store.db.PackedDBHandle;
 import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
 import ghidra.program.database.data.rtti.manager.caches.ArchivedRttiCachePair;
@@ -35,13 +36,15 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		implements FileArchiveClassTypeInfoManager {
 
 	private final File file;
+	private final ClassTypeInfoManagerPlugin plugin;
 	private final RttiRecordWorker worker;
 
 	private final Lock lock;
 
-	private ArchiveClassTypeInfoManager(File file, int openMode)
-			throws IOException {
+	private ArchiveClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin,
+			File file, int openMode) throws IOException {
 		super(new ResourceFile(file), openMode);
+		this.plugin = plugin;
 		this.file = file;
 		lock = new Lock(getClass().getSimpleName());
 		Table classTable = dbHandle.getTable(ArchivedClassTypeInfo.TABLE_NAME);
@@ -78,12 +81,14 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return vtableTable;
 	}
 
-	public static ArchiveClassTypeInfoManager createManager(File file) throws IOException {
-		return new ArchiveClassTypeInfoManager(file, DBConstants.CREATE);
+	public static ArchiveClassTypeInfoManager createManager(ClassTypeInfoManagerPlugin plugin,
+			File file) throws IOException {
+		return new ArchiveClassTypeInfoManager(plugin, file, DBConstants.CREATE);
 	}
 
-	public static ArchiveClassTypeInfoManager open(File file) throws IOException {
-		return open(file, false);
+	public static ArchiveClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin,
+			File file) throws IOException {
+		return open(plugin, file, false);
 	}
 
 	@Override
@@ -95,10 +100,10 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return dbHandle.canUpdate();
 	}
 
-	public static ArchiveClassTypeInfoManager open(File file,
+	public static ArchiveClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin, File file,
 			boolean openForUpdate) throws IOException {
 		int mode = openForUpdate ? DBConstants.UPDATE : DBConstants.READ_ONLY;
-		return new ArchiveClassTypeInfoManager(file, mode);
+		return new ArchiveClassTypeInfoManager(plugin, file, mode);
 	}
 
 	public ArchivedGnuVtable getVtable(long key) {
@@ -312,6 +317,11 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 					lock.release();
 				}
 			}
+		}
+
+		@Override
+		ClassTypeInfoManagerPlugin getPlugin() {
+			return plugin;
 		}
 	}
 

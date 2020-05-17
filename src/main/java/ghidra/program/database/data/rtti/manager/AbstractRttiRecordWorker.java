@@ -7,6 +7,9 @@ import java.util.stream.Stream;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
+import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord;
+import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord.ChangeType;
 import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
 import ghidra.program.database.data.rtti.manager.caches.RttiCachePair;
@@ -54,6 +57,8 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 	abstract T2 buildVtable(db.Record record);
 
 	abstract T2 buildVtable(Vtable vtable, db.Record record);
+
+	abstract ClassTypeInfoManagerPlugin getPlugin();
 
 	@Override
 	public db.Record getTypeRecord(long key) {
@@ -135,7 +140,11 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			key = getClassKey();
 			db.Record record = typeSchema.createRecord(key);
 			tables.getTypeTable().putRecord(record);
-			return buildType(type, record);
+			T1 typeDb = buildType(type, record);
+			TypeInfoArchiveChangeRecord change =
+				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, typeDb);
+			getPlugin().fireArchiveChanged(change);
+			return typeDb;
 		} catch (IOException e) {
 			dbError(e);
 		} finally {

@@ -77,9 +77,15 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		lock = new Lock(getClass().getSimpleName());
 		Table classTable = handle.getTable(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
 		Table vtableTable = handle.getTable(AbstractVtableDB.VTABLE_TABLE_NAME);
-		if (classTable == null || vtableTable == null) {
+		if (shouldResetDatabase(classTable, vtableTable)) {
 			try {
 				long id = handle.isTransactionActive() ? -1 : handle.startTransaction();
+				if (classTable != null) {
+					handle.deleteTable(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
+				}
+				if (vtableTable != null) {
+					handle.deleteTable(AbstractVtableDB.VTABLE_TABLE_NAME);
+				}
 				classTable = getNewClassTable(handle);
 				vtableTable = getNewVtableTable(handle);
 				if (id != -1) {
@@ -92,6 +98,16 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		ProgramRttiCachePair caches = new ProgramRttiCachePair();
 		RttiTablePair tables = new RttiTablePair(classTable, vtableTable);
 		this.worker = doGetWorker(tables, caches);
+	}
+
+	private static boolean shouldResetDatabase(Table classTable, Table vtableTable) {
+		if (classTable == null || vtableTable == null) {
+			return true;
+		}
+		if (!AbstractClassTypeInfoDB.SCHEMA.equals(classTable.getSchema())) {
+			return true;
+		}
+		return !AbstractVtableDB.SCHEMA.equals(vtableTable.getSchema());
 	}
 
 	private RttiRecordWorker doGetWorker(RttiTablePair tables, ProgramRttiCachePair caches) {
@@ -871,6 +887,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		public final void endTransaction() {
 			getManager().endTransaction(id);
 			id = -1;
+		}
+
+		@Override
+		final ClassTypeInfoManagerPlugin getPlugin() {
+			return plugin;
 		}
 	}
 

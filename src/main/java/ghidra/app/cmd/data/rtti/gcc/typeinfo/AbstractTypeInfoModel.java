@@ -57,7 +57,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 		this.address = address;
 		this.buf = new MemoryBufferImpl(program.getMemory(), address);
 		this.typeName = TypeInfoUtils.getTypeName(program, address);
-		this.namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
+		this.namespace = TypeInfoUtils.getNamespaceFromTypeName(program, this);
 	}
 
 	protected static boolean isValid(Program program, Address address, String id) {

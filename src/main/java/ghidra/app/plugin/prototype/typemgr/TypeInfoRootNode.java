@@ -83,8 +83,9 @@ public class TypeInfoRootNode extends GTreeNode {
 	}
 
 	TypeInfoNode getNode(ClassTypeInfo type) {
+		String[] paths = type.getSymbolPath().asArray();
 		GTreeNode node = this;
-		for (String path : type.getSymbolPath().asArray()) {
+		for (String path : paths) {
 			GTreeNode currentNode = node.getChild(path);
 			if (currentNode == null) {
 				currentNode = node.getChild(node.getName());

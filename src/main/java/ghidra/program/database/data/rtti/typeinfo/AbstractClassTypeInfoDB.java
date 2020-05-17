@@ -435,7 +435,11 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	@Override
 	public Vtable getVtable() {
-		return manager.getVtable(vtableKey);
+		Vtable vtable = manager.getVtable(vtableKey);
+		if (vtable == null) {
+			return Vtable.NO_VTABLE;
+		}
+		return vtable;
 	}
 
 	public void setVtable(Vtable vtable) {

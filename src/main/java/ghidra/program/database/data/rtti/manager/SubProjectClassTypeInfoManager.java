@@ -3,6 +3,7 @@ package ghidra.program.database.data.rtti.manager;
 import java.util.stream.Stream;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.program.database.data.rtti.ClassTypeInfoManager;
 import ghidra.program.database.data.rtti.manager.caches.ArchivedRttiCachePair;
 import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
@@ -97,6 +98,11 @@ class SubProjectClassTypeInfoManager implements ClassTypeInfoManager {
 				manager.endTransaction(id, true);
 				id = -1;
 			}
+		}
+
+		@Override
+		ClassTypeInfoManagerPlugin getPlugin() {
+			return manager.getPlugin();
 		}
 	}
 

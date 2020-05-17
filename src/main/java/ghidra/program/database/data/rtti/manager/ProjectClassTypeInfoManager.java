@@ -25,7 +25,7 @@ import db.DBHandle;
 import db.Table;
 import generic.jar.ResourceFile;
 
-public class ProjectClassTypeInfoManager extends StandAloneDataTypeManager
+public final class ProjectClassTypeInfoManager extends StandAloneDataTypeManager
 		implements FileArchiveClassTypeInfoManager {
 
 	private final ClassTypeInfoManagerPlugin plugin;
@@ -226,6 +226,10 @@ public class ProjectClassTypeInfoManager extends StandAloneDataTypeManager
 
 	void releaseLock() {
 		lock.release();
+	}
+
+	ClassTypeInfoManagerPlugin getPlugin() {
+		return plugin;
 	}
 
 }
