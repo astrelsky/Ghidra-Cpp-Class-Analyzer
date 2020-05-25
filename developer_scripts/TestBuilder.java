@@ -11,7 +11,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import cppclassanalyzer.data.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataUtilities;
@@ -412,7 +412,7 @@ public class TestBuilder extends GhidraScript {
 					for (Function function : functionTable) {
 						if (function != null) {
 							functionSet.add(function);
-						}		
+						}
 					}
 				}
 			}

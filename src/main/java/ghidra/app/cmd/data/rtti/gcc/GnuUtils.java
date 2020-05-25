@@ -2,13 +2,19 @@ package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
 import docking.Tool;
 import ghidra.program.model.data.DataType;
+import ghidra.app.util.demangler.Demangled;
+import ghidra.app.util.demangler.DemangledAddressTable;
 import ghidra.app.util.demangler.DemangledFunction;
 import ghidra.app.util.demangler.DemangledObject;
+import ghidra.app.util.demangler.gnu.GnuDemanglerNativeProcess;
 import ghidra.framework.main.AppInfo;
 import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.Project;
@@ -34,6 +40,7 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.DummyCancellableTaskMonitor;
 import ghidra.util.task.TaskMonitor;
@@ -58,6 +65,8 @@ public final class GnuUtils {
 	public static final int UNSUPPORTED_RELOCATION = 5;
 
 	private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
+	private static final Pattern DESCRIPTIVE_PREFIX_PATTERN =
+		Pattern.compile("((.+ )+(for|to) )(.+)");
 
 	private GnuUtils() {
 	}
@@ -142,7 +151,8 @@ public final class GnuUtils {
 		Processor processor = program.getLanguage().getProcessor();
 		if (!processor.toString().contentEquals(PPC)) {
 			return false;
-		} return isLLP64(program.getDataTypeManager());
+		}
+		return isLLP64(program.getDataTypeManager());
 	}
 
 	/**
@@ -227,7 +237,8 @@ public final class GnuUtils {
 		Address pointee = getAbsoluteAddress(program, address);
 		if (pointee != null) {
 			return program.getMemory().getLoadedAndInitializedAddressSet().contains(pointee);
-		} return false;
+		}
+		return false;
 	}
 
 	/**
@@ -236,8 +247,7 @@ public final class GnuUtils {
 	 * @return true if a valid pointer is located at the specified address
 	 */
 	public static boolean isValidPointer(MemBuffer buf) {
-		return buf != null ?
-			isValidPointer(buf.getMemory().getProgram(), buf.getAddress()) : false;
+		return buf != null ? isValidPointer(buf.getMemory().getProgram(), buf.getAddress()) : false;
 	}
 
 	/**
@@ -280,14 +290,14 @@ public final class GnuUtils {
 	 * @throws CancelledException if the search is cancelled
 	 */
 	public static Set<Address> getDirectDataReferences(Program program, Address address,
-		TaskMonitor monitor) throws CancelledException {
-			if (address == null)
-				return Collections.emptySet();
-			List<MemoryBlock> dataBlocks = getAllDataBlocks(program);
-			int pointerAlignment =
-				program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
-			return ProgramMemoryUtil.findDirectReferences(program, dataBlocks,
-				pointerAlignment, address, monitor);
+			TaskMonitor monitor) throws CancelledException {
+		if (address == null)
+			return Collections.emptySet();
+		List<MemoryBlock> dataBlocks = getAllDataBlocks(program);
+		int pointerAlignment =
+			program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
+		return ProgramMemoryUtil.findDirectReferences(program, dataBlocks,
+			pointerAlignment, address, monitor);
 	}
 
 	/**
@@ -353,6 +363,35 @@ public final class GnuUtils {
 		Memory mem = program.getMemory();
 		MemoryBlock block = mem.getBlock(address);
 		return block.getName().equals(MemoryBlock.EXTERNAL_BLOCK_NAME);
+	}
+
+	/**
+	 * Gets the unparsed demangled output from the native GnuDemangler
+	 * @param mangled the mangled input for the demangler
+	 * @return the unmodified demangled string
+	 * @throws IOException if an error occurs from the native GnuDemangler process
+	 */
+	public static String getRawDemangledString(String mangled) throws IOException {
+		GnuDemanglerNativeProcess process = GnuDemanglerNativeProcess.getDemanglerNativeProcess();
+		return process.demangle(mangled).trim();
+	}
+
+	public static Demangled getSpecialDemangled(String mangled) {
+		try {
+			Demangled demangled = demangle(mangled);
+			String output = GnuUtils.getRawDemangledString(mangled);
+			Matcher matcher = DESCRIPTIVE_PREFIX_PATTERN.matcher(output);
+			if (!matcher.matches()) {
+				throw new AssertException("Regex should have matched: " + output);
+			}
+			DemangledAddressTable table =
+				new DemangledAddressTable(mangled, output, matcher.group(2), true);
+			table.setSignature(output);
+			table.setNamespace(demangled.getNamespace());
+			return table;
+		} catch (IOException e) {
+			return null;
+		}
 	}
 
 }

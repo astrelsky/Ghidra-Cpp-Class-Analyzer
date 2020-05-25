@@ -5,10 +5,11 @@ import java.io.IOException;
 import java.util.List;
 
 import ghidra.app.plugin.prototype.TypeInfoManagerListener;
+import ghidra.app.plugin.core.datamgr.archive.DuplicateIdException;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.framework.plugintool.ServiceInfo;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.listing.Program;
 
 //@formatter:off
@@ -27,13 +28,20 @@ public interface ClassTypeInfoManagerService {
 
 	public void closeArchive(ClassTypeInfoManager manager);
 
-	public default ClassTypeInfoManager openArchive(File archive)  throws IOException {
-		return openArchive(archive, false);
+	public default void openArchive(File archive)
+			throws IOException, DuplicateIdException {
+		openArchive(archive, false);
 	}
 
-	public ClassTypeInfoManager openArchive(File archive, boolean updateable) throws IOException;
+	public void openArchive(File archive, boolean updateable)
+		throws IOException, DuplicateIdException;
 
-	public ClassTypeInfoManager createArchive(File archive) throws IOException;
+	public void createArchive(File archive)
+		throws IOException, DuplicateIdException;
+
+	public void createProjectArchive() throws IOException;
+
+	public void openProjectArchive() throws IOException;
 
 	public ProgramClassTypeInfoManager getManager(Program program);
 

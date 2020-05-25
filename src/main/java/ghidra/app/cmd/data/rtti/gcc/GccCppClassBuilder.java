@@ -5,7 +5,7 @@ import java.util.Map;
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.program.database.data.rtti.typeinfo.AbstractClassTypeInfoDB;
+import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 

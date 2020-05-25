@@ -18,7 +18,7 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 
 /**
  * @deprecated please use the methods provided by
- * {@link ghidra.program.database.data.rtti.ProgramClassTypeInfoManager ClassTypeInfoManager}
+ * {@link cppclassanalyzer.data.ProgramClassTypeInfoManager ClassTypeInfoManager}
  */
 @Deprecated(since = "1.5", forRemoval = true)
 public class TypeInfoFactory {

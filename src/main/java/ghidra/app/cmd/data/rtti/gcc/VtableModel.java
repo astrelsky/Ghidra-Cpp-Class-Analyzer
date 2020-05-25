@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import ghidra.program.model.data.Array;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;

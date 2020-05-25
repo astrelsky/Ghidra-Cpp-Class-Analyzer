@@ -20,7 +20,7 @@ import ghidra.util.task.TaskMonitor;
 /**
  * Representation of a dynamically linked ClassTypeInfo
  * @deprecated
- * @see ghidra.program.database.data.rtti.typeinfo.ArchivedClassTypeInfo
+ * @see cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo
  * ArchivedGnuClassTypeInfo
  */
 @Deprecated(since = "1.5", forRemoval = true)

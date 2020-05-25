@@ -8,7 +8,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.Ppc64TypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.util.task.TaskMonitor;
 

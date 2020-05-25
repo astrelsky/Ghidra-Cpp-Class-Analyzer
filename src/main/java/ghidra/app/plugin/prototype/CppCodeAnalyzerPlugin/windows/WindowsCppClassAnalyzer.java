@@ -15,7 +15,7 @@ import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapp
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;

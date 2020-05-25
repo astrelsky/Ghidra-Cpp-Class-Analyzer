@@ -1,0 +1,40 @@
+package cppclassanalyzer.database.tables;
+
+import java.io.IOException;
+
+import ghidra.util.exception.AssertException;
+
+import cppclassanalyzer.database.schema.AbstractSchema;
+import db.Field;
+import db.Table;
+
+abstract class AbstractDatabaseTable<T extends AbstractSchema<?>> implements DatabaseTable<T> {
+
+	private final Table table;
+
+	AbstractDatabaseTable(Table table) {
+		if (!table.getSchema().equals(getSchema())) {
+			throw new AssertException("Schema's do not match");
+		}
+		this.table = table;
+	}
+
+	@Override
+	public final Table getTable() {
+		return table;
+	}
+
+	@Override
+	public final String getName() {
+		return table.getName();
+	}
+
+	protected final db.Record getRawRecord(long key) throws IOException {
+		return table.getRecord(key);
+	}
+
+	protected final db.Record getRawRecord(Field key) throws IOException {
+		return table.getRecord(key);
+	}
+
+}

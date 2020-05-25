@@ -9,7 +9,7 @@ import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.app.util.demangler.DemangledObject;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;

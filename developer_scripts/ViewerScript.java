@@ -3,8 +3,8 @@ import java.io.File;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.script.GhidraScript;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import cppclassanalyzer.data.ArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.ClassTypeInfoManager;
 import ghidra.program.model.data.DataType;
 
 public class ViewerScript extends GhidraScript{

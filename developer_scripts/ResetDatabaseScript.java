@@ -2,9 +2,9 @@
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.database.ProgramDB;
-import ghidra.program.database.data.rtti.manager.ClassTypeInfoManagerDB;
-import ghidra.program.database.data.rtti.typeinfo.AbstractClassTypeInfoDB;
-import ghidra.program.database.data.rtti.vtable.AbstractVtableDB;
+import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
+import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
+import cppclassanalyzer.data.vtable.AbstractVtableDB;
 
 import db.DBHandle;
 

@@ -1,6 +1,6 @@
 //@category CppClassAnalyzer
 import ghidra.app.script.GhidraScript;
-import ghidra.program.database.data.rtti.ArchivedDataManager;
+import cppclassanalyzer.data.ArchivedDataManager;
 
 public class ImportScript extends GhidraScript {
 

@@ -6,8 +6,8 @@ import java.util.List;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.app.script.GhidraScript;
-import ghidra.program.database.data.rtti.ArchiveClassTypeInfoManager;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
+import cppclassanalyzer.data.ArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.ClassTypeInfoManager;
 import ghidra.program.model.data.DataTypeManager;
 
 public class DumpScript extends GhidraScript {

@@ -15,7 +15,7 @@ import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.framework.plugintool.PluginTool;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;

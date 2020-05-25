@@ -1,6 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
-import java.lang.reflect.Field;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -8,7 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ghidra.program.model.listing.Data;
-import ghidra.program.database.data.rtti.TypeInfoManager;
+import cppclassanalyzer.data.TypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
@@ -32,6 +32,7 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.NamespaceUtils;
+import ghidra.app.util.demangler.Demangled;
 import ghidra.app.util.demangler.DemangledAddressTable;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.docking.settings.Settings;
@@ -279,21 +280,24 @@ public class TypeInfoUtils {
 		return getNamespaceFromTypeName(program, typename, false);
 	}
 
-	private static String extractSignature(DemangledObject demangled) {
+	private static Demangled getCorrectedDemangled(Demangled demangled) {
 		if (!(demangled instanceof DemangledAddressTable)) {
 			throw new AssertException("Unexpected demangled result: "+demangled.getSignature());
 		}
+		String mangled = demangled.getMangledString();
 		try {
-			Field field = DemangledObject.class.getDeclaredField("signature");
-			field.setAccessible(true);
-			String signature = (String) field.get(demangled);
-			field.setAccessible(false);
-			Matcher matcher = DESCRIPTIVE_PREFIX_PATTERN.matcher(signature);
+			String output = GnuUtils.getRawDemangledString(mangled);
+			Matcher matcher = DESCRIPTIVE_PREFIX_PATTERN.matcher(output);
 			if (!matcher.matches()) {
-				throw new AssertException("Regex should have matched: "+signature);
+				throw new AssertException("Regex should have matched: " + output);
 			}
-			return matcher.group(4).replaceAll(" ", "");
-		} catch (NoSuchFieldException | IllegalAccessException e) {
+			DemangledAddressTable table =
+				new DemangledAddressTable(mangled, output, TypeInfo.SYMBOL_NAME, true);
+			table.setSignature(output);
+			table.setNamespace(demangled.getNamespace());
+			return table;
+		} catch (IOException e) {
+			// shouldn't occur as it was previously successful
 			throw new AssertException(e);
 		}
 	}
@@ -306,7 +310,7 @@ public class TypeInfoUtils {
 	 */
 	private static Namespace getNamespaceFromTypeName(Program program, String typename,
 			boolean isFunction) {
-		DemangledObject demangled = typename.startsWith("_ZTI") ?
+		Demangled demangled = typename.startsWith("_ZTI") ?
 			demangle(program, typename) : demangle(program, "_ZTI"+typename);
 		if (demangled != null) {
 			try {
@@ -320,12 +324,15 @@ public class TypeInfoUtils {
 						demangled.getSignature(),
 						null, program, SourceType.ANALYSIS);
 				} else {
-					ns = NamespaceUtils.createNamespaceHierarchy(
-						extractSignature(demangled),
-						null, program, SourceType.ANALYSIS);
+					demangled = getCorrectedDemangled(demangled);
+					ns = DemangledObject.createNamespace(
+            			program, demangled.getNamespace(), program.getGlobalNamespace(), false);
 				}
 				if (id != null) {
 					program.endTransaction(id, true);
+				}
+				if (ns.isGlobal()) {
+					throw new AssertException("Global Namespace returned!");
 				}
 				return ns;
 			} catch (InvalidInputException e) {

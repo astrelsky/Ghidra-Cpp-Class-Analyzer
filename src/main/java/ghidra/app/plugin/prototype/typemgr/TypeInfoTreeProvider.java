@@ -10,7 +10,8 @@ import javax.swing.JPanel;
 import javax.swing.tree.TreePath;
 
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
-import ghidra.app.plugin.prototype.typemgr.actions.TypeInfoArchiveHandler;
+import ghidra.app.plugin.prototype.typemgr.action.TypeInfoArchiveHandler;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
 import ghidra.framework.plugintool.ComponentProviderAdapter;
 import ghidra.framework.plugintool.PluginTool;
 
@@ -63,6 +64,8 @@ public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 		addLocalAction(handler.getCloseAction());
 		addLocalAction(handler.getOpenForEditAction());
 		addLocalAction(handler.getSaveAction());
+		addLocalAction(handler.getCreateProjectArchiveAction());
+		addLocalAction(handler.getOpenProjectArchiveAction());
 	}
 
 	public void dispose() {
@@ -78,10 +81,10 @@ public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 		}
 
 		Object object = paths[0].getLastPathComponent();
-		if (!(object instanceof AddressableTreeNode)) {
+		if (!(object instanceof TypeInfoNode)) {
 			return;
 		}
-		plugin.goTo((AddressableTreeNode) object);
+		plugin.goTo((TypeInfoNode) object);
 	}
 
 	private class TreeMouseListener extends MouseAdapter {

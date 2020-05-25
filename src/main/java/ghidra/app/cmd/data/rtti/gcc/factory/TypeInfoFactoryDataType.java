@@ -1,6 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.factory;
 
-import ghidra.program.database.data.rtti.TypeInfoManager;
+import cppclassanalyzer.data.TypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.BuiltInDataTypeManager;
 import ghidra.program.model.data.DataType;

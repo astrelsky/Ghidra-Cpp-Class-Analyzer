@@ -1,0 +1,278 @@
+package cppclassanalyzer.data.manager;
+
+import java.io.IOException;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
+
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
+import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
+import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord;
+import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord.ChangeType;
+import ghidra.program.database.DBObjectCache;
+import ghidra.program.database.DatabaseObject;
+import cppclassanalyzer.data.manager.caches.RttiCachePair;
+import cppclassanalyzer.data.manager.recordmanagers.RttiRecordManager;
+import cppclassanalyzer.data.manager.tables.RttiTablePair;
+import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+
+import cppclassanalyzer.database.record.DatabaseRecord;
+import cppclassanalyzer.database.schema.AbstractSchema;
+import db.util.ErrorHandler;
+
+public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
+		T2 extends DatabaseObject, T3 extends DatabaseRecord<?>, T4 extends DatabaseRecord<?>,
+		T5 extends RttiTablePair<? extends AbstractSchema<T3>, ? extends AbstractSchema<T4>>>
+		implements RttiRecordManager<T1, T2, T3, T4>, ErrorHandler {
+
+	private final T5 tables;
+	private final RttiCachePair<T1, T2> caches;
+
+	AbstractRttiRecordWorker(T5 tables, RttiCachePair<T1, T2> caches) {
+		this.tables = tables;
+		this.caches = caches;
+	}
+
+	abstract void acquireLock();
+
+	abstract void releaseLock();
+
+	final void startTransaction() {
+		startTransaction(null);
+	}
+
+	abstract void startTransaction(String description);
+	abstract void endTransaction();
+
+	abstract long getTypeKey(ClassTypeInfo type);
+
+	abstract long getVtableKey(Vtable vtable);
+
+	abstract T1 buildType(T3 record);
+
+	abstract T1 buildType(ClassTypeInfo type, T3 record);
+
+	abstract T2 buildVtable(T4 record);
+
+	abstract T2 buildVtable(Vtable vtable, T4 record);
+
+	abstract ClassTypeInfoManagerPlugin getPlugin();
+
+	private T3 createTypeRecord(long key) throws IOException {
+		T3 record = tables.getTypeSchema().getNewRecord(key);
+		tables.getTypeTable().putRecord(record.getRecord());
+		return record;
+	}
+
+	private T4 createVtableRecord(long key) throws IOException {
+		T4 record = tables.getVtableSchema().getNewRecord(key);
+		tables.getVtableTable().putRecord(record.getRecord());
+		return record;
+	}
+
+	@Override
+	public final T3 getTypeRecord(long key) {
+		acquireLock();
+		try {
+			db.Record record = tables.getTypeTable().getRecord(key);
+			if (record != null) {
+				return tables.getTypeSchema().getRecord(record);
+			}
+		} catch (IOException e) {
+			dbError(e);
+		} finally {
+			releaseLock();
+		}
+		return null;
+	}
+
+	@Override
+	public final T4 getVtableRecord(long key) {
+		acquireLock();
+		try {
+			db.Record record = tables.getVtableTable().getRecord(key);
+			if (record != null) {
+				return tables.getVtableSchema().getRecord(record);
+			}
+		} catch (IOException e) {
+			dbError(e);
+		} finally {
+			releaseLock();
+		}
+		return null;
+	}
+
+	@Override
+	public final void updateRecord(DatabaseRecord<?> record) {
+		if (!record.isDirty()) {
+			return;
+		}
+		acquireLock();
+		try {
+			startTransaction("Updating Record");
+			if (record.hasSameSchema(tables.getTypeSchema())) {
+				tables.getTypeTable().putRecord(record.getRecord());
+			} else if (record.hasSameSchema(tables.getVtableSchema())) {
+				tables.getVtableTable().putRecord(record.getRecord());
+			} else {
+				throw new IllegalArgumentException(
+					"Ghidra-Cpp-Class-Analyzer: unexpected record schema");
+			}
+		} catch (IOException e) {
+			dbError(e);
+		} finally {
+			endTransaction();
+			releaseLock();
+		}
+	}
+
+	final T5 getTables() {
+		return tables;
+	}
+
+	final RttiCachePair<T1, T2> getCaches() {
+		return caches;
+	}
+
+	@Override
+	public final DBObjectCache<T1> getTypeCache() {
+		return caches.getTypeCache();
+	}
+
+	@Override
+	public final DBObjectCache<T2> getVtableCache() {
+		return caches.getVtableCache();
+	}
+
+	@Override
+	public final T1 resolve(ClassTypeInfo type) {
+		long key = getTypeKey(type);
+		if (key != INVALID_KEY) {
+			return getType(key);
+		}
+		acquireLock();
+		try {
+			startTransaction();
+			key = getClassKey();
+			T3 record = createTypeRecord(key);
+			T1 typeDb = buildType(type, record);
+			TypeInfoArchiveChangeRecord change =
+				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, typeDb);
+			getPlugin().fireArchiveChanged(change);
+			return typeDb;
+		} catch (IOException e) {
+			dbError(e);
+		} finally {
+			endTransaction();
+			releaseLock();
+		}
+		return null;
+	}
+
+	@Override
+	public final T2 resolve(Vtable vtable) {
+		long key = getVtableKey(vtable);
+		if (key != INVALID_KEY) {
+			return getVtable(key);
+		}
+		if (!(vtable instanceof GnuVtable)) {
+			return null;
+		}
+		acquireLock();
+		try {
+			startTransaction();
+			key = getVtableKey();
+			T4 record = createVtableRecord(key);
+			return buildVtable(vtable, record);
+		} catch (IOException e) {
+			dbError(e);
+		} finally {
+			endTransaction();
+			releaseLock();
+		}
+		return null;
+	}
+
+	@Override
+	public final T1 getType(long key) {
+		acquireLock();
+		try {
+			T3 record = getTypeRecord(key);
+			if (record == null) {
+				return null;
+			}
+			T1 type = caches.getTypeCache().get(record.getRecord());
+			if (type == null) {
+				type = buildType(record);
+			}
+			return type;
+		} finally {
+			releaseLock();
+		}
+	}
+
+	@Override
+	public final T2 getVtable(long key) {
+		acquireLock();
+		try {
+			T4 record = getVtableRecord(key);
+			if (record == null) {
+				return null;
+			}
+			T2 vtable = caches.getVtableCache().get(record.getRecord());
+			if (vtable == null) {
+				vtable = buildVtable(record);
+			}
+			return vtable;
+		} finally {
+			releaseLock();
+		}
+	}
+
+	final long getClassKey() {
+		acquireLock();
+		try {
+			return tables.getTypeTable().getKey();
+		} finally {
+			releaseLock();
+		}
+	}
+
+	final long getVtableKey() {
+		acquireLock();
+		try {
+			return tables.getVtableTable().getKey();
+		} finally {
+			releaseLock();
+		}
+	}
+
+	final Stream<ClassTypeInfoDB> getTypeStream() {
+		return getTypeStream(false);
+	}
+
+	final Stream<ClassTypeInfoDB> getTypeStream(boolean reverse) {
+		long maxKey = tables.getTypeTable().getMaxKey();
+		if (reverse) {
+			return LongStream.iterate(maxKey, i -> i >= 0, i -> i - 1)
+				.mapToObj(this::getType);
+		}
+		return LongStream.iterate(0, i -> i <= maxKey, i -> i + 1)
+			.mapToObj(this::getType);
+	}
+
+	final Stream<T2> getVtableStream() {
+		long maxKey = tables.getVtableTable().getMaxKey();
+		return LongStream.iterate(0, i -> i <= maxKey, i -> i + 1)
+			.mapToObj(this::getVtable);
+	}
+
+	final Iterable<ClassTypeInfoDB> getTypes() {
+		return getTypes(false);
+	}
+
+	final Iterable<ClassTypeInfoDB> getTypes(boolean reverse) {
+		return () -> getTypeStream(reverse).iterator();
+	}
+}

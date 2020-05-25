@@ -19,7 +19,7 @@ import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.program.database.ProgramBuilder;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;

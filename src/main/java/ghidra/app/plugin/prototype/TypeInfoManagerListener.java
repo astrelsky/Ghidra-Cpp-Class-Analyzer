@@ -1,7 +1,7 @@
 package ghidra.app.plugin.prototype;
 
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
-import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 
 public interface TypeInfoManagerListener {
 	void managerOpened(ClassTypeInfoManager manager);

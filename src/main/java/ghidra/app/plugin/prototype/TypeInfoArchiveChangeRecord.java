@@ -1,6 +1,6 @@
 package ghidra.app.plugin.prototype;
 
-import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 
 public class TypeInfoArchiveChangeRecord {
 

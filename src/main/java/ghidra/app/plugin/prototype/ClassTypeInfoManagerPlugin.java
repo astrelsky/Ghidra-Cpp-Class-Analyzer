@@ -6,8 +6,12 @@ import java.util.*;
 
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
-import ghidra.app.plugin.prototype.typemgr.AddressableTreeNode;
+import ghidra.app.plugin.core.datamgr.DataTypeManagerPlugin;
+import ghidra.app.plugin.core.datamgr.archive.DataTypeManagerHandler;
+import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
+import ghidra.app.plugin.prototype.typemgr.dialog.OpenProjectArchiveDialog;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.framework.model.DomainFile;
@@ -17,15 +21,20 @@ import ghidra.framework.plugintool.Plugin;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
+import ghidra.program.database.DataTypeArchiveDB;
 import ghidra.program.database.ProgramDB;
-import ghidra.program.database.data.rtti.manager.ArchiveClassTypeInfoManager;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
-import ghidra.program.database.data.rtti.manager.ClassTypeInfoManagerDB;
-import ghidra.program.database.data.rtti.ProgramClassTypeInfoManager;
-import ghidra.program.model.data.StandAloneDataTypeManager;
+import cppclassanalyzer.data.manager.ArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
+import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+
+import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.SystemUtilities;
 import ghidra.util.exception.AssertException;
+import ghidra.util.exception.CancelledException;
 
 import docking.ActionContext;
 import docking.Tool;
@@ -58,6 +67,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	private final List<ClassTypeInfoManager> managers;
 	private final List<TypeInfoManagerListener> listeners;
 	private final TypeInfoTreeProvider provider;
+	private DataTypeManagerPlugin dtmPlugin;
 
 	public ClassTypeInfoManagerPlugin(PluginTool tool) {
 		super(tool, true, true);
@@ -68,13 +78,18 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	}
 
 	@Override
+	protected void init() {
+		DataTypeManagerService service = tool.getService(DataTypeManagerService.class);
+		dtmPlugin = (DataTypeManagerPlugin) service;
+	}
+
+	@Override
 	public List<ClassTypeInfoManager> getManagers() {
 		return Collections.unmodifiableList(managers);
 	}
 
 	@Override
 	public List<DockingActionIf> getPopupActions(Tool tool, ActionContext context) {
-		// TODO Auto-generated method stub
 		return Collections.emptyList();
 	}
 
@@ -97,23 +112,48 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	public void closeArchive(ClassTypeInfoManager manager) {
 		managers.remove(manager);
 		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
-		if (manager instanceof StandAloneDataTypeManager) {
-			((StandAloneDataTypeManager) manager).close();
+		if (manager instanceof FileArchiveClassTypeInfoManager) {
+			((FileArchiveClassTypeInfoManager) manager).close();
 		}
 	}
 
 	@Override
-	public ClassTypeInfoManager openArchive(File file, boolean updateable) throws IOException {
-		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.open(this, file, updateable);
+	public void openArchive(File file, boolean updateable) throws IOException {
+		ClassTypeInfoManager manager =
+			ArchiveClassTypeInfoManager.open(this, file, updateable);
 		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
-		return manager;
 	}
 
 	@Override
-	public ClassTypeInfoManager createArchive(File file) throws IOException {
+	public void createArchive(File file) throws IOException {
 		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.createManager(this, file);
 		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
-		return manager;
+	}
+
+	@Override
+	public void createProjectArchive() throws IOException {
+		try {
+			ProjectArchive archive =
+				(ProjectArchive) dtmPlugin.getDataTypeManagerHandler().createProjectArchive();
+			ClassTypeInfoManager manager = ProjectClassTypeInfoManager.createManager(this, archive);
+			SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
+		} catch (CancelledException e) {
+		}
+	}
+
+	@Override
+	public void openProjectArchive() throws IOException {
+		OpenProjectArchiveDialog dialog = new OpenProjectArchiveDialog(this);
+		dialog.show();
+	}
+
+	public void openProjectArchive(DataTypeArchiveDB archive) throws IOException {
+		ClassTypeInfoManager manager = ProjectClassTypeInfoManager.open(this, archive);
+		projectManagerOpened(manager);
+	}
+
+	private void projectManagerOpened(ClassTypeInfoManager manager) {
+		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
 	}
 
 	@Override
@@ -140,11 +180,19 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
 	}
 
+	public DataTypeManagerPlugin getDataTypeManagerPlugin() {
+		return dtmPlugin;
+	}
+
+	public DataTypeManagerHandler getDataTypeManagerHandler() {
+		return dtmPlugin.getDataTypeManagerHandler();
+	}
+
 	public void fireArchiveChanged(TypeInfoArchiveChangeRecord record) {
-		switch(record.getChangeType()) {
+		switch (record.getChangeType()) {
 			case TYPE_ADDED:
 				SystemUtilities.runSwingLater(
-				() -> listeners.forEach(l -> l.typeAdded(record.getType())));
+					() -> listeners.forEach(l -> l.typeAdded(record.getType())));
 				break;
 			case TYPE_REMOVED:
 				SystemUtilities.runSwingLater(
@@ -162,22 +210,25 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	public ProgramClassTypeInfoManager getManager(Program program) {
+		if (managers.isEmpty()) {
+			return null;
+		}
 		return managers.stream()
-		.filter(ProgramClassTypeInfoManager.class::isInstance)
-		.map(ProgramClassTypeInfoManager.class::cast)
-		.filter(m -> m.getProgram().equals(program))
-		.findAny()
-		.orElseThrow();
+				.filter(ProgramClassTypeInfoManager.class::isInstance)
+				.map(ProgramClassTypeInfoManager.class::cast)
+				.filter(m -> m.getProgram().equals(program))
+				.findAny()
+				.orElseThrow();
 	}
 
 	public static boolean isEnabled(Program program) {
 		// check program's listeners for instance of this
 		DomainFile f = program.getDomainFile();
 		return plugins.stream()
-			.map(Plugin::getTool)
-			.map(PluginTool::getDomainFiles)
-			.flatMap(Arrays::stream)
-			.anyMatch(f::equals);
+				.map(Plugin::getTool)
+				.map(PluginTool::getDomainFiles)
+				.flatMap(Arrays::stream)
+				.anyMatch(f::equals);
 	}
 
 	@Override
@@ -185,15 +236,20 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		plugins.remove(this);
 		tool.removeComponentProvider(provider);
 		provider.dispose();
+		managers.stream()
+			.filter(FileArchiveClassTypeInfoManager.class::isInstance)
+			.map(FileArchiveClassTypeInfoManager.class::cast)
+			.forEach(this::closeArchive);
 	}
 
 	public TypeInfoTreeProvider getProvider() {
 		return provider;
 	}
 
-	public void goTo(AddressableTreeNode node) {
-		if (node.hasAddress()) {
-			goTo(node.getAddress());
+	public void goTo(TypeInfoNode node) {
+		Address address = node.getAddress();
+		if (address != null) {
+			goTo(address);
 		}
 	}
 }

@@ -3,10 +3,12 @@ package ghidra.app.plugin.prototype.typemgr;
 import javax.swing.Icon;
 
 import ghidra.app.plugin.prototype.TypeInfoManagerListener;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoRootNode;
 import ghidra.app.plugin.core.datamgr.util.DataTypeUtils;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
-import ghidra.program.database.data.rtti.ClassTypeInfoManager;
-import ghidra.program.database.data.rtti.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 
 import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
@@ -64,7 +66,7 @@ public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListen
 	public void typeUpdated(ClassTypeInfoDB type) {
 		TypeInfoNode node = getNode(type);
 		if (node != null && node.getType().equals(type)) {
-			node.typeUpdated();
+			node.typeUpdated(type);
 		}
 	}
 
