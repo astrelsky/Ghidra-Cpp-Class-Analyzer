@@ -13,7 +13,6 @@ import ghidra.app.cmd.data.rtti.GnuVtable.VtablePrefix;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.program.database.DatabaseObject;
 import cppclassanalyzer.data.manager.recordmanagers.ArchiveRttiRecordManager;
-import cppclassanalyzer.data.DataBaseUtils;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataTypeConflictHandler;
@@ -166,8 +165,8 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		}
 
 		ArchivedVtablePrefix(ByteBuffer buf) {
-			this.offsets = DataBaseUtils.getLongArray(buf);
-			this.functions = DataBaseUtils.getLongArray(buf);
+			this.offsets = ArchivedGnuVtableRecord.getLongArray(buf);
+			this.functions = ArchivedGnuVtableRecord.getLongArray(buf);
 		}
 
 		private UniversalID getFunctionId(Optional<Function> fun) {
@@ -191,8 +190,8 @@ public class ArchivedGnuVtable extends DatabaseObject {
 
 		byte[] toBytes() {
 			ByteBuffer buf = ByteBuffer.allocate(getSize());
-			DataBaseUtils.putLongArray(buf, offsets);
-			DataBaseUtils.putLongArray(buf, functions);
+			ArchivedGnuVtableRecord.setLongArray(buf, offsets);
+			ArchivedGnuVtableRecord.setLongArray(buf, functions);
 			return buf.array();
 		}
 

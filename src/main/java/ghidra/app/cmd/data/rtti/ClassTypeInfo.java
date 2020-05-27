@@ -103,7 +103,7 @@ public interface ClassTypeInfo extends TypeInfo {
 
 	default SymbolPath getSymbolPath() {
 		SymbolPath path = new SymbolPath(getGhidraClass().getSymbol());
-		return path;
+		return new SymbolPath(path.getParent(), getName());
 	}
 
 }

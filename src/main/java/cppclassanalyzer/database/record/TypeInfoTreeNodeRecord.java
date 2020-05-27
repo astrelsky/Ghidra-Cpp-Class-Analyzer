@@ -9,7 +9,6 @@ public class TypeInfoTreeNodeRecord extends AbstractDatabaseRecord<TypeInfoTreeN
 	public static final byte ROOT_NODE = 0;
 	public static final byte NAMESPACE_NODE = 1;
 	public static final byte TYPEINFO_NODE = 2;
-	public static final byte NESTED_NODE = 3;
 
 	public TypeInfoTreeNodeRecord(db.Record record) {
 		super(record);

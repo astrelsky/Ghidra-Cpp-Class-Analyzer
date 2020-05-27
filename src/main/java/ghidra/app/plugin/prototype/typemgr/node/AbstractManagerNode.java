@@ -1,19 +1,19 @@
 package ghidra.app.plugin.prototype.typemgr.node;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.help.UnsupportedOperationException;
 import javax.swing.Icon;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
-import cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields;
 
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import docking.widgets.tree.GTreeNode;
 import docking.widgets.tree.GTreeSlowLoadingNode;
+
+import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.CHILDREN_KEYS;
 
 abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeInfoTreeNode {
 
@@ -22,7 +22,11 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 
 	AbstractManagerNode(ClassTypeInfoManager manager) {
 		this.manager = manager;
-		this.record = getManager().getRootRecord();
+		TypeInfoTreeNodeManager treeManager = getManager();
+		this.record = treeManager.getRootRecord();
+		treeManager.setRootNode(this);
+		// force generate now to prevent deadlock
+		children();
 	}
 
 	@Override
@@ -31,18 +35,24 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 	}
 
 	@Override
-	public final List<GTreeNode> generateChildren(TaskMonitor monitor) throws CancelledException {
-		TypeInfoTreeNodeManager treeManager = getManager();
-		long[] keys = getRecord().getLongArray(TypeInfoTreeNodeSchemaFields.CHILDREN_KEYS);
-		List<GTreeNode> children = new ArrayList<>(keys.length);
-		monitor.initialize(keys.length);
-		for (long key : keys) {
-			monitor.checkCanceled();
-			TypeInfoTreeNodeRecord child = treeManager.getRecord(key);
-			children.add(treeManager.getNode(child));
-			monitor.incrementProgress(1);
+	public void addNode(GTreeNode node) {
+		if (node instanceof TypeInfoTreeNode) {
+			TypeInfoTreeNode treeNode = (TypeInfoTreeNode) node;
+			long[] children = record.getLongArray(CHILDREN_KEYS);
+			long[] newChildren = new long[children.length + 1];
+			System.arraycopy(children, 0, newChildren, 0, children.length);
+			newChildren[children.length] = treeNode.getKey();
+			record.setLongArray(CHILDREN_KEYS, newChildren);
+			manager.getTreeNodeManager().updateRecord(record);
+			treeNode.setParent(getKey());
 		}
-		return children;
+		super.addNode(node);
+		children().sort(null);
+	}
+
+	@Override
+	public final List<GTreeNode> generateChildren(TaskMonitor monitor) throws CancelledException {
+		return getManager().generateChildren(this, monitor);
 	}
 
 	@Override

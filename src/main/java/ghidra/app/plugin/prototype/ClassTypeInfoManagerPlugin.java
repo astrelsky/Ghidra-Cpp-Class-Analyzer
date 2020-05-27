@@ -40,6 +40,7 @@ import docking.ActionContext;
 import docking.Tool;
 import docking.action.DockingActionIf;
 import docking.actions.PopupActionProvider;
+import docking.widgets.tree.GTree;
 
 /**
  * Plugin to pop up the dialog to manage rtti in the program
@@ -237,9 +238,9 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		tool.removeComponentProvider(provider);
 		provider.dispose();
 		managers.stream()
-			.filter(FileArchiveClassTypeInfoManager.class::isInstance)
-			.map(FileArchiveClassTypeInfoManager.class::cast)
-			.forEach(this::closeArchive);
+				.filter(FileArchiveClassTypeInfoManager.class::isInstance)
+				.map(FileArchiveClassTypeInfoManager.class::cast)
+				.forEach(this::closeArchive);
 	}
 
 	public TypeInfoTreeProvider getProvider() {
@@ -251,5 +252,10 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		if (address != null) {
 			goTo(address);
 		}
+	}
+
+	@Override
+	public GTree getTree() {
+		return provider.getTree();
 	}
 }

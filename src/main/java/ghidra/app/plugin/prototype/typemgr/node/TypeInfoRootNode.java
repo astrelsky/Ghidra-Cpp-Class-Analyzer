@@ -34,15 +34,16 @@ public class TypeInfoRootNode extends AbstractManagerNode {
 	public void addNode(ClassTypeInfoDB type) {
 		List<String> paths = type.getSymbolPath().asList();
 		GTreeNode node = this;
+		TypeInfoTreeNodeManager treeManager = getManager();
 		for (int i = 0; i < paths.size(); i++) {
 			String path = paths.get(i);
 			GTreeNode currentNode = node.getChild(path);
 			if (currentNode == null) {
 				List<String> subPaths = paths.subList(0, i+1);
 				if (subPaths.size() == paths.size()) {
-					currentNode = createTypeNode(subPaths, type);
+					currentNode = treeManager.createTypeNode(subPaths, type);
 				} else {
-					currentNode = createNamespaceNode(subPaths);
+					currentNode = treeManager.createNamespaceNode(subPaths);
 				}
 				node.addNode(currentNode);
 			}
@@ -51,38 +52,16 @@ public class TypeInfoRootNode extends AbstractManagerNode {
 		if (node instanceof NamespacePathNode) {
 			GTreeNode parent = node.getParent();
 			parent.removeNode(node);
-			GTreeNode currentNode = createNestedNode(type, (NamespacePathNode) node);
-			currentNode.addNode(node);
+			TypeInfoTreeNodeRecord record = ((TypeInfoTreeNode) node).getRecord();
+			node.dispose();
+			record.setByteValue(TYPE_ID, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
+			record.setLongValue(TYPE_KEY, type.getKey());
+			treeManager.updateRecord(record);
+			GTreeNode currentNode = new TypeInfoNode(type, record);
 			parent.addNode(currentNode);
 		}
 		children().sort(null);
 	}
-
-	private GTreeNode createNamespaceNode(List<String> paths) {
-		TypeInfoTreeNodeManager treeManager = getTypeManager().getTreeNodeManager();
-		TypeInfoTreeNodeRecord record =
-			treeManager.createRecord(paths, TypeInfoTreeNodeRecord.NAMESPACE_NODE);
-		return new NamespacePathNode(treeManager, record);
-	}
-
-	private GTreeNode createTypeNode(List<String> paths, ClassTypeInfoDB type) {
-		TypeInfoTreeNodeManager treeManager = getTypeManager().getTreeNodeManager();
-		TypeInfoTreeNodeRecord record =
-			treeManager.createRecord(paths, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
-		record.setLongValue(TYPE_KEY, type.getKey());
-		treeManager.updateRecord(record);
-		return new TypeInfoNode(type, record);
-	}
-
-	private GTreeNode createNestedNode(ClassTypeInfoDB type, NamespacePathNode nested) {
-		TypeInfoTreeNodeRecord record = nested.getRecord();
-		record.setByteValue(TYPE_ID, TypeInfoTreeNodeRecord.NESTED_NODE);
-		record.setLongValue(TYPE_KEY, type.getKey());
-		getTypeManager().getTreeNodeManager().updateRecord(record);
-		return new TypeInfoNode(type, nested, record);
-	}
-
-
 
 	public void removeNode(ClassTypeInfo type) {
 		GTreeNode node = getNode(type);

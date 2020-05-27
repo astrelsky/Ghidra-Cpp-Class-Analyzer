@@ -6,8 +6,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsVtableModel;
-import cppclassanalyzer.data.DataBaseUtils;
-import cppclassanalyzer.data.DataBaseUtils.ByteConvertable;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
@@ -15,6 +13,7 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Listing;
 
 import cppclassanalyzer.database.record.VtableRecord;
+import cppclassanalyzer.database.record.DatabaseRecord.ByteConvertable;
 
 public class VftableDB extends AbstractVtableDB {
 
@@ -41,7 +40,7 @@ public class VftableDB extends AbstractVtableDB {
 						 .mapToInt(VftableRecord::getSize)
 						 .sum();
 		ByteBuffer buf = ByteBuffer.allocate(size + Integer.BYTES);
-		DataBaseUtils.putObjectArray(buf, records);
+		VtableRecord.putObjectArray(buf, records);
 		record.setBinaryData(RECORDS, buf.array());
 		manager.updateRecord(record);
 	}
@@ -67,7 +66,7 @@ public class VftableDB extends AbstractVtableDB {
 
 		VftableRecord(ByteBuffer buf) {
 			this.address = buf.getLong();
-			this.functions = DataBaseUtils.getLongArray(buf);
+			this.functions = VtableRecord.getLongArray(buf);
 		}
 
 		VftableRecord(Address address, Function[] functions) {
@@ -89,7 +88,7 @@ public class VftableDB extends AbstractVtableDB {
 		public byte[] toBytes() {
 			ByteBuffer buf = ByteBuffer.allocate(getSize());
 			buf.putLong(address);
-			DataBaseUtils.putLongArray(buf, functions);
+			VtableRecord.setLongArray(buf, functions);
 			return buf.array();
 		}
 

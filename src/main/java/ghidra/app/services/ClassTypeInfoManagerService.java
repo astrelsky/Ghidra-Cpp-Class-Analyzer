@@ -10,6 +10,8 @@ import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.framework.plugintool.ServiceInfo;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import docking.widgets.tree.GTree;
+
 import ghidra.program.model.listing.Program;
 
 //@formatter:off
@@ -46,6 +48,8 @@ public interface ClassTypeInfoManagerService {
 	public ProgramClassTypeInfoManager getManager(Program program);
 
 	public List<ClassTypeInfoManager> getManagers();
+
+	public GTree getTree();
 
 	public static boolean isEnabled(Program program) {
 		return ClassTypeInfoManagerPlugin.isEnabled(program);

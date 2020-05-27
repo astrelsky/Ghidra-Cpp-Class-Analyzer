@@ -19,9 +19,9 @@ import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFiel
 
 public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNode {
 
-	private final NamespacePathNode nested;
 	private final boolean isVirtual;
 	private final TypeInfoTreeNodeRecord record;
+	private NamespacePathNode nested;
 	private ClassTypeInfoDB type;
 	private ModifierType modifier;
 
@@ -38,18 +38,24 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 	}
 
 	TypeInfoNode(ClassTypeInfoDB type, TypeInfoTreeNodeRecord record) {
-		this(type, null, record);
-	}
-
-	TypeInfoNode(ClassTypeInfoDB type, NamespacePathNode nested, TypeInfoTreeNodeRecord record) {
-		this.nested = nested;
 		this.isVirtual = false;
 		this.record = record;
 		this.type = type;
 		this.modifier = getModifier();
-		if (nested != null) {
-			nested.setToolTip("Nested Classes");
+		long[] kids = record.getLongArray(CHILDREN_KEYS);
+		if (kids.length > 0) {
+			this.nested = new NamespacePathNode(getManager(), record);
 		}
+	}
+
+	TypeInfoNode(ClassTypeInfoDB type, NamespacePathNode nested) {
+		this.isVirtual = false;
+		this.nested = nested;
+		this.record = nested.getRecord();
+		this.type = type;
+		this.modifier = getModifier();
+		record.setByteValue(TYPE_ID, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
+		getManager().updateRecord(record);
 	}
 
 	private ModifierType getModifier() {
@@ -60,7 +66,15 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 	}
 
 	@Override
-	public final GTreeNode clone() {
+	public void addNode(GTreeNode node) {
+		if (nested == null) {
+			nested = new NamespacePathNode(getManager(), record);
+		}
+		nested.addNode(node);
+	}
+
+	@Override
+	public GTreeNode clone() {
 		return this;
 	}
 
@@ -74,7 +88,6 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 
 	@Override
 	protected List<GTreeNode> generateChildren() {
-		refresh();
 		List<GTreeNode> parents = Arrays.stream(type.getParentModels())
 			.map(TypeInfoNode::new)
 			.collect(Collectors.toList());
@@ -88,6 +101,7 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 		if (nested != null) {
 			result.add(nested);
 		}
+		result.sort(null);
 		return result;
 	}
 
@@ -127,16 +141,12 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 	}
 
 	public void typeUpdated(ClassTypeInfoDB type) {
-		refresh();
-	}
-
-	private void refresh() {
-		if (!type.checkIsValid()) {
-			type = type.getManager().resolve(type);
+		if (getKey() != type.getKey()) {
 			record.setLongValue(TYPE_KEY, type.getKey());
 			getManager().updateRecord(record);
-			modifier = getModifier();
 		}
+		this.type = type;
+		modifier = getModifier();
 	}
 
 	public Address getAddress() {

@@ -65,9 +65,7 @@ public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListen
 	@Override
 	public void typeUpdated(ClassTypeInfoDB type) {
 		TypeInfoNode node = getNode(type);
-		if (node != null && node.getType().equals(type)) {
-			node.typeUpdated(type);
-		}
+		node.typeUpdated(type);
 	}
 
 	TypeInfoNode getNode(ClassTypeInfoDB type) {

@@ -1,11 +1,8 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import ghidra.program.model.listing.Data;
 import cppclassanalyzer.data.TypeInfoManager;
@@ -33,18 +30,13 @@ import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.demangler.Demangled;
-import ghidra.app.util.demangler.DemangledAddressTable;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.docking.settings.Settings;
 import ghidra.framework.plugintool.PluginTool;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
-import static ghidra.app.util.demangler.DemanglerUtil.demangle;
 
 public class TypeInfoUtils {
-
-	private static final Pattern DESCRIPTIVE_PREFIX_PATTERN =
-		Pattern.compile("((.+ )+(for|to) )(.+)");
 
 	private TypeInfoUtils() {
 	}
@@ -280,28 +272,6 @@ public class TypeInfoUtils {
 		return getNamespaceFromTypeName(program, typename, false);
 	}
 
-	private static Demangled getCorrectedDemangled(Demangled demangled) {
-		if (!(demangled instanceof DemangledAddressTable)) {
-			throw new AssertException("Unexpected demangled result: "+demangled.getSignature());
-		}
-		String mangled = demangled.getMangledString();
-		try {
-			String output = GnuUtils.getRawDemangledString(mangled);
-			Matcher matcher = DESCRIPTIVE_PREFIX_PATTERN.matcher(output);
-			if (!matcher.matches()) {
-				throw new AssertException("Regex should have matched: " + output);
-			}
-			DemangledAddressTable table =
-				new DemangledAddressTable(mangled, output, TypeInfo.SYMBOL_NAME, true);
-			table.setSignature(output);
-			table.setNamespace(demangled.getNamespace());
-			return table;
-		} catch (IOException e) {
-			// shouldn't occur as it was previously successful
-			throw new AssertException(e);
-		}
-	}
-
 	/**
 	 * Gets the Namespace for the corresponding typename
 	 * @param program the program containing the namespace
@@ -310,8 +280,8 @@ public class TypeInfoUtils {
 	 */
 	private static Namespace getNamespaceFromTypeName(Program program, String typename,
 			boolean isFunction) {
-		Demangled demangled = typename.startsWith("_ZTI") ?
-			demangle(program, typename) : demangle(program, "_ZTI"+typename);
+		String mangled = typename.startsWith("_ZTI") ? typename : "_ZTI" + typename;
+		Demangled demangled = GnuUtils.getSpecialDemangled(mangled);
 		if (demangled != null) {
 			try {
 				Integer id = null;
@@ -324,9 +294,9 @@ public class TypeInfoUtils {
 						demangled.getSignature(),
 						null, program, SourceType.ANALYSIS);
 				} else {
-					demangled = getCorrectedDemangled(demangled);
 					ns = DemangledObject.createNamespace(
-            			program, demangled.getNamespace(), program.getGlobalNamespace(), false);
+						program, demangled.getNamespace(),
+						program.getGlobalNamespace(), false);
 				}
 				if (id != null) {
 					program.endTransaction(id, true);

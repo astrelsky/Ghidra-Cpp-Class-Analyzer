@@ -75,4 +75,8 @@ public interface DatabaseRecord<T extends FieldEnum> {
 	void write(Buffer buf, int offset) throws IOException;
 
 	db.Record getRecord();
+
+	public interface ByteConvertable {
+		byte[] toBytes();
+	}
 }

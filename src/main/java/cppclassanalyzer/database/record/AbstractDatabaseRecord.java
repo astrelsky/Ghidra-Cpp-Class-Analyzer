@@ -2,6 +2,7 @@ package cppclassanalyzer.database.record;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
@@ -62,6 +63,16 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 		buf.putInt(values.length);
 		for (long value : values) {
 			buf.putLong(value);
+		}
+	}
+
+	public static void putObjectArray(ByteBuffer buf, ByteConvertable[] obj) {
+		byte[][] data = Arrays.stream(obj)
+							  .map(ByteConvertable::toBytes)
+							  .toArray(byte[][]::new);
+		buf.putInt(data.length);
+		for (byte[] bytes : data) {
+			buf.put(bytes);
 		}
 	}
 

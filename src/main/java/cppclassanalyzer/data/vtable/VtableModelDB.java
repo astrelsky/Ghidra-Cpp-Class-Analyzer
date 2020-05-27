@@ -10,8 +10,6 @@ import java.util.stream.Collectors;
 
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
-import cppclassanalyzer.data.DataBaseUtils;
-import cppclassanalyzer.data.DataBaseUtils.ByteConvertable;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable.ArchivedVtablePrefix;
@@ -27,6 +25,7 @@ import ghidra.program.model.listing.Program;
 import com.google.common.primitives.Longs;
 
 import cppclassanalyzer.database.record.VtableRecord;
+import cppclassanalyzer.database.record.DatabaseRecord.ByteConvertable;
 
 public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 
@@ -50,7 +49,7 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 				.mapToInt(VtableModelPrefixRecord::getSize)
 				.sum();
 		ByteBuffer buf = ByteBuffer.allocate(size + Integer.BYTES);
-		DataBaseUtils.putObjectArray(buf, records);
+		VtableRecord.putObjectArray(buf, records);
 		record.setBinaryData(RECORDS, buf.array());
 		manager.updateRecord(record);
 	}
@@ -129,8 +128,8 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 
 		VtableModelPrefixRecord(ByteBuffer buf) {
 			this.address = buf.getLong();
-			this.offsets = DataBaseUtils.getLongArray(buf);
-			this.functions = DataBaseUtils.getLongArray(buf);
+			this.offsets = VtableRecord.getLongArray(buf);
+			this.functions = VtableRecord.getLongArray(buf);
 
 		}
 
@@ -171,8 +170,8 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 		public byte[] toBytes() {
 			ByteBuffer buf = ByteBuffer.allocate(getSize());
 			buf.putLong(address);
-			DataBaseUtils.putLongArray(buf, offsets);
-			DataBaseUtils.putLongArray(buf, functions);
+			VtableRecord.setLongArray(buf, offsets);
+			VtableRecord.setLongArray(buf, functions);
 			return buf.array();
 		}
 

@@ -6,6 +6,7 @@ import cppclassanalyzer.data.vtable.AbstractVtableDB;
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
 import cppclassanalyzer.database.record.VtableRecord;
 
+// Tagging interface for generic simplification
 public interface ProgramRttiRecordManager extends
 		RttiRecordManager<AbstractClassTypeInfoDB, AbstractVtableDB,
 			ClassTypeInfoRecord, VtableRecord> {

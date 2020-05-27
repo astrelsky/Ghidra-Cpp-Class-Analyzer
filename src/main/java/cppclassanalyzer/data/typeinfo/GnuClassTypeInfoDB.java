@@ -39,7 +39,11 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
 	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfoRecord record) {
 		super(worker, record);
-		refresh(record);
+		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
+		this.nonVirtualBaseKeys = ClassTypeInfoRecord.getLongArray(buf);
+		this.virtualBaseKeys = ClassTypeInfoRecord.getLongArray(buf);
+		this.baseKeys = ClassTypeInfoRecord.getLongArray(buf);
+		this.baseOffsets = ClassTypeInfoRecord.getIntArray(buf);
 	}
 
 	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfo type,

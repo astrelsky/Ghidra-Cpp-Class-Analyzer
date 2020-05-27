@@ -209,6 +209,7 @@ public class ClassTypeInfoUtils {
 	}
 
 	private static DataTypeManager getCppDataTypeManager(DataTypeManager dtm) {
+		// TODO remove
 		if (dtm instanceof ProgramBasedDataTypeManager) {
 			Program program = ((ProgramBasedDataTypeManager) dtm).getProgram();
 			if (GnuUtils.isGnuCompiler(program)) {

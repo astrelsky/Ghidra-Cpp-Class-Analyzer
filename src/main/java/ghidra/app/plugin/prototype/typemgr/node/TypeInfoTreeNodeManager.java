@@ -3,6 +3,8 @@ package ghidra.app.plugin.prototype.typemgr.node;
 import ghidra.app.util.SymbolPath;
 import ghidra.util.Lock;
 import ghidra.util.exception.AssertException;
+import ghidra.util.exception.CancelledException;
+import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
@@ -12,6 +14,7 @@ import cppclassanalyzer.database.tables.TypeInfoTreeNodeTable;
 import db.DBHandle;
 import db.StringField;
 import db.Table;
+import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
 
 import static cppclassanalyzer.database.record.TypeInfoTreeNodeRecord.*;
@@ -19,6 +22,8 @@ import static cppclassanalyzer.database.schema.TypeInfoTreeNodeSchema.INDEXED_CO
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class TypeInfoTreeNodeManager {
@@ -27,19 +32,18 @@ public class TypeInfoTreeNodeManager {
 	private final ClassTypeInfoManager manager;
 	private final TransactionHandler handler;
 	private final Lock lock = new Lock(getClass().getSimpleName());
+	private TypeInfoTreeNode root;
 
 	public TypeInfoTreeNodeManager(ClassTypeInfoManager manager, DBHandle handle) {
 		this.manager = manager;
 		this.handler = new TransactionHandler(handle);
 		this.table = getTable(handle, getClass().getSimpleName());
-		createRootRecord();
 	}
 
 	public TypeInfoTreeNodeManager(ClassTypeInfoManager manager, DBHandle handle, String name) {
 		this.manager = manager;
 		this.handler = new TransactionHandler(handle);
 		this.table = getTable(handle, name + " " + getClass().getSimpleName());
-		createRootRecord();
 	}
 
 	private TypeInfoTreeNodeTable getTable(DBHandle handle, String name) {
@@ -61,13 +65,23 @@ public class TypeInfoTreeNodeManager {
 	}
 
 	TypeInfoTreeNodeRecord getRootRecord() {
-		return getRecord("/");
+		TypeInfoTreeNodeRecord record = getRecord("/");
+		if (record == null) {
+			record = createRootRecord();
+		}
+		return record;
 	}
 
-	private void createRootRecord() {
+	void setRootNode(TypeInfoTreeNode node) {
+		this.root = node;
+	}
+
+	private TypeInfoTreeNodeRecord createRootRecord() {
 		TypeInfoTreeNodeRecord record = createRecord();
-		record.setStringValue(NAME, "/");
+		record.setStringValue(NAME, "Root");
+		record.setStringValue(SYMBOL_PATH, "/");
 		updateRecord(record);
+		return record;
 	}
 
 	TypeInfoTreeNodeRecord createRecord(List<String> paths, byte type) {
@@ -81,6 +95,11 @@ public class TypeInfoTreeNodeManager {
 			SymbolPath parentPath = path.getParent();
 			if (parentPath != null) {
 				TypeInfoTreeNodeRecord parent = getRecord(parentPath);
+				if (parent == null) {
+					TypeInfoTreeNode node =
+						(TypeInfoTreeNode) createNamespaceNode(parentPath.asList());
+					parent = node.getRecord();
+				}
 				record.setLongValue(PARENT_KEY, parent.getKey());
 			} else {
 				record.setLongValue(PARENT_KEY, -1);
@@ -142,6 +161,20 @@ public class TypeInfoTreeNodeManager {
 		return null;
 	}
 
+	GTreeNode createNamespaceNode(List<String> paths) {
+		TypeInfoTreeNodeRecord record =
+			createRecord(paths, TypeInfoTreeNodeRecord.NAMESPACE_NODE);
+		return new NamespacePathNode(this, record);
+	}
+
+	GTreeNode createTypeNode(List<String> paths, ClassTypeInfoDB type) {
+		TypeInfoTreeNodeRecord record =
+			createRecord(paths, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
+		record.setLongValue(TYPE_KEY, type.getKey());
+		updateRecord(record);
+		return new TypeInfoNode(type, record);
+	}
+
 	GTreeNode getNode(SymbolPath path) {
 		lock.acquire();
 		try {
@@ -159,20 +192,47 @@ public class TypeInfoTreeNodeManager {
 		manager.dbError(e);
 	}
 
-	public GTreeNode getNode(TypeInfoTreeNodeRecord record) {
+	private GTreeNode fastGetNode(TypeInfoTreeNodeRecord record) {
+		if (root == null) {
+			// don't bother
+			return null;
+		}
+		long rootKey = root.getKey();
+		long key = record.getKey();
+		LinkedList<String> paths = new LinkedList<>();
+		while (key != rootKey) {
+			TypeInfoTreeNodeRecord parentRecord = getRecord(key);
+			paths.add(parentRecord.getStringValue(NAME));
+			key = parentRecord.getLongValue(PARENT_KEY);
+		}
+		GTreeNode node = (GTreeNode) root;
+		for (String path : (Iterable<String>) () -> paths.descendingIterator()) {
+			if (node == null) {
+				return null;
+			}
+			node = node.getChild(path);
+		}
+		return node != root ? node : null;
+	}
+
+	GTreeNode createNode(TypeInfoTreeNodeRecord record) {
 		long key = record.getLongValue(TYPE_KEY);
 		switch (record.getByteValue(TYPE_ID)) {
 			case NAMESPACE_NODE:
 				return new NamespacePathNode(this, record);
 			case TYPEINFO_NODE:
 				return new TypeInfoNode(manager.getType(key), record);
-			case NESTED_NODE:
-				ClassTypeInfoDB type = manager.getType(key);
-				NamespacePathNode nested = new NamespacePathNode(this, record);
-				return new TypeInfoNode(type, nested, record);
 			default:
 				throw new AssertException("Unknown TypeInfoTreeNode ID");
 		}
+	}
+
+	public GTreeNode getNode(TypeInfoTreeNodeRecord record) {
+		GTreeNode node = fastGetNode(record);
+		if (node != null) {
+			return node;
+		}
+		return createNode(record);
 	}
 
 	public void updateRecord(TypeInfoTreeNodeRecord record) {
@@ -190,6 +250,29 @@ public class TypeInfoTreeNodeManager {
 
 	ClassTypeInfoManager getManager() {
 		return manager;
+	}
+
+	GTree getTree() {
+		if (root == null) {
+			return null;
+		}
+		return ((GTreeNode) root).getTree();
+	}
+
+	List<GTreeNode> generateChildren(TypeInfoTreeNode node, TaskMonitor monitor)
+			throws CancelledException {
+		TypeInfoTreeNodeRecord record = node.getRecord();
+		long[] keys = record.getLongArray(CHILDREN_KEYS);
+		List<GTreeNode> children = new ArrayList<>(keys.length);
+		monitor.initialize(keys.length);
+		for (long key : keys) {
+			monitor.checkCanceled();
+			TypeInfoTreeNodeRecord child = getRecord(key);
+			children.add(createNode(child));
+			monitor.incrementProgress(1);
+		}
+		children.sort(null);
+		return children;
 	}
 
 	private static class TransactionHandler {
