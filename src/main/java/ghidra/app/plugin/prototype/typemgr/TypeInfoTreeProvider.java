@@ -66,6 +66,8 @@ public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 		addLocalAction(handler.getSaveAction());
 		addLocalAction(handler.getCreateProjectArchiveAction());
 		addLocalAction(handler.getOpenProjectArchiveAction());
+		addLocalAction(handler.getCopyArchiveAction());
+		addLocalAction(handler.getPasteArchiveAction());
 	}
 
 	public void dispose() {

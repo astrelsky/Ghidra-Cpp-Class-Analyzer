@@ -8,7 +8,7 @@ import ghidra.framework.GenericRunInfo;
 import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
 
-class ArchiveFileChooser extends GhidraFileChooser {
+final class ArchiveFileChooser extends GhidraFileChooser {
 
 	private final Component component;
 

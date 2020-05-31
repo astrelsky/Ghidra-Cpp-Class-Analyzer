@@ -9,7 +9,7 @@ import ghidra.util.filechooser.ExtensionFileFilter;
 import generic.jar.ResourceFile;
 import utility.application.ApplicationLayout;
 
-class CppClassAnalyzerPreferences {
+final class CppClassAnalyzerPreferences {
 
 	private static final String EXTENSION_NAME = "Ghidra-Cpp-Class-Analyzer";
 	static final String ARCHIVE_EXTENSION = "cdb";

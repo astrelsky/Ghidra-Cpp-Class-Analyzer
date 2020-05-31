@@ -9,7 +9,7 @@ import docking.ActionContext;
 import docking.action.DockingAction;
 import docking.action.MenuData;
 
-class CreateArchiveAction extends DockingAction {
+final class CreateArchiveAction extends DockingAction {
 
 	private final TypeInfoArchiveHandler handler;
 

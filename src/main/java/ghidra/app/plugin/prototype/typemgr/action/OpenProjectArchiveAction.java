@@ -8,7 +8,7 @@ import docking.ActionContext;
 import docking.action.DockingAction;
 import docking.action.MenuData;
 
-class OpenProjectArchiveAction extends DockingAction {
+final class OpenProjectArchiveAction extends DockingAction {
 
 	private final TypeInfoArchiveHandler handler;
 

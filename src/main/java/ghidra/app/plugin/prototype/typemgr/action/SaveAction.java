@@ -3,7 +3,7 @@ package ghidra.app.plugin.prototype.typemgr.action;
 import docking.ActionContext;
 import docking.action.MenuData;
 
-class SaveAction extends AbstractFileArchivePopupAction {
+final class SaveAction extends AbstractFileArchivePopupAction {
 
 	SaveAction(TypeInfoArchiveHandler handler) {
 		super("Save File Type Info Archive", handler);
@@ -16,7 +16,7 @@ class SaveAction extends AbstractFileArchivePopupAction {
 	@Override
 	public boolean isAddToPopup(ActionContext context) {
 		if (super.isAddToPopup(context)) {
-			return !getManager(context).canUpdate();
+			return getManager(context).canUpdate();
 		}
 		return false;
 	}
@@ -24,7 +24,7 @@ class SaveAction extends AbstractFileArchivePopupAction {
 	@Override
 	public boolean isEnabledForContext(ActionContext context) {
 		if (super.isEnabledForContext(context)) {
-			return !getManager(context).isChanged();
+			return getManager(context).isChanged();
 		}
 		return false;
 	}

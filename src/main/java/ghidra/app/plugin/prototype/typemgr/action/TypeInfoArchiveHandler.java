@@ -57,4 +57,12 @@ public final class TypeInfoArchiveHandler {
 	public DockingAction getOpenProjectArchiveAction() {
 		return new OpenProjectArchiveAction(this);
 	}
+
+	public DockingAction getCopyArchiveAction() {
+		return new CopyArchiveAction(this);
+	}
+
+	public DockingAction getPasteArchiveAction() {
+		return new PasteArchiveAction(this);
+	}
 }

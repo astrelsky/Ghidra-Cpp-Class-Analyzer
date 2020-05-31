@@ -1,31 +1,52 @@
 package ghidra.app.plugin.prototype.typemgr;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import javax.swing.Icon;
+import javax.swing.tree.TreePath;
 
 import ghidra.app.plugin.prototype.TypeInfoManagerListener;
+import ghidra.app.plugin.prototype.typemgr.node.ProjectArchiveTypeInfoNode;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoRootNode;
 import ghidra.app.plugin.core.datamgr.util.DataTypeUtils;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
+import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
-
 import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
+import docking.widgets.tree.support.GTreeDragNDropHandler;
 
 @SuppressWarnings("serial")
-public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListener {
+public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListener {
 
 	private final ClassTypeInfoManagerPlugin plugin;
+	private final TypeInfoDragNDropHandler dropHandler;
 
 	public TypeInfoArchiveGTree(ClassTypeInfoManagerPlugin plugin) {
 		super(new TypeInfoArchiveGTreeRootNode());
 		this.plugin = plugin;
+		this.dropHandler = new TypeInfoDragNDropHandler();
 		plugin.addTypeInfoManagerChangeListener(this);
 	}
 
 	private TypeInfoArchiveGTreeRootNode getRoot() {
 		return (TypeInfoArchiveGTreeRootNode) getModelRoot();
+	}
+
+	@Override
+	public GTreeDragNDropHandler getDragNDropHandler() {
+		return dropHandler;
+	}
+
+	@Override
+	public void setDragNDropHandler(GTreeDragNDropHandler dummy) {
 	}
 
 	@Override
@@ -36,7 +57,14 @@ public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListen
 
 	@Override
 	public void managerOpened(ClassTypeInfoManager manager) {
-		getRoot().addNode(manager);
+		if (manager instanceof LibraryClassTypeInfoManager) {
+			LibraryClassTypeInfoManager libMan = (LibraryClassTypeInfoManager) manager;
+			ProjectArchiveTypeInfoNode node =
+				(ProjectArchiveTypeInfoNode) getRoot().getNode(libMan.getProjectManager());
+			node.addNode(libMan);
+		} else {
+			getRoot().addNode(manager);
+		}
 	}
 
 	@Override
@@ -44,7 +72,7 @@ public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListen
 		getRoot().removeNode(manager);
 	}
 
-	private TypeInfoRootNode getManagerNode(ClassTypeInfoDB type) {
+	private TypeInfoArchiveNode getManagerNode(ClassTypeInfoDB type) {
 		return getRoot().getNode(type.getManager());
 	}
 
@@ -57,7 +85,7 @@ public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListen
 	public void typeRemoved(ClassTypeInfoDB type) {
 		GTreeNode node = getNode(type);
 		if (node != null && node.getName().equals(type.getName())) {
-			GTreeNode root = getManagerNode(type);
+			GTreeNode root = (GTreeNode) getManagerNode(type);
 			root.removeNode(node);
 		}
 	}
@@ -70,6 +98,18 @@ public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListen
 
 	TypeInfoNode getNode(ClassTypeInfoDB type) {
 		return getManagerNode(type).getNode(type);
+	}
+
+	public List<GTreeNode> getSelectedNodes() {
+		TreePath[] selectionPaths = getSelectionPaths();
+		if (selectionPaths == null || selectionPaths.length == 0) {
+			return Collections.emptyList();
+		}
+		return Arrays.stream(selectionPaths)
+			.map(TreePath::getLastPathComponent)
+			.filter(GTreeNode.class::isInstance)
+			.map(GTreeNode.class::cast)
+			.collect(Collectors.toList());
 	}
 
 	private static class TypeInfoArchiveGTreeRootNode extends GTreeNode {
@@ -95,15 +135,25 @@ public class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListen
 		}
 
 		void addNode(ClassTypeInfoManager manager) {
-			addNode(new TypeInfoRootNode(manager));
+			if (manager instanceof ProjectClassTypeInfoManager) {
+				addNode(new ProjectArchiveTypeInfoNode((ProjectClassTypeInfoManager) manager));
+			} else {
+				addNode(new TypeInfoRootNode(manager));
+			}
 		}
 
 		void removeNode(ClassTypeInfoManager manager) {
-			removeNode(getNode(manager));
+			removeNode((GTreeNode) getNode(manager));
 		}
 
-		TypeInfoRootNode getNode(ClassTypeInfoManager manager) {
-			return (TypeInfoRootNode) getChild(manager.getName());
+		TypeInfoArchiveNode getNode(ClassTypeInfoManager manager) {
+			if (manager instanceof LibraryClassTypeInfoManager) {
+				LibraryClassTypeInfoManager libMan = (LibraryClassTypeInfoManager) manager;
+				ProjectArchiveTypeInfoNode node =
+					(ProjectArchiveTypeInfoNode) getNode(libMan.getProjectManager());
+				return (TypeInfoArchiveNode) node.getChild(manager.getName());
+			}
+			return (TypeInfoArchiveNode) getChild(manager.getName());
 		}
 
 	}

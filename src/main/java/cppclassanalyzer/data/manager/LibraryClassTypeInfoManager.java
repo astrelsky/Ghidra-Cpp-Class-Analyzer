@@ -14,11 +14,14 @@ import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.caches.ArchivedRttiCachePair;
 import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+import db.DBHandle;
+
+import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
 
-public class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
+public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 
 	private final ProjectClassTypeInfoManager manager;
 	private final TypeInfoTreeNodeManager treeNodeManager;
@@ -26,11 +29,16 @@ public class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 	private final String name;
 
 	LibraryClassTypeInfoManager(ProjectClassTypeInfoManager manager, ArchivedRttiTablePair tables,
-			TypeInfoTreeNodeManager treeNodeManager, String name) {
+			DBHandle dbHandle, String name) {
 		this.manager = manager;
-		this.treeNodeManager = treeNodeManager;
+		this.treeNodeManager =
+			new TypeInfoTreeNodeManager(this, dbHandle, name);
 		this.worker = new RttiRecordWorker(tables, new ArchivedRttiCachePair());
 		this.name = name;
+	}
+
+	ArchivedRttiTablePair getTables() {
+		return worker.getTables();
 	}
 
 	@Override
@@ -96,12 +104,14 @@ public class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 		return worker.getType(key);
 	}
 
+	public ProjectClassTypeInfoManager getProjectManager() {
+		return manager;
+	}
+
 	private final class RttiRecordWorker extends ArchiveRttiRecordWorker {
 
-		private int id = -1;
-
 		RttiRecordWorker(ArchivedRttiTablePair tables, ArchivedRttiCachePair caches) {
-			super(manager, tables, caches);
+			super(LibraryClassTypeInfoManager.this, tables, caches);
 		}
 
 		@Override
@@ -116,20 +126,20 @@ public class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 
 		@Override
 		public void startTransaction(String description) {
-			id = manager.startTransaction(description);
 		}
 
 		@Override
 		public void endTransaction() {
-			if (id != -1) {
-				manager.endTransaction(id, true);
-				id = -1;
-			}
 		}
 
 		@Override
 		ClassTypeInfoManagerPlugin getPlugin() {
 			return manager.getPlugin();
+		}
+
+		@Override
+		public DataTypeManager getDataTypeManager() {
+			return manager;
 		}
 	}
 

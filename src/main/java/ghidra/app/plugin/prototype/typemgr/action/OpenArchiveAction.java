@@ -11,7 +11,7 @@ import docking.action.DockingAction;
 import docking.action.MenuData;
 import docking.widgets.filechooser.GhidraFileChooser;
 
-class OpenArchiveAction extends DockingAction {
+final class OpenArchiveAction extends DockingAction {
 
 	private final TypeInfoArchiveHandler handler;
 

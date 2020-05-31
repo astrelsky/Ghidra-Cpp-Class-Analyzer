@@ -4,7 +4,7 @@ import javax.swing.tree.TreePath;
 
 import ghidra.app.plugin.prototype.typemgr.TypeInfoArchiveGTree;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
-import ghidra.app.plugin.prototype.typemgr.node.TypeInfoRootNode;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
 import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 
 import docking.ActionContext;
@@ -12,6 +12,9 @@ import docking.action.DockingAction;
 import docking.widgets.tree.GTreeNode;
 
 abstract class AbstractFileArchivePopupAction extends DockingAction {
+
+	static final String FILE_GROUP = "File";
+	static final String EDIT_GROUP = "Edit";
 
 	private final TypeInfoArchiveHandler handler;
 
@@ -35,10 +38,10 @@ abstract class AbstractFileArchivePopupAction extends DockingAction {
 
 		for (TreePath path : selectionPaths) {
 			GTreeNode node = (GTreeNode) path.getLastPathComponent();
-			if (!(node instanceof TypeInfoRootNode)) {
+			if (!(node instanceof TypeInfoArchiveNode)) {
 				return false;
 			}
-			if (((TypeInfoRootNode) node).isProgramNode()) {
+			if (((TypeInfoArchiveNode) node).isProgramNode()) {
 				return false;
 			}
 		}
@@ -54,13 +57,13 @@ abstract class AbstractFileArchivePopupAction extends DockingAction {
 		return handler;
 	}
 
-	TypeInfoRootNode getNode(ActionContext context) {
+	TypeInfoArchiveNode getNode(ActionContext context) {
 		TypeInfoArchiveGTree tree = handler.getTree();
 		TreePath[] selectionPaths = tree.getSelectionPaths();
 		if (selectionPaths.length == 0) {
 			return null;
 		}
-		return (TypeInfoRootNode) selectionPaths[0].getLastPathComponent();
+		return (TypeInfoArchiveNode) selectionPaths[0].getLastPathComponent();
 	}
 
 	FileArchiveClassTypeInfoManager getManager(ActionContext context) {

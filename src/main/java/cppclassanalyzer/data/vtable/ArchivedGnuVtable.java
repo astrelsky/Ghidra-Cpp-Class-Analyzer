@@ -177,7 +177,7 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		}
 
 		private FunctionDefinition resolve(FunctionSignature sig) {
-			DataTypeManager dtm = (DataTypeManager) manager.getManager();
+			DataTypeManager dtm = manager.getDataTypeManager();
 			FunctionDefinition def = new FunctionDefinitionDataType(sig, dtm);
 			return (FunctionDefinition) dtm.resolve(def, DataTypeConflictHandler.KEEP_HANDLER);
 		}
@@ -196,7 +196,7 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		}
 
 		FunctionDefinition[] getDefinitions() {
-			DataTypeManager dtm = (DataTypeManager) manager.getManager();
+			DataTypeManager dtm = manager.getDataTypeManager();
 			return Arrays.stream(functions)
 				.mapToObj(UniversalID::new)
 				.map(dtm::findDataTypeForID)

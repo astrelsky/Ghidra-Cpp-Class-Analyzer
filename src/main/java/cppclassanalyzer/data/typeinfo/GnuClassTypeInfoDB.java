@@ -18,7 +18,8 @@ import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.database.DatabaseObject;
-import cppclassanalyzer.data.manager.ArchiveClassTypeInfoManager;
+
+import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.IntArrayList;
@@ -51,10 +52,10 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		super(worker, type, record);
 		if (type.hasParent()) {
 			virtualBaseKeys = type.getVirtualParents()
-				.stream()
-				.map(manager::resolve)
-				.mapToLong(DatabaseObject::getKey)
-				.toArray();
+					.stream()
+					.map(manager::resolve)
+					.mapToLong(DatabaseObject::getKey)
+					.toArray();
 		} else {
 			virtualBaseKeys = new long[0];
 		}
@@ -62,17 +63,17 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) type;
 			nonVirtualBaseKeys =
 				Arrays.stream(vmi.getBases())
-					.filter(Predicate.not(BaseClassTypeInfoModel::isVirtual))
-					.map(BaseClassTypeInfoModel::getClassModel)
-					.map(manager::resolve)
-					.mapToLong(DatabaseObject::getKey)
-					.toArray();
+						.filter(Predicate.not(BaseClassTypeInfoModel::isVirtual))
+						.map(BaseClassTypeInfoModel::getClassModel)
+						.map(manager::resolve)
+						.mapToLong(DatabaseObject::getKey)
+						.toArray();
 		} else if (type.hasParent()) {
 			nonVirtualBaseKeys =
 				Arrays.stream(type.getParentModels())
-					.map(manager::resolve)
-					.mapToLong(DatabaseObject::getKey)
-					.toArray();
+						.map(manager::resolve)
+						.mapToLong(DatabaseObject::getKey)
+						.toArray();
 		} else {
 			nonVirtualBaseKeys = new long[0];
 		}
@@ -94,9 +95,9 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		super(worker, type, record);
 		this.nonVirtualBaseKeys = type.getBaseKeys();
 		this.virtualBaseKeys = type.getVirtualKeys();
-		ArchiveClassTypeInfoManager aMan = type.getManager();
+		ClassTypeInfoManager aMan = type.getManager();
 		this.baseKeys = Arrays.stream(type.getBaseKeys())
-			.mapToObj(aMan::getClass)
+			.mapToObj(aMan::getType)
 			.map(manager::resolve)
 			.mapToLong(DatabaseObject::getKey)
 			.toArray();

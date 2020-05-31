@@ -1,12 +1,9 @@
 package cppclassanalyzer.data.manager;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.*;
 import java.util.stream.Stream;
 
-import javax.help.UnsupportedOperationException;
 import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -14,8 +11,6 @@ import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
-import ghidra.framework.model.DomainFolder;
-import ghidra.framework.model.Project;
 import ghidra.program.database.DataTypeArchiveDB;
 import ghidra.program.database.data.ProjectDataTypeManager;
 import cppclassanalyzer.data.ClassTypeInfoManager;
@@ -28,9 +23,11 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
+import ghidra.util.Lock;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.VersionException;
+import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.database.schema.ArchivedClassTypeInfoSchema;
@@ -38,6 +35,10 @@ import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.tables.ArchivedClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.ArchivedGnuVtableDatabaseTable;
 import db.DBConstants;
+import db.DBHandle;
+import db.RecordIterator;
+import db.Schema;
+import db.StringField;
 import db.Table;
 import resources.ResourceManager;
 
@@ -49,66 +50,81 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		ResourceManager.loadImage("images/closedBookBlue.png")
 	};
 
+	private static final Schema SCHEMA = new Schema(
+		0,
+		"key",
+		new Class<?>[]{StringField.class, StringField.class, StringField.class},
+		new String[]{"Name", "TypeTable", "VtableTable"}
+	);
+
 	private final ClassTypeInfoManagerPlugin plugin;
-	private final DataTypeArchiveDB db;
-	private final HashMap<String, LibraryClassTypeInfoManager> libMap;
+	private final ProjectArchive archive;
+	private final LibraryMap libMap;
 	private final TypeInfoTreeNodeManager treeNodeManager;
 
-	private ProjectClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin, DataTypeArchiveDB db,
-			int openMode) throws CancelledException, VersionException, IOException {
-		super(db.getDBHandle(), openMode, db, db.getLock(), TaskMonitor.DUMMY);
-		this.db = db;
+	private ProjectClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin, ProjectArchive archive)
+			throws CancelledException, VersionException, IOException {
+		super(getDBHandle(archive), DBConstants.UPDATE, getDB(archive),
+			getLock(archive), TaskMonitor.DUMMY);
+		this.archive = archive;
 		this.plugin = plugin;
-		this.libMap = new HashMap<>();
-		this.treeNodeManager = new TypeInfoTreeNodeManager(this, db.getDBHandle());
+		setDataTypeArchive(getDB(archive));
+		this.libMap = new LibraryMap();
+		this.treeNodeManager = new TypeInfoTreeNodeManager(this, getDBHandle(archive));
+	}
+
+	private static DataTypeArchiveDB getDB(ProjectArchive archive) {
+		return (DataTypeArchiveDB) archive.getDomainObject();
+	}
+
+	private static DBHandle getDBHandle(ProjectArchive archive) {
+		return getDB(archive).getDBHandle();
+	}
+
+	private static Lock getLock(ProjectArchive archive) {
+		return getDB(archive).getLock();
 	}
 
 	public static ProjectClassTypeInfoManager createManager(ClassTypeInfoManagerPlugin plugin,
 			ProjectArchive archive) throws IOException {
-		DataTypeArchiveDB db = (DataTypeArchiveDB) archive.getDomainObject();
 		try {
-			return new ProjectClassTypeInfoManager(plugin, db, DBConstants.UPDATE);
+			return new ProjectClassTypeInfoManager(plugin, archive);
 		} catch (VersionException | CancelledException e) {
 			throw new AssertException(e);
 		}
 	}
 
 	public static ProjectClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin,
-			boolean openForUpdate) throws IOException {
+			ProjectArchive archive) throws IOException {
 		try {
-			DataTypeArchiveDB db = getDb(plugin);
-			int mode = openForUpdate ? DBConstants.UPDATE : DBConstants.READ_ONLY;
-			return new ProjectClassTypeInfoManager(plugin, db, mode);
-		} catch (IOException ioe) {
-			throw ioe;
-		} catch (Exception e) {
+			return new ProjectClassTypeInfoManager(plugin, archive);
+		} catch (VersionException | CancelledException e) {
 			throw new AssertException(e);
 		}
 	}
 
-	public static ProjectClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin)
+	private ArchivedClassTypeInfoDatabaseTable getClassTable(String name)
 			throws IOException {
-		return open(plugin, false);
-	}
-
-	public static ProjectClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin,
-			DataTypeArchiveDB archive) throws IOException {
+		acquireLock();
 		try {
-			return new ProjectClassTypeInfoManager(plugin, archive, DBConstants.READ_ONLY);
-		} catch (VersionException | CancelledException e) {
-			throw new AssertException(e);
+			return new ArchivedClassTypeInfoDatabaseTable(dbHandle.getTable(name));
+		} finally {
+			releaseLock();
 		}
 	}
 
-	private static DataTypeArchiveDB getDb(ClassTypeInfoManagerPlugin plugin) throws Exception {
-		Project project = plugin.getTool().getProject();
-		String name = project.getName();
-		DomainFolder root = project.getProjectData().getRootFolder();
-		return new DataTypeArchiveDB(root, name, plugin.getTool());
+	private ArchivedGnuVtableDatabaseTable getVtableTable(String name)
+			throws IOException {
+		acquireLock();
+		try {
+			return new ArchivedGnuVtableDatabaseTable(dbHandle.getTable(name));
+		} finally {
+			releaseLock();
+		}
 	}
 
 	private ArchivedClassTypeInfoDatabaseTable createClassTable(String name) throws IOException {
-		db.getLock().acquire();
+		acquireLock();
 		try {
 			long id = dbHandle.startTransaction();
 			Table classTable = dbHandle.createTable(
@@ -118,12 +134,12 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			dbHandle.endTransaction(id, true);
 			return new ArchivedClassTypeInfoDatabaseTable(classTable);
 		} finally {
-			db.getLock().release();
+			releaseLock();
 		}
 	}
 
 	private ArchivedGnuVtableDatabaseTable createVtableTable(String name) throws IOException {
-		db.getLock().acquire();
+		acquireLock();
 		try {
 			long id = dbHandle.startTransaction();
 			Table vtableTable = dbHandle.createTable(
@@ -133,44 +149,37 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			dbHandle.endTransaction(id, true);
 			return new ArchivedGnuVtableDatabaseTable(vtableTable);
 		} finally {
-			db.getLock().release();
+			releaseLock();
 		}
 	}
 
-	@Override
-	public String getName() {
-		return db.getDataTypeManager().getName();
-	}
-
 	private void checkForManager(Program program) throws UnresolvedClassTypeInfoException {
-		db.getLock().acquire();
+		acquireLock();
 		try {
 			if (!libMap.containsKey(program.getName())) {
 				throw new UnresolvedClassTypeInfoException(program);
 			}
 		} finally {
-			db.getLock().release();
+			releaseLock();
 		}
 	}
 
 	private LibraryClassTypeInfoManager getManager(String name) {
-		db.getLock().acquire();
+		acquireLock();
 		try {
 			if (!(libMap.containsKey(name))) {
 				ArchivedClassTypeInfoDatabaseTable classTable = createClassTable(name);
 				ArchivedGnuVtableDatabaseTable vtableTable = createVtableTable(name);
 				ArchivedRttiTablePair pair = new ArchivedRttiTablePair(classTable, vtableTable);
-				TypeInfoTreeNodeManager libNodeManager =
-					new TypeInfoTreeNodeManager(this, dbHandle, name);
 				LibraryClassTypeInfoManager manager =
-					new LibraryClassTypeInfoManager(this, pair, libNodeManager, name);
+					new LibraryClassTypeInfoManager(this, pair, dbHandle, name);
 				libMap.put(name, manager);
 			}
 			return libMap.get(name);
 		} catch (IOException e) {
 			dbError(e);
 		} finally {
-			db.getLock().release();
+			releaseLock();
 		}
 		return null;
 	}
@@ -215,7 +224,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	@Override
 	public ClassTypeInfoDB getType(String symbolName) throws UnresolvedClassTypeInfoException {
-		db.getLock().acquire();
+		acquireLock();
 		try {
 			for (LibraryClassTypeInfoManager manager : libMap.values()) {
 				ClassTypeInfoDB type = manager.getType(symbolName);
@@ -227,7 +236,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				"Unable to locate an archived ClassTypeInfo with symbol name " + symbolName;
 			throw new UnresolvedClassTypeInfoException(msg);
 		} finally {
-			db.getLock().release();
+			releaseLock();
 		}
 	}
 
@@ -238,35 +247,35 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	@Override
 	public Stream<ClassTypeInfoDB> getTypeStream() {
-		db.getLock().acquire();
+		acquireLock();
 		try {
 			return libMap.values()
 					.stream()
 					.flatMap(ClassTypeInfoManager::getTypeStream);
 		} finally {
-			db.getLock().release();
+			releaseLock();
 		}
 	}
 
 	@Override
 	public int getTypeCount() {
-		db.getLock().acquire();
+		acquireLock();
 		try {
 			return libMap.values()
 					.stream()
 					.mapToInt(ClassTypeInfoManager::getTypeCount)
 					.sum();
 		} finally {
-			db.getLock().release();
+			releaseLock();
 		}
 	}
 
 	void acquireLock() {
-		db.getLock().acquire();
+		getDB(archive).getLock().acquire();
 	}
 
 	void releaseLock() {
-		db.getLock().release();
+		getDB(archive).getLock().release();
 	}
 
 	ClassTypeInfoManagerPlugin getPlugin() {
@@ -280,12 +289,12 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	@Override
 	public boolean canUpdate() {
-		return db.isChangeable();
+		return archive.isModifiable();
 	}
 
 	@Override
 	public void save() {
-		plugin.getDataTypeManagerHandler().save(db);
+		plugin.getDataTypeManagerHandler().save(getDB(archive));
 	}
 
 	public Collection<LibraryClassTypeInfoManager> getLibraries() {
@@ -304,6 +313,136 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	@Override
 	public ClassTypeInfoDB getType(long key) {
 		throw new UnsupportedOperationException("Cannot get type from project archive by key");
+	}
+
+	public void insert(ClassTypeInfoManager manager, TaskMonitor monitor)
+			throws CancelledException {
+		insert(List.of(manager), monitor);
+	}
+
+	public void insert(Collection<? extends ClassTypeInfoManager> managers, TaskMonitor monitor)
+			throws CancelledException {
+		String format = "Inserting %s (%d/%d)";
+		int size = managers.size();
+		int i = 0;
+		for (ClassTypeInfoManager manager : managers) {
+			monitor.checkCanceled();
+			monitor.setMessage(String.format(format, manager.getName(), ++i, size));
+			doInsert(manager, monitor);
+		}
+	}
+
+	private void doInsert(ClassTypeInfoManager manager, TaskMonitor monitor)
+			throws CancelledException {
+		if (manager instanceof ProjectClassTypeInfoManager) {
+			TaskMonitor dummy = new CancelOnlyWrappingTaskMonitor(monitor);
+			Collection<LibraryClassTypeInfoManager> managers =
+				((ProjectClassTypeInfoManager) manager).libMap.values();
+			insert(managers, dummy);
+			return;
+		}
+		LibraryClassTypeInfoManager libManager = getManager(manager.getName());
+		plugin.managerAdded(libManager);
+		acquireLock();
+		try {
+			int id = startTransaction("Adding "+manager.getName());
+			monitor.initialize(manager.getTypeCount());
+			for (ClassTypeInfo type : manager.getTypes()) {
+				monitor.checkCanceled();
+				libManager.resolve(type);
+				monitor.incrementProgress(1);
+			}
+			endTransaction(id, true);
+		} finally {
+			releaseLock();
+		}
+	}
+
+	@Override
+	public void close() {
+		plugin.getDataTypeManagerHandler().closeArchive(archive);
+	}
+
+	private class LibraryMap {
+
+		private static final String NAME = "LibraryMap";
+
+		private final HashMap<String, LibraryClassTypeInfoManager> libMap;
+		private final Table table;
+
+		LibraryMap() {
+			Table tmp = dbHandle.getTable(NAME);
+			if (tmp == null) {
+				try {
+					long id = dbHandle.startTransaction();
+					tmp = dbHandle.createTable(NAME, SCHEMA, new int[]{0});
+					dbHandle.endTransaction(id, true);
+				} catch (IOException e) {
+					dbError(e);
+				}
+			}
+			this.table = tmp;
+			this.libMap = new HashMap<>(table.getRecordCount());
+			fillMap();
+		}
+
+		public Collection<LibraryClassTypeInfoManager> values() {
+			return libMap.values();
+		}
+
+		public boolean containsKey(String name) {
+			return libMap.containsKey(name);
+		}
+
+		private void fillMap() {
+			try {
+				db.Record record;
+				for (RecordIterator it = table.iterator(); it.hasNext();) {
+					record = it.next();
+					String name = record.getString(0);
+					String typeTableName = record.getString(1);
+					String vtableTableName = record.getString(2);
+					ArchivedRttiTablePair tables =
+						new ArchivedRttiTablePair(
+							getClassTable(typeTableName),
+							getVtableTable(vtableTableName)
+					);
+					LibraryClassTypeInfoManager man =
+						new LibraryClassTypeInfoManager(
+							ProjectClassTypeInfoManager.this,
+							tables,
+							dbHandle,
+							name
+						);
+					libMap.put(name, man);
+				}
+			} catch (IOException e) {
+				dbError(e);
+			}
+		}
+
+		LibraryClassTypeInfoManager get(String name) {
+			return libMap.get(name);
+		}
+
+		void put(String name, LibraryClassTypeInfoManager man) {
+			acquireLock();
+			try {
+				long id = dbHandle.startTransaction();
+				libMap.put(name, man);
+				ArchivedRttiTablePair tables = man.getTables();
+				db.Record record = SCHEMA.createRecord(table.getKey());
+				record.setString(0, name);
+				record.setString(1, tables.getTypeTable().getName());
+				record.setString(2, tables.getVtableTable().getName());
+				table.putRecord(record);
+				dbHandle.endTransaction(id, true);
+			} catch (IOException e) {
+				dbError(e);
+			} finally {
+				releaseLock();
+			}
+		}
 	}
 
 }

@@ -9,6 +9,8 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
+
+import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.caches.ArchivedRttiCachePair;
 import cppclassanalyzer.data.manager.recordmanagers.ArchiveRttiRecordManager;
 import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
@@ -16,6 +18,7 @@ import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
+
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
@@ -37,16 +40,16 @@ abstract class ArchiveRttiRecordWorker extends
 
 	private static final String MANGLED_TYPEINFO_PREFIX = "_ZTI";
 
-	private final FileArchiveClassTypeInfoManager manager;
+	private final ClassTypeInfoManager manager;
 
-	ArchiveRttiRecordWorker(FileArchiveClassTypeInfoManager manager, ArchivedRttiTablePair tables,
+	ArchiveRttiRecordWorker(ClassTypeInfoManager manager, ArchivedRttiTablePair tables,
 			ArchivedRttiCachePair caches) {
 		super(tables, caches);
 		this.manager = manager;
 	}
 
 	@Override
-	public FileArchiveClassTypeInfoManager getManager() {
+	public ClassTypeInfoManager getManager() {
 		return manager;
 	}
 

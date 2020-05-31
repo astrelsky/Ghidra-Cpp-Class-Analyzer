@@ -2,6 +2,7 @@ package cppclassanalyzer.data.typeinfo;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.help.UnsupportedOperationException;
@@ -13,7 +14,8 @@ import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.util.SymbolPath;
 import ghidra.app.util.SymbolPathParser;
 import ghidra.app.util.demangler.Demangled;
-import cppclassanalyzer.data.manager.ArchiveClassTypeInfoManager;
+
+import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.recordmanagers.ArchiveRttiRecordManager;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
@@ -60,7 +62,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 			ArchivedClassTypeInfoRecord record) {
 		super(manager, record);
 		this.manager = manager;
-		DataTypeManager archiveDtm = (DataTypeManager) manager.getManager();
+		DataTypeManager archiveDtm = getDataTypeManager();
 		this.address = type.getManager().encodeAddress(type.getAddress());
 		record.setLongValue(ADDRESS, address);
 		this.programName = type.getProgram().getName();
@@ -106,7 +108,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 			ArchivedClassTypeInfoRecord record) {
 		super(manager, record);
 		this.manager = manager;
-		DataTypeManager classManager = (DataTypeManager) manager.getManager();
+		DataTypeManager classManager = getDataTypeManager();
 		this.address = record.getLongValue(ADDRESS);
 		this.programName = record.getStringValue(PROGRAM_NAME);
 		this.typeName = record.getStringValue(TYPENAME);
@@ -153,8 +155,12 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	}
 
 	@Override
-	public ArchiveClassTypeInfoManager getManager() {
-		return (ArchiveClassTypeInfoManager) manager.getManager();
+	public ClassTypeInfoManager getManager() {
+		return manager.getManager();
+	}
+
+	public DataTypeManager getDataTypeManager() {
+		return manager.getDataTypeManager();
 	}
 
 	public byte getClassId() {
@@ -189,16 +195,16 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	}
 
 	public ArchivedClassTypeInfo[] getParentModels() {
-		ArchiveClassTypeInfoManager classManager = getManager();
+		ClassTypeInfoManager classManager = getManager();
 		return Arrays.stream(baseKeys)
-				.mapToObj(classManager::getClass)
+				.mapToObj(classManager::getType)
 				.toArray(ArchivedClassTypeInfo[]::new);
 	}
 
 	public ArchivedClassTypeInfo[] getArchivedVirtualParents() {
-		ArchiveClassTypeInfoManager classManager = getManager();
+		ClassTypeInfoManager classManager = getManager();
 		return Arrays.stream(virtualKeys)
-				.mapToObj(classManager::getClass)
+				.mapToObj(classManager::getType)
 				.toArray(ArchivedClassTypeInfo[]::new);
 	}
 
@@ -265,6 +271,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		if (vtable != null) {
 			return Arrays.stream(vtable.getFunctionDefinitions())
 				.flatMap(Arrays::stream)
+				.filter(Objects::nonNull)
 				.map(FunctionDefinition::getName)
 				.filter(PURE_VIRTUAL_FUNCTION_NAMES::contains)
 				.findFirst()
@@ -286,7 +293,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	@Override
 	public Structure getClassDataType() {
 		long id = manager.getTypeRecord(key).getLongValue(DATATYPE_ID);
-		return (Structure) getManager().findDataTypeForID(new UniversalID(id));
+		return (Structure) getDataTypeManager().findDataTypeForID(new UniversalID(id));
 	}
 
 	@Override

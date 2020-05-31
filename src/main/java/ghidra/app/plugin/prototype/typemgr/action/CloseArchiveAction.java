@@ -3,14 +3,16 @@ package ghidra.app.plugin.prototype.typemgr.action;
 import docking.ActionContext;
 import docking.action.MenuData;
 
-class CloseArchiveAction extends AbstractFileArchivePopupAction {
+final class CloseArchiveAction extends AbstractFileArchivePopupAction {
 
+	private static final String NAME = "Close";
+	private static final String DESCRIPTION = "Closes a type info archive.";
 	CloseArchiveAction(TypeInfoArchiveHandler handler) {
-		super("Close File Type Info Archive", handler);
+		super(NAME, handler);
 
-		setPopupMenuData(new MenuData(new String[] { "Close File Archive..." }, null, "File"));
+		setPopupMenuData(new MenuData(new String[] {NAME}, null, FILE_GROUP));
 
-		setDescription("Closes a type info archive.");
+		setDescription(DESCRIPTION);
 		setEnabled(true);
 	}
 

@@ -20,6 +20,7 @@ import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.database.map.AddressMap;
+import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.StandAloneDataTypeManager;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
@@ -79,11 +80,17 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 
 	private ArchivedClassTypeInfoDatabaseTable getClassTable() {
 		Table classTable = dbHandle.getTable(ArchivedClassTypeInfo.TABLE_NAME);
+		if (classTable == null) {
+			return null;
+		}
 		return new ArchivedClassTypeInfoDatabaseTable(classTable);
 	}
 
 	private ArchivedGnuVtableDatabaseTable getVtableTable() {
 		Table vtableTable = dbHandle.getTable(ArchivedGnuVtable.TABLE_NAME);
+		if (vtableTable == null) {
+			return null;
+		}
 		return new ArchivedGnuVtableDatabaseTable(vtableTable);
 	}
 
@@ -134,10 +141,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 
 	public ArchivedGnuVtable getVtable(long key) {
 		return worker.getVtable(key);
-	}
-
-	public ArchivedClassTypeInfo getClass(long key) {
-		return worker.getType(key);
 	}
 
 	@Override
@@ -194,7 +197,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		}
 		long key = worker.getTypeKey(symbolName);
 		if (key != AddressMap.INVALID_ADDRESS_KEY) {
-			return getClass(key);
+			return worker.getType(key);
 		}
 		return null;
 	}
@@ -363,6 +366,11 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		@Override
 		ClassTypeInfoManagerPlugin getPlugin() {
 			return plugin;
+		}
+
+		@Override
+		public DataTypeManager getDataTypeManager() {
+			return ArchiveClassTypeInfoManager.this;
 		}
 	}
 

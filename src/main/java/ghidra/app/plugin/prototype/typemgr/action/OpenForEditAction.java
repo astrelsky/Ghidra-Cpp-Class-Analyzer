@@ -10,7 +10,7 @@ import ghidra.util.Msg;
 import docking.ActionContext;
 import docking.action.MenuData;
 
-class OpenForEditAction extends AbstractFileArchivePopupAction {
+final class OpenForEditAction extends AbstractFileArchivePopupAction {
 
 	OpenForEditAction(TypeInfoArchiveHandler handler) {
 		super("Open File Type Info Archive For Editing", handler);
