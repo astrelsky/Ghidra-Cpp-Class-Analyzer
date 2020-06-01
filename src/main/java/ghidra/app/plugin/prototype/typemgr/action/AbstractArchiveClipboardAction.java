@@ -27,6 +27,7 @@ abstract class AbstractArchiveClipboardAction extends AbstractFileArchivePopupAc
 	AbstractArchiveClipboardAction(String name, int keyCode, TypeInfoArchiveHandler handler) {
 		super(name, handler);
 		this.clipboard = handler.getPlugin().getClipboard();
+		setPopupMenu();
 		setKeyBindingData(new KeyBindingData(KeyStroke.getKeyStroke(keyCode,
 			InputEvent.CTRL_DOWN_MASK), KeyBindingPrecedence.ActionMapLevel));
 	}

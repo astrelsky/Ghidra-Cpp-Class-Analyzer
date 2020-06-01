@@ -7,16 +7,13 @@ import docking.ActionContext;
 
 final class EditDataTypeAction extends AbstractTypeInfoNodeAction {
 
-	private static final String NAME = "Edit";
-	private static final String DESCRIPTION = "Edit DataType";
-
 	EditDataTypeAction(TypeInfoArchiveHandler handler) {
-		super(NAME, handler);
+		super("Edit", handler);
 	}
 
 	@Override
 	public final String getDescription() {
-		return DESCRIPTION;
+		return "Edit DataType";
 	}
 
 	@Override

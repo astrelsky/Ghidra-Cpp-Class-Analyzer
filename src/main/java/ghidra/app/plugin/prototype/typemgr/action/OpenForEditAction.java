@@ -8,16 +8,16 @@ import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import ghidra.util.Msg;
 
 import docking.ActionContext;
-import docking.action.MenuData;
 
 final class OpenForEditAction extends AbstractFileArchivePopupAction {
 
 	OpenForEditAction(TypeInfoArchiveHandler handler) {
-		super("Open File Type Info Archive For Editing", handler);
-		setPopupMenuData(new MenuData(new String[] { "Open for editing..." }, null, "File"));
+		super("Open for editing", handler);
+	}
 
-		setDescription("Opens an existing type info archive for editing");
-		setEnabled(true);
+	@Override
+	public String getDescription() {
+		return "Opens an existing type info archive for editing";
 	}
 
 	@Override

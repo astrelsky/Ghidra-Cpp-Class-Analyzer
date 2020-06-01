@@ -16,26 +16,23 @@ import docking.ActionContext;
 
 final class PasteArchiveAction extends AbstractArchiveClipboardAction {
 
-	private static final String NAME = "Paste";
-	private static final String DESCRIPTION = "Paste Archive";
-
 	PasteArchiveAction(TypeInfoArchiveHandler handler) {
-		super(NAME, KeyEvent.VK_V, handler);
+		super("Paste", KeyEvent.VK_V, handler);
 	}
 
 	@Override
 	public final String getDescription() {
-		return DESCRIPTION;
+		return "Paste Archive";
 	}
 
 	@Override
 	public boolean isAddToPopup(ActionContext context) {
 		return getSelectedRootTreeNodes(context)
-				.stream()
-				.map(TypeInfoArchiveNode.class::cast)
-				.map(TypeInfoArchiveNode::getTypeManager)
-				.filter(ProjectClassTypeInfoManager.class::isInstance)
-				.count() == 1;
+			.stream()
+			.map(TypeInfoArchiveNode.class::cast)
+			.map(TypeInfoArchiveNode::getTypeManager)
+			.filter(ProjectClassTypeInfoManager.class::isInstance)
+			.count() == 1;
 	}
 
 	private ProjectClassTypeInfoManager getSelectedManager(ActionContext context) {

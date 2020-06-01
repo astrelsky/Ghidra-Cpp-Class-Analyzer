@@ -6,26 +6,22 @@ import java.io.IOException;
 import ghidra.util.Msg;
 
 import docking.ActionContext;
-import docking.action.DockingAction;
-import docking.action.MenuData;
 
-final class CreateArchiveAction extends DockingAction {
-
-	private final TypeInfoArchiveHandler handler;
+final class CreateArchiveAction extends AbstractTypeMgrAction {
 
 	CreateArchiveAction(TypeInfoArchiveHandler handler) {
-		super("Create File Type Info Archive", handler.getPlugin().getName());
-		this.handler = handler;
+		super("Create File Archive", handler);
+		setMenuBar();
+	}
 
-		setMenuBarData(new MenuData(new String[] { "Create File Archive..." }, "Archive"));
-
-		setDescription("Creates a new type info archive.");
-		setEnabled(true);
+	@Override
+	public String getDescription() {
+		return "Creates a new type info archive";
 	}
 
 	@Override
 	public void actionPerformed(ActionContext context) {
-		ArchiveFileChooser fileChooser = handler.getFileChooser();
+		ArchiveFileChooser fileChooser = getHandler().getFileChooser();
 		fileChooser.setApproveButtonText("Create Archive");
 		fileChooser.setApproveButtonToolTipText("Create Archive");
 		fileChooser.setTitle("Create Archive");
@@ -42,9 +38,14 @@ final class CreateArchiveAction extends DockingAction {
 			file.delete();
 		}
 		try {
-			handler.getPlugin().createArchive(file);
+			getHandler().getPlugin().createArchive(file);
 		} catch (IOException e) {
-			Msg.showError(handler, null, "Failed to create Type Info Archive", e);
+			Msg.error(this, e);
 		}
+	}
+
+	@Override
+	MenuGroupType getGroup() {
+		return MenuGroupType.ARCHIVE;
 	}
 }

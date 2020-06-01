@@ -14,6 +14,7 @@ abstract class AbstractFileArchivePopupAction extends AbstractTypeMgrAction {
 
 	AbstractFileArchivePopupAction(String name, TypeInfoArchiveHandler handler) {
 		super(name, handler);
+		setPopupMenu();
 	}
 
 	@Override

@@ -5,29 +5,30 @@ import java.io.IOException;
 import ghidra.util.Msg;
 
 import docking.ActionContext;
-import docking.action.DockingAction;
-import docking.action.MenuData;
 
-final class OpenProjectArchiveAction extends DockingAction {
-
-	private final TypeInfoArchiveHandler handler;
+final class OpenProjectArchiveAction extends AbstractTypeMgrAction {
 
 	OpenProjectArchiveAction(TypeInfoArchiveHandler handler) {
-		super("Open Project Type Info Archive", handler.getPlugin().getName());
-		this.handler = handler;
+		super("Open Project Archive", handler);
+		setMenuBar();
+	}
 
-		setMenuBarData(new MenuData(new String[] { "Open Project Archive..." }, "Archive"));
-
-		setDescription("Opens an existing project type info archive.");
-		setEnabled(true);
+	@Override
+	public String getDescription() {
+		return "Opens an existing project type info archive";
 	}
 
 	@Override
 	public void actionPerformed(ActionContext context) {
 		try {
-			handler.getPlugin().openProjectArchive();
+			getHandler().getPlugin().openProjectArchive();
 		} catch (IOException e) {
-			Msg.showError(handler, null, "Failed to open Type Info Archive", e);
+			Msg.error(this, e);
 		}
+	}
+
+	@Override
+	MenuGroupType getGroup() {
+		return MenuGroupType.ARCHIVE;
 	}
 }

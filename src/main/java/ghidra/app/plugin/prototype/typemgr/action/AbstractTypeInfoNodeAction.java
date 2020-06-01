@@ -8,6 +8,7 @@ abstract class AbstractTypeInfoNodeAction extends AbstractTypeMgrAction {
 
 	AbstractTypeInfoNodeAction(String name, TypeInfoArchiveHandler handler) {
 		super(name, handler);
+		setPopupMenu();
 	}
 
 	@Override

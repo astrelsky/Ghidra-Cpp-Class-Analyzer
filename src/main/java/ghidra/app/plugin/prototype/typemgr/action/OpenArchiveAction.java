@@ -7,27 +7,23 @@ import ghidra.app.plugin.core.datamgr.archive.DuplicateIdException;
 import ghidra.util.Msg;
 
 import docking.ActionContext;
-import docking.action.DockingAction;
-import docking.action.MenuData;
 import docking.widgets.filechooser.GhidraFileChooser;
 
-final class OpenArchiveAction extends DockingAction {
-
-	private final TypeInfoArchiveHandler handler;
+final class OpenArchiveAction extends AbstractTypeMgrAction {
 
 	OpenArchiveAction(TypeInfoArchiveHandler handler) {
-		super("Open File Type Info Archive", handler.getPlugin().getName());
-		this.handler = handler;
+		super("Open File Archive", handler);
+		setMenuBar();
+	}
 
-		setMenuBarData(new MenuData(new String[] { "Open File Archive..." }, "Archive"));
-
-		setDescription("Opens a type info archive.");
-		setEnabled(true);
+	@Override
+	public String getDescription() {
+		return "Opens a type info archive";
 	}
 
 	@Override
 	public void actionPerformed(ActionContext context) {
-		GhidraFileChooser fileChooser = new GhidraFileChooser(handler.getTree());
+		GhidraFileChooser fileChooser = new GhidraFileChooser(getHandler().getTree());
 
 		File archiveDirectory = CppClassAnalyzerPreferences.getLastOpenedArchivePath();
 		fileChooser.setFileFilter(CppClassAnalyzerPreferences.EXTENSION_FILTER);
@@ -44,9 +40,14 @@ final class OpenArchiveAction extends DockingAction {
 		CppClassAnalyzerPreferences.setLastOpenedArchivePath(lastOpenedDir);
 
 		try {
-			handler.getPlugin().openArchive(file);
+			getHandler().getPlugin().openArchive(file);
 		} catch (IOException | DuplicateIdException e) {
-			Msg.showError(handler, null, "Failed to open Type Info Archive", e);
+			Msg.error(this, e);
 		}
+	}
+
+	@Override
+	MenuGroupType getGroup() {
+		return MenuGroupType.ARCHIVE;
 	}
 }

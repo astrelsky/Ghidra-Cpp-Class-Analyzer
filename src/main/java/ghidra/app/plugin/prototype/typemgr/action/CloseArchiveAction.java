@@ -4,15 +4,13 @@ import docking.ActionContext;
 
 final class CloseArchiveAction extends AbstractFileArchivePopupAction {
 
-	private static final String NAME = "Close";
-	private static final String DESCRIPTION = "Closes a type info archive.";
 	CloseArchiveAction(TypeInfoArchiveHandler handler) {
-		super(NAME, handler);
+		super("Close", handler);
 	}
 
 	@Override
 	public final String getDescription() {
-		return DESCRIPTION;
+		return "Closes a type info archive";
 	}
 
 	@Override

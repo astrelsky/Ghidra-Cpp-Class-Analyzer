@@ -12,14 +12,22 @@ import docking.action.MenuData;
 abstract class AbstractTypeMgrAction extends DockingAction {
 
 	private final TypeInfoArchiveHandler handler;
+	private final MenuData data;
 
 	AbstractTypeMgrAction(String name, TypeInfoArchiveHandler handler) {
 		super(name, handler.getPlugin().getName());
 		this.handler = handler;
-		MenuData data = new MenuData(
+		this.data = new MenuData(
 			new String[] {getName()}, getIcon(), getGroup().displayName);
-		setPopupMenuData(data);
 		setEnabled(true);
+	}
+
+	final void setPopupMenu() {
+		setPopupMenuData(data);
+	}
+
+	final void setMenuBar() {
+		setMenuBarData(data);
 	}
 
 	abstract MenuGroupType getGroup();
@@ -42,7 +50,8 @@ abstract class AbstractTypeMgrAction extends DockingAction {
 
 	static enum MenuGroupType {
 		FILE("File"),
-		EDIT("Edit");
+		EDIT("Edit"),
+		ARCHIVE("Archive");
 
 		private final String displayName;
 
