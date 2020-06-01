@@ -8,19 +8,12 @@ import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
 import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 
 import docking.ActionContext;
-import docking.action.DockingAction;
 import docking.widgets.tree.GTreeNode;
 
-abstract class AbstractFileArchivePopupAction extends DockingAction {
-
-	static final String FILE_GROUP = "File";
-	static final String EDIT_GROUP = "Edit";
-
-	private final TypeInfoArchiveHandler handler;
+abstract class AbstractFileArchivePopupAction extends AbstractTypeMgrAction {
 
 	AbstractFileArchivePopupAction(String name, TypeInfoArchiveHandler handler) {
-		super(name, handler.getPlugin().getName());
-		this.handler = handler;
+		super(name, handler);
 	}
 
 	@Override
@@ -53,20 +46,14 @@ abstract class AbstractFileArchivePopupAction extends DockingAction {
 		return isAddToPopup(context);
 	}
 
-	TypeInfoArchiveHandler getHandler() {
-		return handler;
+	@Override
+	final FileArchiveClassTypeInfoManager getManager(ActionContext context) {
+		return (FileArchiveClassTypeInfoManager) super.getManager(context);
 	}
 
-	TypeInfoArchiveNode getNode(ActionContext context) {
-		TypeInfoArchiveGTree tree = handler.getTree();
-		TreePath[] selectionPaths = tree.getSelectionPaths();
-		if (selectionPaths.length == 0) {
-			return null;
-		}
-		return (TypeInfoArchiveNode) selectionPaths[0].getLastPathComponent();
+	@Override
+	final TypeInfoArchiveNode getSelectedNode(ActionContext context) {
+		return getHandler().getArchiveNode(context);
 	}
 
-	FileArchiveClassTypeInfoManager getManager(ActionContext context) {
-		return (FileArchiveClassTypeInfoManager) getNode(context).getTypeManager();
-	}
 }

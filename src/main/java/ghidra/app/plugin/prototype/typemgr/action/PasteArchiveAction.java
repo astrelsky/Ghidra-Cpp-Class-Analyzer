@@ -17,9 +17,15 @@ import docking.ActionContext;
 final class PasteArchiveAction extends AbstractArchiveClipboardAction {
 
 	private static final String NAME = "Paste";
+	private static final String DESCRIPTION = "Paste Archive";
 
 	PasteArchiveAction(TypeInfoArchiveHandler handler) {
 		super(NAME, KeyEvent.VK_V, handler);
+	}
+
+	@Override
+	public final String getDescription() {
+		return DESCRIPTION;
 	}
 
 	@Override

@@ -33,4 +33,9 @@ final class SaveAction extends AbstractFileArchivePopupAction {
 	public void actionPerformed(ActionContext context) {
 		getManager(context).save();
 	}
+
+	@Override
+	MenuGroupType getGroup() {
+		return MenuGroupType.FILE;
+	}
 }

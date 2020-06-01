@@ -1,9 +1,19 @@
 package ghidra.app.plugin.prototype.typemgr.action;
 
+import java.util.Arrays;
+import java.util.stream.Stream;
+
+import javax.swing.tree.TreePath;
+
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoArchiveGTree;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
+import ghidra.app.plugin.prototype.typemgr.node.NamespacePathNode;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNode;
 
+import docking.ActionContext;
 import docking.action.DockingAction;
 
 public final class TypeInfoArchiveHandler {
@@ -64,5 +74,46 @@ public final class TypeInfoArchiveHandler {
 
 	public DockingAction getPasteArchiveAction() {
 		return new PasteArchiveAction(this);
+	}
+
+	public DockingAction getEditDataTypeAction() {
+		return new EditDataTypeAction(this);
+	}
+
+	private Stream<TypeInfoTreeNode> getSelectedNodes(ActionContext context) {
+		TreePath[] selectionPaths = getTree().getSelectionPaths();
+		if (selectionPaths.length == 0) {
+			return Stream.empty();
+		}
+		return Arrays.stream(selectionPaths)
+			.map(TreePath::getLastPathComponent)
+			.filter(TypeInfoTreeNode.class::isInstance)
+			.map(TypeInfoTreeNode.class::cast);
+	}
+
+	private <T extends TypeInfoTreeNode> T getSpecialNode(ActionContext context, Class<T> clazz) {
+		return getSelectedNodes(context)
+			.filter(clazz::isInstance)
+			.map(clazz::cast)
+			.findFirst()
+			.orElse(null);
+	}
+
+	TypeInfoTreeNode getTreeNode(ActionContext context) {
+		return getSelectedNodes(context)
+			.findFirst()
+			.orElse(null);
+	}
+
+	TypeInfoArchiveNode getArchiveNode(ActionContext context) {
+		return getSpecialNode(context, TypeInfoArchiveNode.class);
+	}
+
+	TypeInfoNode getTypeInfoNode(ActionContext context) {
+		return getSpecialNode(context, TypeInfoNode.class);
+	}
+
+	NamespacePathNode getNamespacePathNode(ActionContext context) {
+		return getSpecialNode(context, NamespacePathNode.class);
 	}
 }

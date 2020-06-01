@@ -48,4 +48,9 @@ final class OpenForEditAction extends AbstractFileArchivePopupAction {
 			Msg.showError(plugin, null, "Failed to open archive for editing", e);
 		}
 	}
+
+	@Override
+	MenuGroupType getGroup() {
+		return MenuGroupType.FILE;
+	}
 }

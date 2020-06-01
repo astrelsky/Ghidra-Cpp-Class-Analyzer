@@ -16,6 +16,8 @@ import ghidra.app.util.SymbolPathParser;
 import ghidra.app.util.demangler.Demangled;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import cppclassanalyzer.data.manager.recordmanagers.ArchiveRttiRecordManager;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
@@ -307,6 +309,20 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	@Override
 	public SymbolPath getSymbolPath() {
 		return new SymbolPath(SymbolPathParser.parse(demangled.getNamespaceString()));
+	}
+
+	@Override
+	public long getClassDataTypeId() {
+		return struct.getUniversalID().getValue();
+	}
+
+	@Override
+	public boolean isModifiable() {
+		ClassTypeInfoManager manager = getManager();
+		if (manager instanceof LibraryClassTypeInfoManager) {
+			manager = ((LibraryClassTypeInfoManager) manager).getProjectManager();
+		}
+		return ((FileArchiveClassTypeInfoManager) manager).canUpdate();
 	}
 
 }

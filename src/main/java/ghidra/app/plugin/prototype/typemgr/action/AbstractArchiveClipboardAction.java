@@ -15,7 +15,6 @@ import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
 import docking.ActionContext;
 import docking.KeyBindingPrecedence;
 import docking.action.KeyBindingData;
-import docking.action.MenuData;
 import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
 import docking.widgets.tree.support.GTreeNodeTransferable;
@@ -28,10 +27,13 @@ abstract class AbstractArchiveClipboardAction extends AbstractFileArchivePopupAc
 	AbstractArchiveClipboardAction(String name, int keyCode, TypeInfoArchiveHandler handler) {
 		super(name, handler);
 		this.clipboard = handler.getPlugin().getClipboard();
-		setPopupMenuData(new MenuData(new String[] { name }, EDIT_GROUP));
 		setKeyBindingData(new KeyBindingData(KeyStroke.getKeyStroke(keyCode,
 			InputEvent.CTRL_DOWN_MASK), KeyBindingPrecedence.ActionMapLevel));
-		setEnabled(true);
+	}
+
+	@Override
+	final MenuGroupType getGroup() {
+		return MenuGroupType.EDIT;
 	}
 
 	final List<GTreeNode> getSelectedRootTreeNodes(ActionContext context) {

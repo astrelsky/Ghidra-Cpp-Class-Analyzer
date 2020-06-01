@@ -31,4 +31,8 @@ public abstract class ClassTypeInfoDB extends DatabaseObject implements ClassTyp
 	@Override
 	public abstract ClassTypeInfoDB[] getParentModels();
 
+	public abstract long getClassDataTypeId();
+
+	public abstract boolean isModifiable();
+
 }

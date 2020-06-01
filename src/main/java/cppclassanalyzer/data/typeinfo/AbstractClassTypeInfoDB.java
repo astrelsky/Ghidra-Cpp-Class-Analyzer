@@ -407,6 +407,11 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		return struct;
 	}
 
+	public long getClassDataTypeId() {
+		ClassTypeInfoRecord record = getRecord();
+		return record.getLongValue(DATATYPE_ID);
+	}
+
 	@Override
 	public String getUniqueTypeName() {
 		StringBuilder builder = new StringBuilder(getTypeName());
@@ -424,6 +429,11 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	@Override
 	public String toString() {
 		return getName();
+	}
+
+	@Override
+	public final boolean isModifiable() {
+		return true;
 	}
 
 }
