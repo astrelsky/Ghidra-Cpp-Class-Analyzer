@@ -11,7 +11,6 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
-import ghidra.app.util.NamespaceUtils;
 import ghidra.program.database.DatabaseObject;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
@@ -64,7 +63,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		this.typename = record.getStringValue(TYPENAME);
 		this.vtableSearched = record.getBooleanValue(VTABLE_SEARCHED);
 		this.vtableKey = record.getLongValue(VTABLE_KEY);
-		this.gc = fetchGhidraClass();
+		this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(getProgram(), typename);
 		this.struct = fetchDataType(record);
 	}
 
@@ -182,33 +181,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			return WindowsClassTypeInfoDB.getBaseCount(record);
 		}
 		throw new AssertException("Ghidra-Cpp-Class-Analyzer: invalid database record");
-	}
-
-	private GhidraClass fetchGhidraClass() {
-		SymbolTable table = getProgram().getSymbolTable();
-		Symbol s = table.getPrimarySymbol(address);
-		Namespace ns = null;
-		if (s == null || !s.getName().equals("typeinfo")) {
-			ns = buildNamespace();
-		} else {
-			ns = s.getParentNamespace();
-		}
-		if (!(ns instanceof GhidraClass)) {
-			if (ns.isGlobal()) {
-				throw new AssertException(
-					"Ghidra-Cpp-Class-Analyzer: unexpected global namespace at "
-					+address.toString());
-			}
-			try {
-				ns = NamespaceUtils.convertNamespaceToClass(ns);
-			} catch (InvalidInputException e) {
-				String msg = String.format(
-					"Ghidra-Cpp-Class-Analyzer: %s should be a valid GhidraClass",
-					ns.getName(true));
-				throw new AssertException(msg);
-			}
-		}
-		return (GhidraClass) ns;
 	}
 
 	private Structure fetchDataType(ClassTypeInfoRecord record) {

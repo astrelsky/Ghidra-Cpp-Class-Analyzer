@@ -66,7 +66,8 @@ public final class GnuUtils {
 
 	private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
 	private static final Pattern DESCRIPTIVE_PREFIX_PATTERN =
-		Pattern.compile("((.+ )+(for|to) )(.+)");
+		Pattern.compile("((?:(.+) )+(for|to) )(.+)");
+	private static final Pattern TRAILING_NUMBER_PATTERN = Pattern.compile(".+?(\\d+)$");
 
 	private GnuUtils() {
 	}
@@ -387,7 +388,12 @@ public final class GnuUtils {
 			DemangledAddressTable table =
 				new DemangledAddressTable(mangled, output, matcher.group(2), true);
 			table.setSignature(output);
-			table.setNamespace(demangled.getNamespace());
+			demangled = demangled.getNamespace();
+			matcher = TRAILING_NUMBER_PATTERN.matcher(matcher.group(4));
+			if (matcher.matches()) {
+				demangled.setName(demangled.getName()+matcher.group(1));
+			}
+			table.setNamespace(demangled);
 			return table;
 		} catch (IOException e) {
 			return null;
