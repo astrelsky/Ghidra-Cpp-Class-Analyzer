@@ -13,6 +13,7 @@ import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.caches.ArchivedRttiCachePair;
 import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
+import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import db.DBHandle;
 
@@ -47,27 +48,27 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 	}
 
 	@Override
-	public ClassTypeInfoDB resolve(ClassTypeInfo type) {
+	public ArchivedClassTypeInfo resolve(ClassTypeInfo type) {
 		return worker.resolve(type);
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(GhidraClass gc) {
+	public ArchivedClassTypeInfo getType(GhidraClass gc) {
 		return worker.getType(gc);
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(Function fun) {
+	public ArchivedClassTypeInfo getType(Function fun) {
 		return worker.getType(fun);
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(String name, Namespace namespace) {
+	public ArchivedClassTypeInfo getType(String name, Namespace namespace) {
 		return worker.getType(name, namespace);
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(String symbolName) {
+	public ArchivedClassTypeInfo getType(String symbolName) {
 		return worker.getType(symbolName);
 	}
 
@@ -100,7 +101,7 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(long key) {
+	public ArchivedClassTypeInfo getType(long key) {
 		return worker.getType(key);
 	}
 

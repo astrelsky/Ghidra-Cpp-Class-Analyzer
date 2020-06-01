@@ -55,6 +55,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	private final ArchivedGnuVtable vtable;
 	private final int[] baseOffsets;
 	private final long[] baseKeys;
+	private final long[] nonVirtualBaseKeys;
 	private final long[] virtualKeys;
 	private final Demangled demangled;
 
@@ -77,7 +78,8 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		} else {
 			this.superStruct = this.struct;
 		}
-		this.baseKeys = type.getNonVirtualBaseKeys();
+		this.baseKeys = type.getBaseKeys();
+		this.nonVirtualBaseKeys = type.getNonVirtualBaseKeys();
 		this.baseOffsets = type.getOffsets();
 		this.virtualKeys = type.getVirtualBaseKeys();
 		record.setStringValue(PROGRAM_NAME, programName);
@@ -87,6 +89,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		record.setLongValue(DATATYPE_ID, struct.getUniversalID().getValue());
 		record.setLongValue(SUPER_DATATYPE_ID, superStruct.getUniversalID().getValue());
 		record.setLongArray(BASE_KEYS, baseKeys);
+		record.setLongArray(NON_VIRTUAL_BASE_KEYS, nonVirtualBaseKeys);
 		record.setLongArray(VIRTUAL_BASE_KEYS, virtualKeys);
 		record.setIntArray(BASE_OFFSETS, baseOffsets);
 
@@ -127,6 +130,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 			this.vtable = null;
 		}
 		this.baseKeys = record.getLongArray(BASE_KEYS);
+		this.nonVirtualBaseKeys = record.getLongArray(NON_VIRTUAL_BASE_KEYS);
 		this.baseOffsets = record.getIntArray(BASE_OFFSETS);
 		this.virtualKeys = record.getLongArray(VIRTUAL_BASE_KEYS);
 		this.demangled = doDemangle(symbolName);
@@ -213,6 +217,10 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	 */
 	protected long[] getBaseKeys() {
 		return baseKeys;
+	}
+
+	protected long[] getNonVirtualBaseKeys() {
+		return nonVirtualBaseKeys;
 	}
 
 	protected long[] getVirtualKeys() {

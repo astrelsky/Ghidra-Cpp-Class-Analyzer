@@ -93,15 +93,21 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ArchivedClassTypeInfo type,
 			ClassTypeInfoRecord record) {
 		super(worker, type, record);
-		this.nonVirtualBaseKeys = type.getBaseKeys();
-		this.virtualBaseKeys = type.getVirtualKeys();
 		ClassTypeInfoManager aMan = type.getManager();
-		this.baseKeys = Arrays.stream(type.getBaseKeys())
-			.mapToObj(aMan::getType)
-			.map(manager::resolve)
-			.mapToLong(DatabaseObject::getKey)
-			.toArray();
+		this.nonVirtualBaseKeys = extractKeys(aMan, type.getNonVirtualBaseKeys());
+		this.virtualBaseKeys = extractKeys(aMan, type.getVirtualKeys());
+		this.baseKeys = extractKeys(aMan, type.getBaseKeys());
 		this.baseOffsets = type.getBaseOffsets();
+		fillRecord(record);
+	}
+
+	private long[] extractKeys(ClassTypeInfoManager aMan, long[] keys) {
+		return Arrays.stream(keys)
+		.mapToObj(aMan::getType)
+		.map(ArchivedClassTypeInfo.class::cast)
+		.map(manager::resolve)
+		.mapToLong(DatabaseObject::getKey)
+		.toArray();
 	}
 
 	private void fillRecord(ClassTypeInfoRecord record) {

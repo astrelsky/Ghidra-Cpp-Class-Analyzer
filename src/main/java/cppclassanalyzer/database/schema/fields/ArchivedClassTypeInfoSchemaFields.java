@@ -17,6 +17,7 @@ public enum ArchivedClassTypeInfoSchemaFields implements FieldEnum {
 	SUPER_DATATYPE_ID(LongField.class),
 	VTABLE_KEY(LongField.class),
 	BASE_KEYS(BinaryField.class),
+	NON_VIRTUAL_BASE_KEYS(BinaryField.class),
 	VIRTUAL_BASE_KEYS(BinaryField.class),
 	BASE_OFFSETS(BinaryField.class);
 

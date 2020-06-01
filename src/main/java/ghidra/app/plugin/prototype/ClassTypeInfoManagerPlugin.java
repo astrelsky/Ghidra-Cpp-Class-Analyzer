@@ -9,7 +9,10 @@ import java.util.stream.Collectors;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.app.plugin.core.datamgr.DataTypeManagerPlugin;
+import ghidra.app.plugin.core.datamgr.archive.Archive;
+import ghidra.app.plugin.core.datamgr.archive.ArchiveManagerListener;
 import ghidra.app.plugin.core.datamgr.archive.DataTypeManagerHandler;
+import ghidra.app.plugin.core.datamgr.archive.FileArchive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
 import ghidra.app.plugin.prototype.typemgr.dialog.OpenProjectArchiveDialog;
@@ -23,17 +26,19 @@ import ghidra.framework.plugintool.Plugin;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
-import ghidra.program.database.DataTypeArchiveDB;
 import ghidra.program.database.ProgramDB;
 import cppclassanalyzer.data.manager.ArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
+import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ghidra.util.SystemUtilities;
 import ghidra.util.exception.CancelledException;
 
@@ -62,7 +67,8 @@ import docking.widgets.tree.GTree;
 )
 //@formatter:on
 public class ClassTypeInfoManagerPlugin extends ProgramPlugin
-		implements ClassTypeInfoManagerService, DomainObjectListener, PopupActionProvider {
+		implements ClassTypeInfoManagerService, DomainObjectListener,
+		PopupActionProvider, ArchiveManagerListener {
 
 	private static final Set<ClassTypeInfoManagerPlugin> plugins =
 		Collections.synchronizedSet(new HashSet<>());
@@ -86,6 +92,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	protected void init() {
 		DataTypeManagerService service = tool.getService(DataTypeManagerService.class);
 		dtmPlugin = (DataTypeManagerPlugin) service;
+		dtmPlugin.getDataTypeManagerHandler().addArchiveManagerListener(this);
 	}
 
 	@Override
@@ -95,8 +102,8 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	public List<ClassTypeInfoManager> getManagersByName(List<String> names) {
 		return managers.stream()
-			.filter(m -> names.contains(m.getName()))
-			.collect(Collectors.toList());
+				.filter(m -> names.contains(m.getName()))
+				.collect(Collectors.toList());
 	}
 
 	@Override
@@ -273,14 +280,70 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	public void managerAdded(ClassTypeInfoManager manager) {
-		managerAdded(manager, true);
+		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
 	}
 
-	public void managerAdded(ClassTypeInfoManager manager, boolean runNow) {
-		if (runNow) {
-			SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
-		} else {
-			SystemUtilities.runSwingLater(() -> listeners.forEach(l -> l.managerOpened(manager)));
+	@Override
+	public void archiveOpened(Archive archive) {
+		ClassTypeInfoManager manager = null;
+		try {
+			if (archive instanceof FileArchive) {
+				manager = ArchiveClassTypeInfoManager.openIfManagerArchive(this, archive);
+			} else if (archive instanceof ProjectArchive) {
+				manager = ProjectClassTypeInfoManager.openIfManagerArchive(this, archive);
+			}
+		} catch (IOException e) {
+			Msg.error(manager, e);
 		}
+		if (manager != null) {
+			managerAdded(manager);
+			managers.add(manager);
+		}
+	}
+
+	private ClassTypeInfoManager getManager(Archive archive) {
+		return managers.stream()
+			.filter(FileArchiveClassTypeInfoManager.class::isInstance)
+			.filter(m -> m.getName().equals(archive.getName()))
+			.findFirst()
+			.orElse(null);
+	}
+
+	@Override
+	public void archiveClosed(Archive archive) {
+		ClassTypeInfoManager manager = getManager(archive);
+		if (manager != null) {
+			managers.remove(manager);
+			SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
+		}
+	}
+
+	@Override
+	public void archiveStateChanged(Archive archive) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void archiveDataTypeManagerChanged(Archive archive) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public ArchivedClassTypeInfo getExternalClassTypeInfo(Program program, String mangled) {
+		String[] libs = program.getExternalManager().getExternalLibraryNames();
+		List<LibraryClassTypeInfoManager> libManagers = managers.stream()
+			.filter(ProjectClassTypeInfoManager.class::isInstance)
+			.map(ProjectClassTypeInfoManager.class::cast)
+			.flatMap(m -> m.getAvailableManagers(libs))
+			.collect(Collectors.toList());
+		for (LibraryClassTypeInfoManager manager : libManagers) {
+			ArchivedClassTypeInfo type = manager.getType(mangled);
+			if (type != null) {
+				return type;
+			}
+		}
+		return null;
 	}
 }

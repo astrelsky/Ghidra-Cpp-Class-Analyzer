@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 
 import ghidra.app.plugin.prototype.TypeInfoManagerListener;
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.plugin.core.datamgr.archive.DuplicateIdException;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.framework.plugintool.ServiceInfo;
@@ -56,5 +57,7 @@ public interface ClassTypeInfoManagerService {
 	public static boolean isEnabled(Program program) {
 		return ClassTypeInfoManagerPlugin.isEnabled(program);
 	}
+
+	public ClassTypeInfo getExternalClassTypeInfo(Program program, String mangled);
 
 }

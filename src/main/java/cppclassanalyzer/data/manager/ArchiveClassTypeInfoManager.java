@@ -9,9 +9,13 @@ import javax.swing.Icon;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
+import ghidra.app.plugin.core.datamgr.archive.Archive;
+import ghidra.app.plugin.core.datamgr.archive.FileArchive;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
 import ghidra.framework.store.db.PackedDBHandle;
+import ghidra.framework.store.db.PackedDatabase;
+
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.manager.caches.ArchivedRttiCachePair;
 import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
@@ -38,6 +42,7 @@ import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.tables.ArchivedClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.ArchivedGnuVtableDatabaseTable;
 import db.DBConstants;
+import db.DBHandle;
 import db.Table;
 import generic.jar.ResourceFile;
 import resources.ResourceManager;
@@ -372,6 +377,26 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		public DataTypeManager getDataTypeManager() {
 			return ArchiveClassTypeInfoManager.this;
 		}
+	}
+
+	public static FileArchiveClassTypeInfoManager openIfManagerArchive(
+			ClassTypeInfoManagerPlugin plugin, Archive archive) throws IOException {
+		if (archive instanceof FileArchive) {
+			try {
+				ResourceFile resource = ((FileArchive) archive).getFile();
+				PackedDatabase db =
+					PackedDatabase.getPackedDatabase(resource, false, TaskMonitor.DUMMY);
+				DBHandle handle = db.open(TaskMonitor.DUMMY);
+				if (handle.getTable(ArchivedClassTypeInfo.TABLE_NAME) != null) {
+					File file = resource.getFile(false);
+					boolean updateable = archive.isModifiable();
+					plugin.getDataTypeManagerHandler().closeArchive(archive);
+					return open(plugin, file, updateable);
+				}
+			} catch (CancelledException e) {
+			}
+		}
+		return null;
 	}
 
 }

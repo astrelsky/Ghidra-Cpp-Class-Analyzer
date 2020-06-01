@@ -15,7 +15,6 @@ import cppclassanalyzer.data.manager.caches.ArchivedRttiCachePair;
 import cppclassanalyzer.data.manager.recordmanagers.ArchiveRttiRecordManager;
 import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
-import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 
@@ -128,7 +127,7 @@ abstract class ArchiveRttiRecordWorker extends
 		return INVALID_KEY;
 	}
 
-	ClassTypeInfoDB getType(GhidraClass gc) throws UnresolvedClassTypeInfoException {
+	ArchivedClassTypeInfo getType(GhidraClass gc) throws UnresolvedClassTypeInfoException {
 		Program program = gc.getSymbol().getProgram();
 		SymbolTable table = program.getSymbolTable();
 		return table.getSymbols(TypeInfo.TYPENAME_SYMBOL_NAME, gc)
@@ -142,7 +141,7 @@ abstract class ArchiveRttiRecordWorker extends
 			});
 	}
 
-	ClassTypeInfoDB getType(Function fun) throws UnresolvedClassTypeInfoException {
+	ArchivedClassTypeInfo getType(Function fun) throws UnresolvedClassTypeInfoException {
 		Namespace ns = fun.getParentNamespace();
 		if (ns instanceof GhidraClass) {
 			return getType((GhidraClass) ns);
@@ -150,29 +149,26 @@ abstract class ArchiveRttiRecordWorker extends
 		return null;
 	}
 
-	ClassTypeInfoDB getType(String name, Namespace namespace)
+	ArchivedClassTypeInfo getType(String name, Namespace namespace)
 			throws UnresolvedClassTypeInfoException {
 		Program program = namespace.getSymbol().getProgram();
 		SymbolTable table = program.getSymbolTable();
 		Symbol s = table.getClassSymbol(name, namespace);
-		if (s != null && s.getClass() == GhidraClass.class) {
+		if (s != null) {
 			return getType((GhidraClass) s.getObject());
 		}
 		return null;
 	}
 
-	ClassTypeInfoDB getType(String typeName) throws UnresolvedClassTypeInfoException {
-		if (typeName.isBlank()) {
+	ArchivedClassTypeInfo getType(String typeName) throws UnresolvedClassTypeInfoException {
+		if (typeName.isBlank() || !typeName.startsWith(MANGLED_TYPEINFO_PREFIX)) {
 			return null;
-		}
-		if (typeName.startsWith(MANGLED_TYPEINFO_PREFIX)) {
-			typeName = typeName.substring(MANGLED_TYPEINFO_PREFIX.length());
 		}
 		acquireLock();
 		try {
 			db.Field f = new StringField(typeName);
 			long[] keys = getTables().getTypeTable().findRecords(
-				f, ArchivedClassTypeInfoSchemaFields.TYPENAME.ordinal());
+				f, ArchivedClassTypeInfoSchemaFields.MANGLED_SYMBOL.ordinal());
 			if (keys.length == 1) {
 				return getType(keys[0]);
 			}

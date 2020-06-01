@@ -27,7 +27,6 @@ public interface TypeInfoManager {
 
 	/**
 	 * Invokes getDataType on the TypeInfo containing the specified typename
-	 * @param program the program containing the TypeInfo
 	 * @param typename the type_info class's typename
 	 * @return the TypeInfo structure for the typename
 	 * @see TypeInfoModel#getDataType()

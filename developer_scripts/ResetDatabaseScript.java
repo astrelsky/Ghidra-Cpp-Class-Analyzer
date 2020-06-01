@@ -12,9 +12,6 @@ public class ResetDatabaseScript extends GhidraScript {
 
 	@Override
 	public void run() throws Exception {
-		ClassTypeInfoManagerDB man =
-			(ClassTypeInfoManagerDB) ClassTypeInfoUtils.getManager(currentProgram);
-		man.deleteAll();
 		DBHandle handle = ((ProgramDB) currentProgram).getDBHandle();
 		handle.deleteTable(AbstractClassTypeInfoDB.CLASS_TYPEINFO_TABLE_NAME);
 		handle.deleteTable(AbstractVtableDB.VTABLE_TABLE_NAME);

@@ -228,7 +228,6 @@ public class TypeInfoUtils {
 	 * @param program the program containing the TypeInfo
 	 * @param address the address of the TypeInfo
 	 * @return true if the buffer contains a valid TypeInfo
-	 * @see TypeInfoFactory#isTypeInfo
 	 * @deprecated please use {@link TypeInfoManager#isTypeInfo(Address)}
 	 */
 	@Deprecated(since = "1.5", forRemoval = true)
@@ -243,7 +242,6 @@ public class TypeInfoUtils {
 	 * Checks if a valid TypeInfo is located at the start of the buffer
 	 * @param buf the memory buffer containing the TypeInfo data
 	 * @return true if the buffer contains a valid TypeInfo
-	 * @see TypeInfoFactory#isTypeInfo
 	 * @deprecated please use {@link TypeInfoManager#isTypeInfo(Address)}
 	 */
 	@Deprecated(since = "1.5", forRemoval = true)
@@ -254,7 +252,7 @@ public class TypeInfoUtils {
 	/**
 	 * Gets the Namespace for the corresponding typeinfo
 	 * @param program the program containing the namespace
-	 * @param typename the typeinfo
+	 * @param type the typeinfo
 	 * @return the Namespace for the corresponding typeinfo
 	 */
 	public static Namespace getNamespaceFromTypeName(Program program, TypeInfo type) {
@@ -318,7 +316,6 @@ public class TypeInfoUtils {
 	 * @param program the program containing the TypeInfo
 	 * @param typename the type_info class's typename
 	 * @return the TypeInfo structure for the typename
-	 * @see TypeInfoFactory#getDataType
 	 * @deprecated please use {@link TypeInfoManager#getDataType(String)}
 	 */
 	@Deprecated(since = "1.5", forRemoval = true)

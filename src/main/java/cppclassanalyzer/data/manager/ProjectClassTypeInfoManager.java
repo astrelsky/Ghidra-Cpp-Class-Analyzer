@@ -8,6 +8,7 @@ import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
+import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
@@ -53,9 +54,8 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	private static final Schema SCHEMA = new Schema(
 		0,
 		"key",
-		new Class<?>[]{StringField.class, StringField.class, StringField.class},
-		new String[]{"Name", "TypeTable", "VtableTable"}
-	);
+		new Class<?>[] { StringField.class, StringField.class, StringField.class },
+		new String[] { "Name", "TypeTable", "VtableTable" });
 
 	private final ClassTypeInfoManagerPlugin plugin;
 	private final ProjectArchive archive;
@@ -345,7 +345,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		plugin.managerAdded(libManager);
 		acquireLock();
 		try {
-			int id = startTransaction("Adding "+manager.getName());
+			int id = startTransaction("Adding " + manager.getName());
 			monitor.initialize(manager.getTypeCount());
 			for (ClassTypeInfo type : manager.getTypes()) {
 				monitor.checkCanceled();
@@ -375,7 +375,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			if (tmp == null) {
 				try {
 					long id = dbHandle.startTransaction();
-					tmp = dbHandle.createTable(NAME, SCHEMA, new int[]{0});
+					tmp = dbHandle.createTable(NAME, SCHEMA, new int[] { 0 });
 					dbHandle.endTransaction(id, true);
 				} catch (IOException e) {
 					dbError(e);
@@ -405,15 +405,13 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 					ArchivedRttiTablePair tables =
 						new ArchivedRttiTablePair(
 							getClassTable(typeTableName),
-							getVtableTable(vtableTableName)
-					);
+							getVtableTable(vtableTableName));
 					LibraryClassTypeInfoManager man =
 						new LibraryClassTypeInfoManager(
 							ProjectClassTypeInfoManager.this,
 							tables,
 							dbHandle,
-							name
-						);
+							name);
 					libMap.put(name, man);
 				}
 			} catch (IOException e) {
@@ -443,6 +441,27 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				releaseLock();
 			}
 		}
+	}
+
+	public static FileArchiveClassTypeInfoManager openIfManagerArchive(
+			ClassTypeInfoManagerPlugin plugin, Archive archive) throws IOException {
+		if (archive instanceof ProjectArchive) {
+			DBHandle handle = getDB((ProjectArchive) archive).getDBHandle();
+			if (handle.getTable(LibraryMap.NAME) != null) {
+				return open(plugin, (ProjectArchive) archive);
+			}
+		}
+		return null;
+	}
+
+	public Stream<LibraryClassTypeInfoManager> getAvailableManagers(String[] names) {
+		Stream.Builder<LibraryClassTypeInfoManager> builder = Stream.builder();
+		for (String name : names) {
+			if (libMap.containsKey(name)) {
+				builder.add(libMap.get(name));
+			}
+		}
+		return builder.build();
 	}
 
 }

@@ -514,26 +514,17 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		if (key != INVALID_KEY) {
 			return (AbstractClassTypeInfoDB) worker.getType(key);
 		}
-		SymbolTable table = program.getSymbolTable();
-		Symbol s = table.getExternalSymbol(type.getSymbolName());
-		if (s == null) {
-			// nothing to do
-			return null;
-		}
-		ExternalManager man = program.getExternalManager();
-		ExternalLocation loc = man.getExternalLocation(s);
-		try {
-			loc.setAddress(address);
-		} catch (InvalidInputException e) {
-			throw new AssertException(e);
-		}
 		lock.acquire();
 		try {
 			key = worker.getClassKey();
 			ClassTypeInfoRecord record =
 				ClassTypeInfoSchema.SCHEMA.getNewRecord(key);
 			worker.updateRecord(record);
-			return new GnuClassTypeInfoDB(worker, type, record);
+			AbstractClassTypeInfoDB result = new GnuClassTypeInfoDB(worker, type, record);
+			TypeInfoArchiveChangeRecord changeRecord =
+				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, result);
+			plugin.fireArchiveChanged(changeRecord);
+			return result;
 		} finally {
 			lock.release();
 		}
@@ -825,7 +816,17 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	@Override
 	public ClassTypeInfoDB getExternalClassTypeInfo(Address address) {
-		// TODO
+		String mangled = Arrays.stream(program.getSymbolTable().getSymbols(address))
+			.map(Symbol::getName)
+			.filter(s -> s.startsWith("_ZTI"))
+			.findFirst()
+			.orElse(null);
+		if (mangled != null) {
+			ArchivedClassTypeInfo type = plugin.getExternalClassTypeInfo(program, mangled);
+			if (type != null) {
+				return resolve(type);
+			}
+		}
 		return null;
 	}
 
@@ -963,6 +964,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		@Override
 		final ClassTypeInfoManagerPlugin getPlugin() {
 			return plugin;
+		}
+
+		@Override
+		public final AbstractClassTypeInfoDB resolve(ArchivedClassTypeInfo type) {
+			return getManager().resolve(type);
 		}
 	}
 
