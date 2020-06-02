@@ -8,7 +8,6 @@ import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.FileArchive;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
@@ -23,12 +22,10 @@ import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
-import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.StandAloneDataTypeManager;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
-import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.util.Lock;
 import ghidra.util.exception.AssertException;
@@ -124,16 +121,12 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return new ArchiveClassTypeInfoManager(plugin, file, DBConstants.CREATE);
 	}
 
-	public static ArchiveClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin,
-			File file) throws IOException {
-		return open(plugin, file, false);
-	}
-
 	@Override
 	public String getPath() {
 		return file.getAbsolutePath();
 	}
 
+	@Override
 	public boolean canUpdate() {
 		return dbHandle.canUpdate();
 	}
@@ -142,10 +135,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 			boolean openForUpdate) throws IOException {
 		int mode = openForUpdate ? DBConstants.UPDATE : DBConstants.READ_ONLY;
 		return new ArchiveClassTypeInfoManager(plugin, file, mode);
-	}
-
-	public ArchivedGnuVtable getVtable(long key) {
-		return worker.getVtable(key);
 	}
 
 	@Override
@@ -171,6 +160,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		}
 	}
 
+	@Override
 	public boolean isChanged() {
 		lock.acquire();
 		try {
@@ -180,6 +170,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		}
 	}
 
+	@Override
 	public void save() {
 		lock.acquire();
 		try {
@@ -195,18 +186,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		}
 	}
 
-	public ArchivedClassTypeInfo getClassTypeInfo(Relocation reloc) {
-		String symbolName = reloc.getSymbolName();
-		if (symbolName.isBlank()) {
-			return null;
-		}
-		long key = worker.getTypeKey(symbolName);
-		if (key != AddressMap.INVALID_ADDRESS_KEY) {
-			return worker.getType(key);
-		}
-		return null;
-	}
-
 	public ArchivedClassTypeInfo resolve(ClassTypeInfo type) {
 		if (type instanceof GnuClassTypeInfoDB) {
 			return resolve((GnuClassTypeInfoDB) type);
@@ -218,54 +197,29 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return worker.resolve(type);
 	}
 
-	public ArchivedGnuVtable resolve(Vtable vtable) {
-		return worker.resolve(vtable);
-	}
-
-	public Iterable<ClassTypeInfoDB> getIterable() {
-		return () -> getTypeStream().iterator();
-	}
-
-	public Iterable<ArchivedGnuVtable> getVtableIterable() {
-		return () -> getVtableStream().iterator();
-	}
-
 	@Override
 	public Stream<ClassTypeInfoDB> getTypeStream() {
 		return worker.getTypeStream();
 	}
 
-	public Stream<ArchivedGnuVtable> getVtableStream() {
-		return worker.getVtableStream();
-	}
-
 	@Override
-	public ClassTypeInfoDB getType(GhidraClass gc) throws UnresolvedClassTypeInfoException {
+	public ClassTypeInfoDB getType(GhidraClass gc) {
 		return worker.getType(gc);
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(Function fun) throws UnresolvedClassTypeInfoException {
+	public ClassTypeInfoDB getType(Function fun) {
 		return worker.getType(fun);
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(String name, Namespace namespace)
-			throws UnresolvedClassTypeInfoException {
+	public ClassTypeInfoDB getType(String name, Namespace namespace) {
 		return worker.getType(name, namespace);
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(String typeName) throws UnresolvedClassTypeInfoException {
-		return worker.getType(typeName);
-	}
-
-	public void populate(ProgramClassTypeInfoManager manager) {
-		try {
-			populate(manager, TaskMonitor.DUMMY);
-		} catch (CancelledException e) {
-			throw new AssertException(e);
-		}
+	public ClassTypeInfoDB getType(String symbolName) {
+		return worker.getType(symbolName);
 	}
 
 	public void populate(ProgramClassTypeInfoManager manager, TaskMonitor monitor)
@@ -326,6 +280,26 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return worker.getType(key);
 	}
 
+	public static FileArchiveClassTypeInfoManager openIfManagerArchive(
+			ClassTypeInfoManagerPlugin plugin, Archive archive) throws IOException {
+		if (archive instanceof FileArchive) {
+			try {
+				ResourceFile resource = ((FileArchive) archive).getFile();
+				PackedDatabase db =
+					PackedDatabase.getPackedDatabase(resource, false, TaskMonitor.DUMMY);
+				DBHandle handle = db.open(TaskMonitor.DUMMY);
+				if (handle.getTable(ArchivedClassTypeInfo.TABLE_NAME) != null) {
+					File file = resource.getFile(false);
+					boolean updateable = archive.isModifiable();
+					plugin.getDataTypeManagerHandler().closeArchive(archive);
+					return open(plugin, file, updateable);
+				}
+			} catch (CancelledException e) {
+			}
+		}
+		return null;
+	}
+
 	private final class RttiRecordWorker extends ArchiveRttiRecordWorker {
 
 		private long id;
@@ -378,25 +352,4 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 			return ArchiveClassTypeInfoManager.this;
 		}
 	}
-
-	public static FileArchiveClassTypeInfoManager openIfManagerArchive(
-			ClassTypeInfoManagerPlugin plugin, Archive archive) throws IOException {
-		if (archive instanceof FileArchive) {
-			try {
-				ResourceFile resource = ((FileArchive) archive).getFile();
-				PackedDatabase db =
-					PackedDatabase.getPackedDatabase(resource, false, TaskMonitor.DUMMY);
-				DBHandle handle = db.open(TaskMonitor.DUMMY);
-				if (handle.getTable(ArchivedClassTypeInfo.TABLE_NAME) != null) {
-					File file = resource.getFile(false);
-					boolean updateable = archive.isModifiable();
-					plugin.getDataTypeManagerHandler().closeArchive(archive);
-					return open(plugin, file, updateable);
-				}
-			} catch (CancelledException e) {
-			}
-		}
-		return null;
-	}
-
 }

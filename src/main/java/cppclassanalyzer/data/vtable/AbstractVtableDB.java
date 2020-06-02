@@ -98,8 +98,4 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 	protected boolean refresh() {
 		return getManager().containsRecord(this);
 	}
-
-	protected static Address getEntryPoint(Function function) {
-		return function != null ? function.getEntryPoint() : Address.NO_ADDRESS;
-	}
 }

@@ -1,10 +1,17 @@
 package ghidra.app.plugin.prototype.typemgr.node;
 
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.swing.Icon;
+import javax.swing.ImageIcon;
 
+import ghidra.app.plugin.prototype.typemgr.icon.BlueGreenSwappedColorModel;
+import ghidra.app.plugin.prototype.typemgr.icon.PurpleSwappedColorModel;
+import ghidra.app.plugin.prototype.typemgr.icon.RedGreenSwappedColorModel;
 import ghidra.program.model.address.Address;
 
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
@@ -13,7 +20,9 @@ import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 
 import docking.widgets.tree.GTreeLazyNode;
 import docking.widgets.tree.GTreeNode;
+import generic.util.image.ImageUtils;
 import resources.ResourceManager;
+import resources.icons.ImageIconWrapper;
 
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
 
@@ -169,12 +178,51 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 			"virtual abstract base class"
 		};
 
+		private static final ImageIcon CLASS_ICON = ResourceManager.loadImage("images/class.png");
+
 		private static Icon[] ICONS = new Icon[]{
-			ResourceManager.loadImage("images/class.png"),
-			ResourceManager.loadImage("images/abstract_class.png"),
-			ResourceManager.loadImage("images/virtual_class.png"),
-			ResourceManager.loadImage("images/virtual_abstract_class.png")
+			CLASS_ICON,
+			createIcon(ABSTRACT),
+			createIcon(VIRTUAL),
+			createIcon(VIRTUAL_ABSTRACT)
 		};
+
+		private static Icon createIcon(ModifierType type) {
+			BufferedImage image = ImageUtils.getBufferedImage(CLASS_ICON.getImage());
+			ColorModel model = null;
+			switch (type) {
+				case ABSTRACT:
+					model = new RedGreenSwappedColorModel(image.getColorModel());
+					break;
+				case NORMAL:
+					break;
+				case VIRTUAL:
+					model = new BlueGreenSwappedColorModel(image.getColorModel());
+					break;
+				case VIRTUAL_ABSTRACT:
+					model = new PurpleSwappedColorModel(image.getColorModel());
+					break;
+				default:
+					break;
+			}
+			WritableRaster raster = image.getRaster();
+			Hashtable<String, Object> properties = getProperties(image);
+			boolean preMultiplied = image.isAlphaPremultiplied();
+			image = new BufferedImage(model, raster, preMultiplied, properties);
+			return new ImageIconWrapper(image, type.name());
+		}
+
+		private static Hashtable<String, Object> getProperties(BufferedImage image) {
+			String[] names = image.getPropertyNames();
+			if (names == null) {
+				return null;
+			}
+			Hashtable<String, Object> table = new Hashtable<>(names.length);
+			for (String name : names) {
+				table.put(name, image.getProperty(name));
+			}
+			return table;
+		}
 
 		Icon getIcon() {
 			return ICONS[ordinal()];

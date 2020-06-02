@@ -16,15 +16,6 @@ public abstract class RttiTablePair<T1 extends AbstractSchema<?>, T2 extends Abs
 		this.vtableTable = vtableTable;
 	}
 
-	static String getName(Table table) {
-		String name = table.getName();
-		return name.substring(0, name.indexOf(' '));
-	}
-
-	public final String getName() {
-		return getName(classTable.getTable());
-	}
-
 	public final T1 getTypeSchema() {
 		return classTable.getSchema();
 	}

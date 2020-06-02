@@ -14,14 +14,12 @@ import java.util.stream.LongStream;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.database.DatabaseObject;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
-import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.IntArrayList;
 import ghidra.util.datastruct.LongArrayList;
 import ghidra.util.datastruct.LongIntHashtable;
@@ -141,11 +139,6 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			+ Integer.BYTES + Long.BYTES * virtualBaseKeys.length
 			+ Integer.BYTES + Long.BYTES * baseKeys.length
 			+ Integer.BYTES + Integer.BYTES * baseOffsets.length;
-	}
-
-	@Override
-	protected Namespace buildNamespace() {
-		return TypeInfoUtils.getNamespaceFromTypeName(getProgram(), typename);
 	}
 
 	@Override

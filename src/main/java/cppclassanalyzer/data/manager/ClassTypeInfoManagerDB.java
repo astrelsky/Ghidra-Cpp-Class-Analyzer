@@ -9,22 +9,16 @@ import java.util.stream.Stream;
 
 import javax.swing.Icon;
 
-import ghidra.app.cmd.data.TypeDescriptorModel;
-import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.VsCppClassBuilder;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsVtableModel;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord.ChangeType;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
-import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.program.database.ManagerDB;
 import ghidra.program.database.ProgramDB;
@@ -254,19 +248,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		return map.getKey(address, true);
 	}
 
-	AbstractCppClassBuilder getBuilder(ClassTypeInfo type) {
-		if (GnuUtils.isGnuCompiler(program)) {
-			return new GccCppClassBuilder(type);
-		}
-		if (PEUtil.canAnalyze(program)) {
-			DataValidationOptions options = new DataValidationOptions();
-			TypeDescriptorModel model =
-				new TypeDescriptorModel(program, type.getAddress(), options);
-			return new VsCppClassBuilder(RttiModelWrapper.getWrapper(model));
-		}
-		throw new AssertException("Ghidra-Cpp-Class-Analyzer: unknown program rtti");
-	}
-
 	private boolean containsClassKey(Address address) {
 		lock.acquire();
 		try {
@@ -312,18 +293,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	@Override
 	public ProgramDB getProgram() {
 		return program;
-	}
-
-	public void deleteAll() {
-		lock.acquire();
-		try {
-			worker.getCaches().invalidate();
-			worker.getTables().deleteAll();
-		} catch (IOException e) {
-			dbError(e);
-		} finally {
-			lock.release();
-		}
 	}
 
 	@Override
@@ -727,7 +696,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 			worker.getTables().deleteAll();
 			worker.getCaches().invalidate();
-			iter = new SchemaRecordIterator<>(tmpTable.getTable().iterator(), ClassTypeInfoRecord::new);
+			iter = new SchemaRecordIterator<>(
+				tmpTable.getTable().iterator(), ClassTypeInfoRecord::new);
 			while (iter.hasNext()) {
 				monitor.checkCanceled();
 				classTable.putRecord(iter.next().copy().getRecord());

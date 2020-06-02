@@ -7,7 +7,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.Rtti2Model;
@@ -18,7 +17,6 @@ import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
@@ -115,13 +113,6 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	@Override
 	public Vtable findVtable(TaskMonitor monitor) throws CancelledException {
 		return getVtable();
-	}
-
-	@Override
-	protected Namespace buildNamespace() {
-		TypeDescriptorModel type = new TypeDescriptorModel(
-			getProgram(), address, DEFAULT_OPTIONS);
-		return type.getDescriptorAsNamespace();
 	}
 
 	public static long[] getBaseKeys(ClassTypeInfoRecord record) {

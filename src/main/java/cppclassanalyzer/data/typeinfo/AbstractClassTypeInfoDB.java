@@ -128,14 +128,13 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		manager.updateRecord(record);
 	}
 
+	protected abstract long[] getBaseKeys();
+	protected abstract int[] getOffsets();
+
 	@Override
 	public ClassTypeInfoManagerDB getManager() {
 		return (ClassTypeInfoManagerDB) manager.getManager();
 	}
-
-	protected abstract Namespace buildNamespace();
-	protected abstract long[] getBaseKeys();
-	protected abstract int[] getOffsets();
 
 	public Map<ClassTypeInfo, Integer> getBaseOffsets() {
 		long[] baseKeys = getBaseKeys();
@@ -249,10 +248,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	byte getClassID() {
 		return getRecord().getByteValue(TYPEINFO_ID);
-	}
-
-	long getAddressKey() {
-		return getManager().encodeAddress(address);
 	}
 
 	@Override

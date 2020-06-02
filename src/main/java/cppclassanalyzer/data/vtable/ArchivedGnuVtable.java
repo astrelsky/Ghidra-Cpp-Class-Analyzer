@@ -68,13 +68,6 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		this.prefixes = getArray(data);
 	}
 
-	private static FunctionDefinition[] toDefinition(Function[] table, DataTypeManager dtm) {
-		return Arrays.stream(table)
-					 .map(Function::getSignature)
-					 .map(f -> new FunctionDefinitionDataType(f, dtm))
-					 .toArray(FunctionDefinition[]::new);
-	}
-
 	public Address getAddress(Program program) {
 		return program.getAddressMap().decodeAddress(address);
 	}
@@ -105,17 +98,6 @@ public class ArchivedGnuVtable extends DatabaseObject {
 	@Override
 	protected boolean refresh() {
 		return false;
-	}
-
-	public static FunctionDefinition[][] getFunctionDefinitions(Function[][] table,
-		DataTypeManager dtm) {
-			return Arrays.stream(table)
-				.map(t -> toDefinition(t, dtm))
-				.toArray(FunctionDefinition[][]::new);
-	}
-
-	public ArchivedClassTypeInfo getClassTypeInfo() {
-		return type;
 	}
 
 	public String getSymbolName() {
