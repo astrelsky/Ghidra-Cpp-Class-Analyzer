@@ -10,7 +10,7 @@ public class CppClassAnalyzerPluginPackage extends PluginPackage {
 	private static final String DESCRIPTION = "These plugins are for analyzing C++ Classes.";
 
 	public CppClassAnalyzerPluginPackage() {
-		super(NAME, ResourceManager.loadImage("images/c++-icon.png"), DESCRIPTION);
+		super(NAME, ResourceManager.loadImage("images/cpp_logo.png"), DESCRIPTION);
 	}
 
 }

@@ -20,7 +20,7 @@ import resources.ResourceManager;
 public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 
 	private static final String NAME = "ClassTypeInfo Tree";
-	private static Icon ICON = ResourceManager.loadImage("images/c++-icon.png");
+	private static Icon ICON = ResourceManager.loadImage("images/cpp_logo.png");
 
 	private final ClassTypeInfoManagerPlugin plugin;
 	private final TreeMouseListener mouseListener = new TreeMouseListener();
