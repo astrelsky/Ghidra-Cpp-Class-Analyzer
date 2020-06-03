@@ -5,8 +5,11 @@ import javax.swing.tree.TreePath;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoArchiveGTree;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
-import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
+import ghidra.util.exception.AssertException;
 
+import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import docking.ActionContext;
 import docking.widgets.tree.GTreeNode;
 
@@ -49,7 +52,15 @@ abstract class AbstractFileArchivePopupAction extends AbstractTypeMgrAction {
 
 	@Override
 	final FileArchiveClassTypeInfoManager getManager(ActionContext context) {
-		return (FileArchiveClassTypeInfoManager) super.getManager(context);
+		ClassTypeInfoManager manager = super.getManager(context);
+		if (manager instanceof FileArchiveClassTypeInfoManager) {
+			return (FileArchiveClassTypeInfoManager) manager;
+		}
+		if (manager instanceof LibraryClassTypeInfoManager) {
+			return ((LibraryClassTypeInfoManager) manager).getProjectManager();
+		}
+		throw new AssertException(
+			"Unexpected ClassTypeInfoManager "+manager.getClass().getSimpleName());
 	}
 
 	@Override

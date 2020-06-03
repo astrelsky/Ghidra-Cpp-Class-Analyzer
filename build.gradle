@@ -37,6 +37,11 @@ def docs = file(ghidraInstallDir+'/docs/GhidraAPI_javadoc.zip')
 
 repositories { mavenCentral() }
 
+compileJava {
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+}
+
 dependencies {
 	testCompile "org.hamcrest:hamcrest-all:1.3"
 	testCompile "org.jmockit:jmockit:1.44"
@@ -48,7 +53,7 @@ dependencies {
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
-	
+
 	// these are included with ghidra
 
 	// Framework/Generic
