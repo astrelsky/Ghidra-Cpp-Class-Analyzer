@@ -7,6 +7,7 @@ import java.awt.event.MouseEvent;
 import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.tree.TreePath;
 
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
@@ -94,9 +95,11 @@ public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 
 		@Override
 		public void mouseClicked(MouseEvent e) {
-			if (e.getClickCount() == 2 && !e.isConsumed()) {
-				e.consume();
-				goToTypeInfo();
+			if (!e.isConsumed() && SwingUtilities.isLeftMouseButton(e)) {
+				if (e.getClickCount() == 2) {
+					e.consume();
+					goToTypeInfo();
+				}
 			}
 		}
 	}
