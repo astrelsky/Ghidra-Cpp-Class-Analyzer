@@ -1,5 +1,7 @@
 //@category CppClassAnalyzer
 
+import cppclassanalyzer.data.ClassTypeInfoManager;
+
 import ghidra.app.script.GhidraScript;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -11,7 +13,6 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
-import cppclassanalyzer.data.ClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataUtilities;
