@@ -304,6 +304,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	}
 
 	private Set<Address> getDynamicReferences(String typeString) throws CancelledException {
+		String target = VtableModel.MANGLED_PREFIX+typeString;
 		Iterator<Relocation> relocations = program.getRelocationTable().getRelocations();
 		Set<Address> result = new LinkedHashSet<>();
 		while (relocations.hasNext()) {
@@ -312,7 +313,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			if (name == null) {
 				continue;
 			}
-			if (name.equals(VtableModel.MANGLED_PREFIX+typeString)) {
+			if (name.equals(target)) {
 				if (reloc.getType() == GnuUtils.UNSUPPORTED_RELOCATION) {
 					return getClangDynamicReferences(reloc);
 				}

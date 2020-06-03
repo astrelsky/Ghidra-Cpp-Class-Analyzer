@@ -302,7 +302,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 
 	private final class RttiRecordWorker extends ArchiveRttiRecordWorker {
 
-		private long id;
+		private long id = -1;
 
 		RttiRecordWorker(ArchivedRttiTablePair tables, ArchivedRttiCachePair caches) {
 			super(ArchiveClassTypeInfoManager.this, tables, caches);
@@ -320,6 +320,9 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 
 		@Override
 		public void startTransaction(String description) {
+			if (id != -1) {
+				return;
+			}
 			lock.acquire();
 			try {
 				id = dbHandle.startTransaction();

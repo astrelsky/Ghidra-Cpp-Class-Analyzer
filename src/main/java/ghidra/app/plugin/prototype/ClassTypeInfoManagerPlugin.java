@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
 import ghidra.app.plugin.core.datamgr.DataTypeManagerPlugin;
@@ -256,10 +257,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		plugins.remove(this);
 		tool.removeComponentProvider(provider);
 		provider.dispose();
-		managers.stream()
-				.filter(FileArchiveClassTypeInfoManager.class::isInstance)
-				.map(FileArchiveClassTypeInfoManager.class::cast)
-				.forEach(this::closeArchive);
 	}
 
 	public TypeInfoTreeProvider getProvider() {
@@ -344,6 +341,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 				return type;
 			}
 		}
-		return null;
+		throw new UnresolvedClassTypeInfoException(program, mangled);
 	}
 }

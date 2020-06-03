@@ -24,10 +24,12 @@ import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.RelocationTable;
+import ghidra.test.TestEnv;
 import ghidra.util.Msg;
 
 public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 
+	private final TestEnv env;
 	private Map<Long, String> typeMap;
 	private Map<Long, String> nameMap;
 	private Map<Long, String> vtableMap;
@@ -35,10 +37,11 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 	private Long[] functionOffsets;
 	private ProgramClassTypeInfoManager manager;
 
-	protected AbstractTypeInfoProgramBuilder(String languageName, String compilerSpecID)
-		throws Exception {
-			super("TestProgram", languageName, compilerSpecID, null);
-			setupProgram();
+	protected AbstractTypeInfoProgramBuilder(String languageName, String compilerSpecID,
+			TestEnv env) throws Exception {
+		super("TestProgram", languageName, compilerSpecID, null);
+		this.env = env;
+		setupProgram();
 	}
 
 	protected abstract void setupMemory();
@@ -46,6 +49,7 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 	private void setupProgram() {
 		setupMemory();
 		Program program = getProgram();
+		env.launchDefaultTool(program);
 		startTransaction();
 		manager = ClassTypeInfoUtils.getManager(program);
 		typeMap = getTypeInfoMap();

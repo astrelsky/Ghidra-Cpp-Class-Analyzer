@@ -789,6 +789,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		String mangled = Arrays.stream(program.getSymbolTable().getSymbols(address))
 			.map(Symbol::getName)
 			.filter(s -> s.startsWith("_ZTI"))
+			.filter(s -> !s.contains("@"))
 			.findFirst()
 			.orElse(null);
 		if (mangled != null) {

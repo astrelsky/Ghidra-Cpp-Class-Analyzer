@@ -4,6 +4,9 @@ import java.util.Map;
 import java.util.function.Function;
 
 import ghidra.util.exception.AssertException;
+
+import db.NoTransactionException;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.data.DataType;
@@ -92,6 +95,20 @@ class TypeInfoFactory {
 		return getTypeInfo(buf.getMemory().getProgram(), buf.getAddress());
 	}
 
+	private static TypeInfo doGetTypeInfo(ModelGetter getter, Program program, Address address)
+			throws InvalidDataTypeException {
+		try {
+			return getter.getModel(program, address);
+		} catch (NoTransactionException e) {
+			// this is rare occurance where it is better to catch this
+			// it is preferred to only create a transaction when necessary
+			int id = program.startTransaction("Creating typeinfo at " + address.toString());
+			TypeInfo result = getter.getModel(program, address);
+			program.endTransaction(id, true);
+			return result;
+		}
+	}
+
 	/**
 	 * Get the TypeInfo at the address
 	 * @param program the program containing the TypeInfo
@@ -105,7 +122,8 @@ class TypeInfoFactory {
 				// invalid typeinfo
 				return null;
 			} try {
-				return COPY_MAP.get(baseTypeName).modelGetter.getModel(program, address);
+				ModelGetter getter = COPY_MAP.get(baseTypeName).modelGetter;
+				return doGetTypeInfo(getter, program, address);
 			} catch (InvalidDataTypeException e) {
 				throw new AssertException(
 					TypeInfoUtils.getErrorMessage(program, address, baseTypeName));

@@ -2,6 +2,8 @@ package ghidra.app.cmd.data.rtti.gcc.builder;
 
 import java.util.Map;
 
+import ghidra.test.TestEnv;
+
 public class X86TypeInfoProgramBuilder extends AbstractTypeInfoProgramBuilder {
 	private static final Map<Long, String> typeMap = Map.ofEntries(
 		getEntry(0x00116768L, "e88011000000000060e31000000000000100000002000000006811000000000003e8ffffffffffffd86711000000000003e0ffffffffffff"),
@@ -458,8 +460,8 @@ public class X86TypeInfoProgramBuilder extends AbstractTypeInfoProgramBuilder {
 
 		private static final String fDescriptors = "";
 
-		public X86TypeInfoProgramBuilder() throws Exception {
-			super("x86:LE:64:default", "gcc");
+		public X86TypeInfoProgramBuilder(TestEnv env) throws Exception {
+			super("x86:LE:64:default", "gcc", env);
 		}
 
 		@Override

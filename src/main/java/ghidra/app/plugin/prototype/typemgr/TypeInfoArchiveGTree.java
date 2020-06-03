@@ -140,6 +140,7 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 			} else {
 				addNode(new TypeInfoRootNode(manager));
 			}
+			children().sort(null);
 		}
 
 		void removeNode(ClassTypeInfoManager manager) {

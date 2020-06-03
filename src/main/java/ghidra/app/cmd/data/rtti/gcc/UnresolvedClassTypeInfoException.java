@@ -1,5 +1,7 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
+import ghidra.app.util.demangler.Demangled;
+import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 
@@ -24,5 +26,15 @@ public class UnresolvedClassTypeInfoException extends RuntimeException {
 
 	public UnresolvedClassTypeInfoException(String msg) {
 		super(msg);
+	}
+
+	public UnresolvedClassTypeInfoException(Program program, String mangled) {
+		super(buildMessage(program, mangled));
+	}
+
+	private static String buildMessage(Program program, String mangled) {
+		Demangled d = DemanglerUtil.demangle(program, mangled);
+		String name = d != null ? d.getNamespaceString() : mangled;
+		return "Unable to locate archived data for " + name;
 	}
 }

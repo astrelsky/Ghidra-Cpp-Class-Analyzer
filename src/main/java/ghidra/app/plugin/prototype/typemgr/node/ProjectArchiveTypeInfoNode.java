@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import ghidra.util.task.TaskMonitor;
 
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
@@ -42,5 +43,17 @@ public final class ProjectArchiveTypeInfoNode extends AbstractManagerNode {
 	@Override
 	public TypeInfoNode getNode(ClassTypeInfoDB type) {
 		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public int compareTo(GTreeNode node) {
+		if (node instanceof TypeInfoRootNode) {
+			TypeInfoRootNode other = (TypeInfoRootNode) node;
+			if (other.getTypeManager() instanceof ProgramClassTypeInfoManager) {
+				return 1;
+			}
+			return -1;
+		}
+		return super.compareTo(node);
 	}
 }

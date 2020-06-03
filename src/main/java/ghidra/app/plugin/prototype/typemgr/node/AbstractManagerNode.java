@@ -4,6 +4,7 @@ import javax.help.UnsupportedOperationException;
 import javax.swing.Icon;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 
 import docking.widgets.tree.GTreeNode;
@@ -76,5 +77,13 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 	@Override
 	public final boolean isProgramNode() {
 		return getTypeManager() instanceof ProgramClassTypeInfoManager;
+	}
+
+	@Override
+	public final void dispose() {
+		if (manager instanceof FileArchiveClassTypeInfoManager) {
+			((FileArchiveClassTypeInfoManager) manager).close();
+		}
+		super.dispose();
 	}
 }
