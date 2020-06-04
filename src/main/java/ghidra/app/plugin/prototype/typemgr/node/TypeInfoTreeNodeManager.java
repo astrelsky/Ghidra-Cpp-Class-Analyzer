@@ -275,6 +275,7 @@ public class TypeInfoTreeNodeManager {
 		return children;
 	}
 
+	// dbHandle transactions are different
 	private static class TransactionHandler {
 		final DBHandle handle;
 		long id;
