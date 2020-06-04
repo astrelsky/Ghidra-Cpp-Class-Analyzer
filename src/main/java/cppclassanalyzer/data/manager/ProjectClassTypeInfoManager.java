@@ -35,6 +35,7 @@ import cppclassanalyzer.database.schema.ArchivedClassTypeInfoSchema;
 import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.tables.ArchivedClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.ArchivedGnuVtableDatabaseTable;
+import cppclassanalyzer.database.utils.TransactionHandler;
 import db.DBConstants;
 import db.DBHandle;
 import db.RecordIterator;
@@ -462,6 +463,14 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			}
 		}
 		return builder.build();
+	}
+
+	private void endTransaction(long id, boolean commit) {
+		endTransaction((int) id, commit);
+	}
+
+	TransactionHandler getHandler() {
+		return new TransactionHandler(this::startTransaction, this::endTransaction);
 	}
 
 }

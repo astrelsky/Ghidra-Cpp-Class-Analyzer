@@ -102,11 +102,18 @@ class TypeInfoFactory {
 		} catch (NoTransactionException e) {
 			// this is rare occurance where it is better to catch this
 			// it is preferred to only create a transaction when necessary
-			int id = program.startTransaction("Creating typeinfo at " + address.toString());
-			TypeInfo result = getter.getModel(program, address);
-			program.endTransaction(id, true);
-			return result;
+			addTypeInfoTypes(program);
+			return getter.getModel(program, address);
 		}
+	}
+
+	private static void addTypeInfoTypes(Program program) {
+		int id = program.startTransaction("Creating typeinfo structures");
+		DataTypeManager dtm = program.getDataTypeManager();
+		for (MethodPair pair : COPY_MAP.values()) {
+			pair.dataTypeGetter.apply(dtm);
+		}
+		program.endTransaction(id, true);
 	}
 
 	/**

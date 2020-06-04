@@ -15,6 +15,7 @@ import cppclassanalyzer.data.manager.caches.ArchivedRttiCachePair;
 import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.database.utils.TransactionHandler;
 import db.DBHandle;
 
 import ghidra.program.model.data.DataTypeManager;
@@ -109,10 +110,19 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 		return manager;
 	}
 
+	@Override
+	public void dbError(IOException e) {
+		manager.dbError(e);
+	}
+
+	private TransactionHandler getHandler() {
+		return manager.getHandler();
+	}
+
 	private final class RttiRecordWorker extends ArchiveRttiRecordWorker {
 
 		RttiRecordWorker(ArchivedRttiTablePair tables, ArchivedRttiCachePair caches) {
-			super(LibraryClassTypeInfoManager.this, tables, caches);
+			super(LibraryClassTypeInfoManager.this, tables, caches, getHandler());
 		}
 
 		@Override
@@ -126,14 +136,6 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 		}
 
 		@Override
-		public void startTransaction(String description) {
-		}
-
-		@Override
-		public void endTransaction() {
-		}
-
-		@Override
 		ClassTypeInfoManagerPlugin getPlugin() {
 			return manager.getPlugin();
 		}
@@ -143,10 +145,4 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 			return manager;
 		}
 	}
-
-	@Override
-	public void dbError(IOException e) {
-		manager.dbError(e);
-	}
-
 }

@@ -38,6 +38,7 @@ import cppclassanalyzer.database.schema.ArchivedClassTypeInfoSchema;
 import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.tables.ArchivedClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.ArchivedGnuVtableDatabaseTable;
+import cppclassanalyzer.database.utils.TransactionHandler;
 import db.DBConstants;
 import db.DBHandle;
 import db.Table;
@@ -300,12 +301,18 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return null;
 	}
 
+	private void endTransaction(long id, boolean commit) {
+		endTransaction((int) id, commit);
+	}
+
+	private TransactionHandler getHandler() {
+		return new TransactionHandler(this::startTransaction, this::endTransaction);
+	}
+
 	private final class RttiRecordWorker extends ArchiveRttiRecordWorker {
 
-		private long id = -1;
-
 		RttiRecordWorker(ArchivedRttiTablePair tables, ArchivedRttiCachePair caches) {
-			super(ArchiveClassTypeInfoManager.this, tables, caches);
+			super(ArchiveClassTypeInfoManager.this, tables, caches, getHandler());
 		}
 
 		@Override
@@ -316,33 +323,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		@Override
 		void releaseLock() {
 			lock.release();
-		}
-
-		@Override
-		public void startTransaction(String description) {
-			if (id != -1) {
-				return;
-			}
-			lock.acquire();
-			try {
-				id = dbHandle.startTransaction();
-			} finally {
-				lock.release();
-			}
-		}
-
-		@Override
-		public void endTransaction() {
-			if (id != -1) {
-				lock.acquire();
-				try {
-					dbHandle.endTransaction(id, true);
-				} catch (IOException e) {
-					dbError(e);
-				} finally {
-					lock.release();
-				}
-			}
 		}
 
 		@Override

@@ -19,6 +19,7 @@ import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 
 import cppclassanalyzer.database.record.DatabaseRecord;
 import cppclassanalyzer.database.schema.AbstractSchema;
+import cppclassanalyzer.database.utils.TransactionHandler;
 import db.util.ErrorHandler;
 
 public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
@@ -28,22 +29,17 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 
 	private final T5 tables;
 	private final RttiCachePair<T1, T2> caches;
+	private final TransactionHandler handler;
 
-	AbstractRttiRecordWorker(T5 tables, RttiCachePair<T1, T2> caches) {
+	AbstractRttiRecordWorker(T5 tables, RttiCachePair<T1, T2> caches, TransactionHandler handler) {
 		this.tables = tables;
 		this.caches = caches;
+		this.handler = handler;
 	}
 
 	abstract void acquireLock();
 
 	abstract void releaseLock();
-
-	final void startTransaction() {
-		startTransaction(null);
-	}
-
-	abstract void startTransaction(String description);
-	abstract void endTransaction();
 
 	abstract long getTypeKey(ClassTypeInfo type);
 
@@ -60,15 +56,25 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 	abstract ClassTypeInfoManagerPlugin getPlugin();
 
 	private T3 createTypeRecord(long key) throws IOException {
-		T3 record = tables.getTypeSchema().getNewRecord(key);
-		tables.getTypeTable().putRecord(record.getRecord());
-		return record;
+		acquireLock();
+		try {
+			T3 record = tables.getTypeSchema().getNewRecord(key);
+			tables.getTypeTable().putRecord(record.getRecord());
+			return record;
+		} finally {
+			releaseLock();
+		}
 	}
 
 	private T4 createVtableRecord(long key) throws IOException {
-		T4 record = tables.getVtableSchema().getNewRecord(key);
-		tables.getVtableTable().putRecord(record.getRecord());
-		return record;
+		acquireLock();
+		try {
+			T4 record = tables.getVtableSchema().getNewRecord(key);
+			tables.getVtableTable().putRecord(record.getRecord());
+			return record;
+		} finally {
+			releaseLock();
+		}
 	}
 
 	@Override
@@ -110,7 +116,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		}
 		acquireLock();
 		try {
-			startTransaction("Updating Record");
+			handler.startTransaction("Updating Record");
 			if (record.hasSameSchema(tables.getTypeSchema())) {
 				tables.getTypeTable().putRecord(record.getRecord());
 			} else if (record.hasSameSchema(tables.getVtableSchema())) {
@@ -122,7 +128,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		} catch (IOException e) {
 			dbError(e);
 		} finally {
-			endTransaction();
+			handler.endTransaction();
 			releaseLock();
 		}
 	}
@@ -153,7 +159,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		}
 		acquireLock();
 		try {
-			startTransaction();
+			handler.startTransaction();
 			key = getClassKey();
 			T3 record = createTypeRecord(key);
 			T1 typeDb = buildType(type, record);
@@ -164,7 +170,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		} catch (IOException e) {
 			dbError(e);
 		} finally {
-			endTransaction();
+			handler.endTransaction();
 			releaseLock();
 		}
 		return null;
@@ -181,14 +187,14 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		}
 		acquireLock();
 		try {
-			startTransaction();
+			handler.startTransaction();
 			key = getVtableKey();
 			T4 record = createVtableRecord(key);
 			return buildVtable(vtable, record);
 		} catch (IOException e) {
 			dbError(e);
 		} finally {
-			endTransaction();
+			handler.endTransaction();
 			releaseLock();
 		}
 		return null;

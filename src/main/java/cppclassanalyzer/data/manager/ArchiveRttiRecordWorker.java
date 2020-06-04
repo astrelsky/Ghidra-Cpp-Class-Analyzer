@@ -30,6 +30,7 @@ import cppclassanalyzer.database.record.ArchivedClassTypeInfoRecord;
 import cppclassanalyzer.database.record.ArchivedGnuVtableRecord;
 import cppclassanalyzer.database.schema.fields.ArchivedClassTypeInfoSchemaFields;
 import cppclassanalyzer.database.schema.fields.ArchivedGnuVtableSchemaFields;
+import cppclassanalyzer.database.utils.TransactionHandler;
 import db.StringField;
 
 abstract class ArchiveRttiRecordWorker extends
@@ -42,8 +43,8 @@ abstract class ArchiveRttiRecordWorker extends
 	private final ClassTypeInfoManager manager;
 
 	ArchiveRttiRecordWorker(ClassTypeInfoManager manager, ArchivedRttiTablePair tables,
-			ArchivedRttiCachePair caches) {
-		super(tables, caches);
+			ArchivedRttiCachePair caches, TransactionHandler handler) {
+		super(tables, caches, handler);
 		this.manager = manager;
 	}
 

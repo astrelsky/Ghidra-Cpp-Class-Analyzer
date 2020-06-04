@@ -64,6 +64,8 @@ import cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields;
 import cppclassanalyzer.database.schema.fields.VtableSchemaFields;
 import cppclassanalyzer.database.tables.ClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.VtableDatabaseTable;
+import cppclassanalyzer.database.utils.LongStack;
+import cppclassanalyzer.database.utils.TransactionHandler;
 import db.DBHandle;
 import db.LongField;
 import db.RecordIterator;
@@ -168,19 +170,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			VtableSchema.SCHEMA,
 			VtableSchema.INDEXED_COLUMNS);
 		return new VtableDatabaseTable(vtableTable);
-	}
-
-	private int startTransaction(String msg) {
-		if (program.getCurrentTransaction() == null) {
-			return program.startTransaction(msg);
-		}
-		return -1;
-	}
-
-	private void endTransaction(int id) {
-		if (id != -1) {
-			program.endTransaction(id, false);
-		}
 	}
 
 	@Override
@@ -816,34 +805,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		return worker.getType(key);
 	}
 
-	private static class LongStack extends LongArrayList {
-
-		private static final String ERROR_MSG = "Ghidra-Cpp-Class-Analyzer: failed to sort keys";
-
-		/**
-		 * Removes the object at the top of this stack and returns that object as the value of this function.
-		 */
-		public long pop() {
-			if (isEmpty()) {
-				throw new AssertException(ERROR_MSG);
-			}
-			return remove(size() - 1);
-		}
-
-		/**
-		 * Pushes an item onto the top of this stack.
-		 * @param item the object to push onto the stack.
-		 */
-		public long push(long item) {
-			int sz = size();
-			add(item);
-			if (size() > sz) {
-				return item;
-			}
-			throw new AssertException(ERROR_MSG);
-		}
-	}
-
 	private static class ReferenceCounter implements Comparable<ReferenceCounter> {
 
 		final long key;
@@ -880,15 +841,21 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		}
 	}
 
+	private void endTransaction(long id, boolean commit) {
+		program.endTransaction((int) id, commit);
+	}
+
+	private TransactionHandler getHandler() {
+		return new TransactionHandler(program::startTransaction, this::endTransaction);
+	}
+
 	private abstract class RttiRecordWorker
 		extends AbstractRttiRecordWorker<AbstractClassTypeInfoDB, AbstractVtableDB,
 			ClassTypeInfoRecord, VtableRecord, ProgramRttiTablePair>
 		implements ProgramRttiRecordManager {
 
-		int id = -1;
-
 		RttiRecordWorker(ProgramRttiTablePair tables, ProgramRttiCachePair caches) {
-			super(tables, caches);
+			super(tables, caches, getHandler());
 		}
 
 		@Override
@@ -919,17 +886,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		@Override
 		final long getVtableKey(Vtable vtable) {
 			return getManager().getVtableKey(vtable.getAddress());
-		}
-
-		@Override
-		public final void startTransaction(String description) {
-			id = getManager().startTransaction(description);
-		}
-
-		@Override
-		public final void endTransaction() {
-			getManager().endTransaction(id);
-			id = -1;
 		}
 
 		@Override
