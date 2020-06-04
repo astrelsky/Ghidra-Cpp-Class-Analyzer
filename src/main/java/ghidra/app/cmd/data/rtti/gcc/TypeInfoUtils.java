@@ -285,7 +285,7 @@ public class TypeInfoUtils {
 			throws InvalidInputException {
 		String mangled = typename.startsWith("_ZTI") ? typename : "_ZTI" + typename;
 		Demangled demangled = DemanglerUtil.demangle(program, mangled);
-		String signature = demangled.getSignature().replaceAll(" \\[", "[");
+		String signature = demangled.getNamespace().getSignature().replaceAll("_\\[", "[");
 		signature = SymbolUtilities.replaceInvalidChars(signature, true);
 		return NamespaceUtils.createNamespaceHierarchy(
 			signature, null, program, SourceType.ANALYSIS);
