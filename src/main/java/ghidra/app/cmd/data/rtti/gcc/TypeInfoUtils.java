@@ -22,8 +22,8 @@ import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 import ghidra.program.model.data.*;
 import ghidra.program.util.ProgramMemoryUtil;
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.FunctionTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
@@ -31,6 +31,7 @@ import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.demangler.Demangled;
 import ghidra.app.util.demangler.DemangledObject;
+import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.docking.settings.Settings;
 import ghidra.framework.plugintool.PluginTool;
 
@@ -256,8 +257,38 @@ public class TypeInfoUtils {
 	 * @return the Namespace for the corresponding typeinfo
 	 */
 	public static Namespace getNamespaceFromTypeName(Program program, TypeInfo type) {
-		return getNamespaceFromTypeName(
-			program, type.getTypeName(), type instanceof FunctionTypeInfoModel);
+		int id = -1;
+		String typename = type.getTypeName();
+		if (program.getCurrentTransaction() == null) {
+			id = program.startTransaction("Creating namespace for " + typename);
+		}
+		try {
+			Namespace ns;
+			if (!(type instanceof ClassTypeInfo)) {
+				ns = getFundamentalNamespace(program, typename);
+			} else {
+				ns = getNamespaceFromTypeName(program, typename);
+			}
+			if (id != -1) {
+				program.endTransaction(id, true);
+			}
+			return ns;
+		} catch (InvalidInputException e) {
+			if (id != -1) {
+				program.endTransaction(id, false);
+			}
+			throw new AssertException(e);
+		}
+	}
+
+	private static Namespace getFundamentalNamespace(Program program, String typename)
+			throws InvalidInputException {
+		String mangled = typename.startsWith("_ZTI") ? typename : "_ZTI" + typename;
+		Demangled demangled = DemanglerUtil.demangle(program, mangled);
+		String signature = demangled.getSignature().replaceAll(" \\[", "[");
+		signature = SymbolUtilities.replaceInvalidChars(signature, true);
+		return NamespaceUtils.createNamespaceHierarchy(
+			signature, null, program, SourceType.ANALYSIS);
 	}
 
 	/**
@@ -267,48 +298,17 @@ public class TypeInfoUtils {
 	 * @return the Namespace for the corresponding typename
 	 */
 	public static Namespace getNamespaceFromTypeName(Program program, String typename) {
-		return getNamespaceFromTypeName(program, typename, false);
-	}
-
-	/**
-	 * Gets the Namespace for the corresponding typename
-	 * @param program the program containing the namespace
-	 * @param typename the typename corresponding to the namespace
-	 * @return the Namespace for the corresponding typename
-	 */
-	private static Namespace getNamespaceFromTypeName(Program program, String typename,
-			boolean isFunction) {
 		String mangled = typename.startsWith("_ZTI") ? typename : "_ZTI" + typename;
 		Demangled demangled = GnuUtils.getSpecialDemangled(mangled);
-		if (demangled != null) {
-			try {
-				Integer id = null;
-				if (program.getCurrentTransaction() == null) {
-					id = program.startTransaction("creating namespace for "+typename);
-				}
-				Namespace ns = null;
-				if (isFunction) {
-					ns = NamespaceUtils.createNamespaceHierarchy(
-						demangled.getSignature(),
-						null, program, SourceType.ANALYSIS);
-				} else {
-					ns = DemangledObject.createNamespace(
-						program, demangled.getNamespace(),
-						program.getGlobalNamespace(), false);
-				}
-				if (id != null) {
-					program.endTransaction(id, true);
-				}
-				if (ns.isGlobal()) {
-					throw new AssertException("Global Namespace returned!");
-				}
-				return ns;
-			} catch (InvalidInputException e) {
-				// unexpected
-				throw new AssertException(e);
-			}
+		if (demangled == null) {
+			throw new AssertException("Failed to demangle " + typename);
 		}
-		return null;
+		Namespace ns =  DemangledObject.createNamespace(
+			program, demangled.getNamespace(), program.getGlobalNamespace(), false);
+		if (ns.isGlobal()) {
+			throw new AssertException("Global Namespace returned!");
+		}
+		return ns;
 	}
 
 	/**
