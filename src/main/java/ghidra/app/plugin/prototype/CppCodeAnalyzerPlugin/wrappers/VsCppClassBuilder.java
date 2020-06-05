@@ -6,7 +6,6 @@ import java.util.Map;
 
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.util.datatype.microsoft.MSDataTypeUtils;
@@ -21,13 +20,13 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 	private static final String VFPTR = "_vfptr";
 	private static final String VBPTR = "_vbptr";
 
-	public VsCppClassBuilder(RttiModelWrapper type) {
+	public VsCppClassBuilder(WindowsClassTypeInfo type) {
 		super(type);
 	}
 
 	@Override
 	protected AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent) {
-		return new VsCppClassBuilder((RttiModelWrapper) parent);
+		return new VsCppClassBuilder((WindowsClassTypeInfo) parent);
 	}
 
 	@Override
@@ -64,35 +63,17 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 			replaceComponent(struct, vbptr, VBPTR, offset);
 		}
 	}
-
-	private static boolean hasVtable(WindowsClassTypeInfo type) {
-		return Vtable.isValid(type.getVtable());
-	}
 	
 	private void addPointers() throws InvalidDataTypeException {
-		final int vfPtrOffset;
-		final int vbPtrOffset;
-		final int ptrSize = getProgram().getDefaultPointerSize();
-		final WindowsClassTypeInfo type = getType();
-		final boolean hasVtable = hasVtable(type);
+		WindowsClassTypeInfo type = getType();
+		int offset = 0;
+		Vtable vtable = type.getVtable();
+		if (Vtable.isValid(vtable)) {
+			addVfptr(offset);
+			offset = getProgram().getDefaultPointerSize();
+		}
 		if (!type.getVirtualParents().isEmpty()) {
-			final Rtti1Model base = type.getBaseModel();
-			if (!(base.getPDisp() > 0 && base.getVDisp() > 0) || base.getPDisp() < 0) {
-				vbPtrOffset = 0;
-				vfPtrOffset = hasVtable ? ptrSize : -1;
-			} else {
-				vfPtrOffset = hasVtable ? 0 : -1;
-				vbPtrOffset = ptrSize;
-			}
-		} else {
-			vbPtrOffset = -1;
-			vfPtrOffset = hasVtable ? 0 : -1;
-		}
-		if (vbPtrOffset >= 0) {
-			addVbptr(vbPtrOffset);
-		}
-		if (vfPtrOffset >= 0) {
-			addVfptr(vfPtrOffset);
+			addVbptr(offset);
 		}
 	}
 

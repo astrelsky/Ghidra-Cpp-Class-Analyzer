@@ -2,9 +2,9 @@ package cppclassanalyzer.data.typeinfo;
 
 import java.util.*;
 
+import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
@@ -122,6 +122,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	protected abstract long[] getBaseKeys();
 	protected abstract int[] getOffsets();
 	protected abstract String getPureVirtualFunctionName();
+	protected abstract AbstractCppClassBuilder getClassBuilder();
 
 	@Override
 	public ClassTypeInfoManagerDB getManager() {
@@ -372,7 +373,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			}
 			return struct;
 		}
-		GccCppClassBuilder builder = new GccCppClassBuilder(this);
+		AbstractCppClassBuilder builder = getClassBuilder();
 		struct = builder.getDataType();
 		record.setLongValue(DATATYPE_ID, struct.getUniversalID().getValue());
 		manager.updateRecord(record);

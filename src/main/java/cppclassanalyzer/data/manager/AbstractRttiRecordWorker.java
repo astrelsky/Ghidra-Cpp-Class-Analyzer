@@ -5,7 +5,6 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord;

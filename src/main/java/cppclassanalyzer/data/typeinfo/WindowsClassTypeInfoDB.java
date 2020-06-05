@@ -15,6 +15,7 @@ import ghidra.app.cmd.data.rtti.Rtti2Model;
 import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
+import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.VsCppClassBuilder;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsClassTypeInfo;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
@@ -213,5 +214,10 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	
 	private TypeDescriptorModel getTypeDescriptorModel() {
 		return new TypeDescriptorModel(getProgram(), getAddress(), DEFAULT_OPTIONS);
+	}
+	
+	@Override
+	protected VsCppClassBuilder getClassBuilder() {
+		return new VsCppClassBuilder(this);
 	}
 }

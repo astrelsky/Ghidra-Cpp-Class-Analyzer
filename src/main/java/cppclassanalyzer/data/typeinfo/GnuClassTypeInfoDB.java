@@ -14,6 +14,7 @@ import java.util.stream.LongStream;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
@@ -108,11 +109,11 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
 	private long[] extractKeys(ClassTypeInfoManager aMan, long[] keys) {
 		return Arrays.stream(keys)
-		.mapToObj(aMan::getType)
-		.map(ArchivedClassTypeInfo.class::cast)
-		.map(manager::resolve)
-		.mapToLong(DatabaseObject::getKey)
-		.toArray();
+				.mapToObj(aMan::getType)
+				.map(ArchivedClassTypeInfo.class::cast)
+				.map(manager::resolve)
+				.mapToLong(DatabaseObject::getKey)
+				.toArray();
 	}
 
 	private void fillRecord(ClassTypeInfoRecord record) {
@@ -131,9 +132,9 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		ClassTypeInfo type = (ClassTypeInfo) getManager().getTypeInfo(getAddress(), false);
 		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
 			ClassTypeInfoUtils.getBaseOffsets(type)
-			.entrySet()
-			.stream()
-			.collect(Collectors.toList());
+					.entrySet()
+					.stream()
+					.collect(Collectors.toList());
 		for (int i = 0; i < baseEntries.size(); i++) {
 			Map.Entry<ClassTypeInfo, Integer> entry = baseEntries.get(i);
 			keys.add(manager.resolve(entry.getKey()).getKey());
@@ -142,10 +143,9 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	}
 
 	private int getSize() {
-		return Integer.BYTES + Long.BYTES * nonVirtualBaseKeys.length
-			+ Integer.BYTES + Long.BYTES * virtualBaseKeys.length
-			+ Integer.BYTES + Long.BYTES * baseKeys.length
-			+ Integer.BYTES + Integer.BYTES * baseOffsets.length;
+		return Integer.BYTES + Long.BYTES * nonVirtualBaseKeys.length + Integer.BYTES +
+			Long.BYTES * virtualBaseKeys.length + Integer.BYTES + Long.BYTES * baseKeys.length +
+			Integer.BYTES + Integer.BYTES * baseOffsets.length;
 	}
 
 	@Override
@@ -157,7 +157,8 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	public ClassTypeInfoDB[] getParentModels() {
 		return LongStream.concat(
 			LongStream.of(nonVirtualBaseKeys),
-			LongStream.of(virtualBaseKeys)).mapToObj(manager::getType)
+			LongStream.of(virtualBaseKeys))
+				.mapToObj(manager::getType)
 				.toArray(ClassTypeInfoDB[]::new);
 
 	}
@@ -165,8 +166,8 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	@Override
 	public Set<ClassTypeInfo> getVirtualParents() {
 		return LongStream.of(virtualBaseKeys)
-			.mapToObj(manager::getType)
-			.collect(Collectors.toSet());
+				.mapToObj(manager::getType)
+				.collect(Collectors.toSet());
 	}
 
 	@Override
@@ -262,9 +263,14 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	public Namespace getNamespace() {
 		return gc;
 	}
-	
+
 	@Override
 	protected String getPureVirtualFunctionName() {
 		return GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
+	}
+
+	@Override
+	protected GccCppClassBuilder getClassBuilder() {
+		return new GccCppClassBuilder(this);
 	}
 }

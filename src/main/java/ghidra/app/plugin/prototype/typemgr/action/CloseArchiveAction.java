@@ -1,5 +1,6 @@
 package ghidra.app.plugin.prototype.typemgr.action;
 
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import docking.ActionContext;
 
 final class CloseArchiveAction extends AbstractFileArchivePopupAction {
@@ -11,6 +12,14 @@ final class CloseArchiveAction extends AbstractFileArchivePopupAction {
 	@Override
 	public final String getDescription() {
 		return "Closes a type info archive";
+	}
+	
+	@Override
+	public boolean isAddToPopup(ActionContext context) {
+		if (super.isAddToPopup(context)) {
+			return !(getManager(context) instanceof ProgramClassTypeInfoManager);
+		}
+		return false;
 	}
 
 	@Override
