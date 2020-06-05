@@ -56,4 +56,14 @@ public final class ProjectArchiveTypeInfoNode extends AbstractManagerNode {
 		}
 		return super.compareTo(node);
 	}
+
+	@Override
+	ProjectArchiveTypeInfoNode rebuild() {
+		ProjectClassTypeInfoManager manager = (ProjectClassTypeInfoManager) getTypeManager();
+		GTreeNode parent = getParent();
+		parent.removeNode(this);
+		ProjectArchiveTypeInfoNode result = new ProjectArchiveTypeInfoNode(manager);
+		parent.addNode(result);
+		return result;
+	}
 }

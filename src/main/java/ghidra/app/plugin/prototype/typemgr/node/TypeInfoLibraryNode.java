@@ -8,4 +8,9 @@ final class TypeInfoLibraryNode extends AbstractSingleManagerNode {
 		super(manager);
 	}
 
+	@Override
+	AbstractManagerNode rebuild() {
+		return null;
+	}
+
 }

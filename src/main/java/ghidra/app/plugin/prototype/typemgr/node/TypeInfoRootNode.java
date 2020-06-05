@@ -30,4 +30,14 @@ public final class TypeInfoRootNode extends AbstractSingleManagerNode {
 		return super.compareTo(node);
 	}
 
+	@Override
+	TypeInfoRootNode rebuild() {
+		ClassTypeInfoManager manager = (ClassTypeInfoManager) getTypeManager();
+		GTreeNode parent = getParent();
+		parent.removeNode(this);
+		TypeInfoRootNode result = new TypeInfoRootNode(manager);
+		parent.addNode(result);
+		return result;
+	}
+
 }

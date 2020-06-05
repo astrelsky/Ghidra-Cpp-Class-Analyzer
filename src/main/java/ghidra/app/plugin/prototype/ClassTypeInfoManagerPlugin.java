@@ -21,8 +21,6 @@ import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.framework.model.DomainFile;
-import ghidra.framework.model.DomainObjectChangedEvent;
-import ghidra.framework.model.DomainObjectListener;
 import ghidra.framework.plugintool.Plugin;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
@@ -68,8 +66,7 @@ import docking.widgets.tree.GTree;
 )
 //@formatter:on
 public class ClassTypeInfoManagerPlugin extends ProgramPlugin
-		implements ClassTypeInfoManagerService, DomainObjectListener,
-		PopupActionProvider, ArchiveManagerListener {
+		implements ClassTypeInfoManagerService, PopupActionProvider, ArchiveManagerListener {
 
 	private static final Set<ClassTypeInfoManagerPlugin> plugins =
 		Collections.synchronizedSet(new HashSet<>());
@@ -110,11 +107,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	@Override
 	public List<DockingActionIf> getPopupActions(Tool tool, ActionContext context) {
 		return Collections.emptyList();
-	}
-
-	@Override
-	public void domainObjectChanged(DomainObjectChangedEvent ev) {
-		// do nothing
 	}
 
 	@Override
@@ -177,13 +169,11 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	protected void programOpened(Program program) {
-		program.addListener(this);
 		managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
 	}
 
 	@Override
 	protected void programClosed(Program program) {
-		program.removeListener(this);
 		managers.remove(getManager(program));
 	}
 

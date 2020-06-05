@@ -2,6 +2,7 @@ package ghidra.app.plugin.prototype.typemgr.node;
 
 import ghidra.app.util.SymbolPath;
 import ghidra.util.Lock;
+import ghidra.util.SystemUtilities;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -12,6 +13,7 @@ import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 import cppclassanalyzer.database.schema.TypeInfoTreeNodeSchema;
 import cppclassanalyzer.database.tables.TypeInfoTreeNodeTable;
 import db.DBHandle;
+import db.DBListener;
 import db.StringField;
 import db.Table;
 import docking.widgets.tree.GTree;
@@ -26,27 +28,32 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public class TypeInfoTreeNodeManager {
+public class TypeInfoTreeNodeManager implements DBListener {
 
 	private final TypeInfoTreeNodeTable table;
 	private final ClassTypeInfoManager manager;
 	private final TransactionHandler handler;
+	private final DBHandle handle;
 	private final Lock lock = new Lock(getClass().getSimpleName());
-	private TypeInfoTreeNode root;
+	private AbstractManagerNode root;
 
 	public TypeInfoTreeNodeManager(ClassTypeInfoManager manager, DBHandle handle) {
-		this.manager = manager;
-		this.handler = new TransactionHandler(handle);
-		this.table = getTable(handle, getClass().getSimpleName());
+		this(manager, TypeInfoTreeNodeManager.class.getSimpleName(), handle);
 	}
 
 	public TypeInfoTreeNodeManager(ClassTypeInfoManager manager, DBHandle handle, String name) {
+		this(manager, name + " " + TypeInfoTreeNodeManager.class.getSimpleName(), handle);
+	}
+	
+	private TypeInfoTreeNodeManager(ClassTypeInfoManager manager, String name, DBHandle handle) {
+		this.handle = handle;
 		this.manager = manager;
 		this.handler = new TransactionHandler(handle);
-		this.table = getTable(handle, name + " " + getClass().getSimpleName());
+		this.table = getTable(name);
+		handle.addListener(this);
 	}
 
-	private TypeInfoTreeNodeTable getTable(DBHandle handle, String name) {
+	private TypeInfoTreeNodeTable getTable(String name) {
 		Table rawTable = handle.getTable(name);
 		if (rawTable == null) {
 			try {
@@ -72,7 +79,7 @@ public class TypeInfoTreeNodeManager {
 		return record;
 	}
 
-	void setRootNode(TypeInfoTreeNode node) {
+	void setRootNode(AbstractManagerNode node) {
 		this.root = node;
 	}
 
@@ -273,6 +280,35 @@ public class TypeInfoTreeNodeManager {
 		}
 		children.sort(null);
 		return children;
+	}
+	
+	private void refresh() {
+		this.root = root.rebuild();
+	}
+	
+	@Override
+	public void dbRestored(DBHandle dbh) {
+		if (handle.equals(dbh)) {
+			SystemUtilities.runSwingLater(this::refresh);
+		}
+	}
+
+	@Override
+	public void dbClosed(DBHandle dbh) {
+		if (handle.equals(dbh)) {
+			GTreeNode parent = root.getParent();
+			if (parent != null) {
+				parent.removeNode(root);
+			}
+		}
+	}
+
+	@Override
+	public void tableDeleted(DBHandle dbh, Table table) {
+	}
+
+	@Override
+	public void tableAdded(DBHandle dbh, Table table) {
 	}
 
 	// dbHandle transactions are different

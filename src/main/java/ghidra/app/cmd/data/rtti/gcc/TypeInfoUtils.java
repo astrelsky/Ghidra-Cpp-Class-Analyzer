@@ -3,6 +3,8 @@ package ghidra.app.cmd.data.rtti.gcc;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ghidra.program.model.listing.Data;
 import cppclassanalyzer.data.TypeInfoManager;
@@ -38,12 +40,15 @@ import ghidra.framework.plugintool.PluginTool;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
 public class TypeInfoUtils {
+	
+	private static Pattern LAMBDA_PATTERN = Pattern.compile("[\\$\\.]_");
 
 	private TypeInfoUtils() {
 	}
 
 	private static boolean isValidTypeName(String s) {
-		if (s.contains("$_")) {
+		Matcher matcher = LAMBDA_PATTERN.matcher(s);
+		if (matcher.find()) {
 			// lambda
 			return true;
 		}
