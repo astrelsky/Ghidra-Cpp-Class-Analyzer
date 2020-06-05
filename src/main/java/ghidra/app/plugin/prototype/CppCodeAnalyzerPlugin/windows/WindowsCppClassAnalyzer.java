@@ -15,8 +15,11 @@ import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapp
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
+import ghidra.app.util.importer.MessageLog;
+
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
@@ -50,6 +53,13 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 			return PEUtil.canAnalyze(program) && !GnuUtils.isGnuCompiler(program);
 		}
 		return false;
+	}
+	
+	@Override
+	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
+			throws CancelledException {
+		buildClassTypeInfoDatabase(program, monitor);
+		return super.added(program, set, monitor, log);
 	}
 
 	private boolean hasGuardedVftables() {
@@ -113,7 +123,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 			}
 			ClassTypeInfo type = RttiModelWrapper.getWrapper(descriptor);
 			if (type.getNamespace() != null) {
-				manager.resolve(type);
+				type = manager.resolve(type);
 				Vtable vtable = type.findVtable(monitor);
 				if (Vtable.isValid(vtable)) {
 					manager.resolve(vtable);

@@ -1,9 +1,11 @@
 package ghidra.app.cmd.data.rtti;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -61,6 +63,13 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
+	
+	private static boolean containsMember(Structure struct, String name) {
+		return Arrays.stream(struct.getComponents())
+			.map(DataTypeComponent::getFieldName)
+			.filter(Objects::nonNull)
+			.anyMatch(name::equals);
+	}
 
 	public Structure getDataType() {
 		if (built) {
@@ -81,22 +90,31 @@ public abstract class AbstractCppClassBuilder {
 		for (ClassTypeInfo parent : baseMap.keySet()) {
 			AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
 			Structure parentStruct = parentBuilder.getSuperClassDataType();
+			String memberName = SUPER + parent.getName();
 			int offset = baseMap.get(parent);
 			if (offset == 0 && parentStruct.getLength() > pointerSize) {
 				// it is an empty class, interface or essentially a namespace.
 				if (primaryBaseCount++ > 0) {
+					Structure comp = (Structure) struct.getComponent(0).getDataType();
+					if (containsMember(comp, memberName)) {
+						continue;
+					}
+					if (containsMember(parentStruct, struct.getComponent(0).getFieldName())) {
+						replaceComponent(struct, parentStruct, memberName, 0);
+						continue;
+					}
 					String msg = getType().getName()
 						+ " has multiple base classes at offset 0"
 						+ " with components other than _vptr";
 					throw new AssertException(msg);
 				}
-				replaceComponent(struct, parentStruct, SUPER+parent.getName(), 0);
+				replaceComponent(struct, parentStruct, memberName, 0);
 			} else if (offset < 0) {
 				// it is contained within another base class
 				// or unable to resolve and already reported
 				continue;
 			} else {
-				replaceComponent(struct, parentStruct, SUPER+parent.getName(), offset);
+				replaceComponent(struct, parentStruct, memberName, offset);
 			}
 		}
 		addVptr();

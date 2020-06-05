@@ -14,9 +14,12 @@ import java.util.stream.LongStream;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.database.DatabaseObject;
+import ghidra.program.model.listing.GhidraClass;
+import ghidra.program.model.symbol.Namespace;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
@@ -31,6 +34,7 @@ import cppclassanalyzer.database.record.ClassTypeInfoRecord;
 
 public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
+	private final GhidraClass gc;
 	private long[] nonVirtualBaseKeys;
 	private long[] virtualBaseKeys;
 	private long[] baseKeys;
@@ -38,6 +42,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
 	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfoRecord record) {
 		super(worker, record);
+		this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(getProgram(), getTypeName());
 		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
 		this.nonVirtualBaseKeys = ClassTypeInfoRecord.getLongArray(buf);
 		this.virtualBaseKeys = ClassTypeInfoRecord.getLongArray(buf);
@@ -48,6 +53,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfo type,
 			ClassTypeInfoRecord record) {
 		super(worker, type, record);
+		this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(getProgram(), getTypeName());
 		if (type.hasParent()) {
 			virtualBaseKeys = type.getVirtualParents()
 					.stream()
@@ -91,6 +97,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	public GnuClassTypeInfoDB(ProgramRttiRecordManager worker, ArchivedClassTypeInfo type,
 			ClassTypeInfoRecord record) {
 		super(worker, type, record);
+		this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(getProgram(), getTypeName());
 		ClassTypeInfoManager aMan = type.getManager();
 		this.nonVirtualBaseKeys = extractKeys(aMan, type.getNonVirtualBaseKeys());
 		this.virtualBaseKeys = extractKeys(aMan, type.getVirtualKeys());
@@ -121,7 +128,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 	private void fillBaseOffsets(LongArrayList keys, IntArrayList offsets) {
 		// Primitive TypeInfos are not database objects.
 		// Calling getTypeInfo results in a non-database object ClassTypeInfo
-		ClassTypeInfo type = (ClassTypeInfo) getManager().getTypeInfo(address, false);
+		ClassTypeInfo type = (ClassTypeInfo) getManager().getTypeInfo(getAddress(), false);
 		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
 			ClassTypeInfoUtils.getBaseOffsets(type)
 			.entrySet()
@@ -164,13 +171,10 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
 	@Override
 	public Vtable findVtable(TaskMonitor monitor) throws CancelledException {
-		if (vtableSearched) {
+		if (isVtableSearched()) {
 			return getVtable();
 		}
-		ClassTypeInfoRecord record = getRecord();
-		vtableSearched = true;
-		record.setBooleanValue(VTABLE_SEARCHED, true);
-		manager.updateRecord(record);
+		setVtableSearched();
 		Vtable vtable = ClassTypeInfoUtils.findVtable(getProgram(), this, monitor);
 		if (Vtable.isValid(vtable)) {
 			setVtable(vtable);
@@ -252,5 +256,15 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			return true;
 		}
 		return false;
+	}
+
+	@Override
+	public Namespace getNamespace() {
+		return gc;
+	}
+	
+	@Override
+	protected String getPureVirtualFunctionName() {
+		return GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 	}
 }

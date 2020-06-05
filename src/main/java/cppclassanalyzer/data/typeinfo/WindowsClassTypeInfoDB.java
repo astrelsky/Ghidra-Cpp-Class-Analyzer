@@ -4,19 +4,23 @@ import static cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields.
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.Rtti2Model;
 import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsClassTypeInfo;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
@@ -24,7 +28,8 @@ import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
 
-public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements WindowsClassTypeInfo {
+public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
+		implements WindowsClassTypeInfo {
 
 	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 
@@ -67,10 +72,8 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	}
 
 	private int getSize() {
-		return
-			baseKeys.length * Long.BYTES
-			+ baseOffsets.length * Integer.BYTES
-			+ Long.BYTES * 2;
+		return ClassTypeInfoRecord.getArraySize(baseKeys) +
+			ClassTypeInfoRecord.getArraySize(baseOffsets) + Long.BYTES * 2;
 	}
 
 	@Override
@@ -81,12 +84,28 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	@Override
 	public ClassTypeInfoDB[] getParentModels() {
 		return LongStream.of(baseKeys)
-						 .mapToObj(manager::getType)
-						 .toArray(ClassTypeInfoDB[]::new);
+				.mapToObj(manager::getType)
+				.toArray(ClassTypeInfoDB[]::new);
 	}
 
 	static boolean isVirtual(Rtti1Model model) throws InvalidDataTypeException {
 		return (model.getAttributes() >> 4 & 1) == 1;
+	}
+	
+	private ClassTypeInfo getParent(Rtti1Model model) {
+		try {
+			Supplier<AssertException> e = () -> new AssertException(
+				"Parent for " + model.toString() + " not found");
+			Address parentAddress = model.getRtti0Address();
+			return Arrays.stream(baseKeys)
+				.mapToObj(manager::getType)
+				.filter(t -> t.getAddress().equals(parentAddress))
+				.findFirst()
+				.orElseThrow(e);
+		} catch (InvalidDataTypeException e) {
+			invalidError(e);
+		}
+		return null;
 	}
 
 	@Override
@@ -97,7 +116,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 			Rtti2Model baseArray = rtti3.getRtti2Model();
 			for (int i = 1; i < rtti3.getRtti1Count(); i++) {
 				Rtti1Model model = baseArray.getRtti1Model(i);
-				ClassTypeInfo parent = manager.getType(baseKeys[i]);
+				ClassTypeInfo parent = getParent(model);
 				result.addAll(parent.getVirtualParents());
 				if (isVirtual(model)) {
 					result.add(getManager().getType(model.getRtti0Address()));
@@ -105,14 +124,24 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 			}
 			return result;
 		} catch (InvalidDataTypeException e) {
-			throw new AssertException(
-				"Ghidra-Cpp-Class-Analyzer: previously validated data is no longer valid?", e);
+			invalidError(e);
 		}
+		return null;
 	}
 
 	@Override
 	public Vtable findVtable(TaskMonitor monitor) throws CancelledException {
-		return getVtable();
+		if (isVtableSearched()) {
+			return getVtable();
+		}
+		RttiModelWrapper wrapper = RttiModelWrapper.getWrapper(getTypeDescriptorModel());
+		Vtable vtable = wrapper.findVtable(monitor);
+		setVtableSearched();
+		if (Vtable.isValid(vtable)) {
+			vtable = manager.resolve(vtable);
+			setVtable(vtable);
+		}
+		return vtable;
 	}
 
 	public static long[] getBaseKeys(ClassTypeInfoRecord record) {
@@ -165,5 +194,24 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB implements W
 	protected boolean refresh() {
 		// no refresh required
 		return true;
+	}
+
+	@Override
+	public Namespace getNamespace() {
+		return getBaseModel().getRtti0Model().getDescriptorAsNamespace();
+	}
+	
+	private void invalidError(InvalidDataTypeException e) {
+		throw new AssertException(
+			"Ghidra-Cpp-Class-Analyzer: previously validated data is no longer valid?", e);
+	}
+
+	@Override
+	protected String getPureVirtualFunctionName() {
+		return PURE_VIRTUAL_FUNCTION_NAME;
+	}
+	
+	private TypeDescriptorModel getTypeDescriptorModel() {
+		return new TypeDescriptorModel(getProgram(), getAddress(), DEFAULT_OPTIONS);
 	}
 }

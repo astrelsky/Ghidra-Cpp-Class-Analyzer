@@ -37,8 +37,8 @@ public class VftableDB extends AbstractVtableDB {
 			records[i] = new VftableRecord(addresses[i], functions[i]);
 		}
 		int size = Arrays.stream(records)
-						 .mapToInt(VftableRecord::getSize)
-						 .sum();
+			.mapToInt(VftableRecord::getSize)
+			.sum();
 		ByteBuffer buf = ByteBuffer.allocate(size + Integer.BYTES);
 		VtableRecord.putObjectArray(buf, records);
 		record.setBinaryData(RECORDS, buf.array());

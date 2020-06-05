@@ -1,13 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -40,6 +34,7 @@ import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
+import ghidra.program.model.symbol.SymbolIterator;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.util.Msg;
@@ -53,9 +48,8 @@ import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getReferencedAd
 public final class RttiModelWrapper implements WindowsClassTypeInfo {
 
 	private static final String LOCATOR_SYMBOL_NAME = "RTTI_Complete_Object_Locator";
-	private static final String PURE_VIRTUAL_FUNCTION_NAME = "_purecall";
 	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
-	private static final Pattern PATTERN = Pattern.compile("vftable(?!_meta_ptr)");
+	private static final String VFTABLE_SYMBOL_NAME = "vftable_meta_ptr";
 
 	private final TypeDescriptorModel type;
 	private List<Rtti1Model> bases;
@@ -292,18 +286,16 @@ public final class RttiModelWrapper implements WindowsClassTypeInfo {
 		return baseTypes.size() > 1;
 	}
 
-	private static boolean vftableSymbolFilter(Symbol t) {
-		return PATTERN.matcher(t.getName()).matches();
-	}
-
 	private List<Address> getVftableAddresses() {
 		final SymbolTable table = type.getProgram().getSymbolTable();
-		return StreamSupport.stream(
-			table.getSymbols(type.getDescriptorAsNamespace()).spliterator(), false)
-				 .filter(RttiModelWrapper::vftableSymbolFilter)
-				 .map(Symbol::getAddress)
-				 .sorted()
-				 .collect(Collectors.toList());
+		SymbolIterator symbols = table.getChildren(getNamespace().getSymbol());
+		int pointerSize = type.getProgram().getDefaultPointerSize();
+		return StreamSupport.stream(symbols.spliterator(), false)
+			.filter(s -> s.getName().equals(VFTABLE_SYMBOL_NAME))
+			.map(Symbol::getAddress)
+			.map(a -> a.add(pointerSize))
+			.sorted()
+			.collect(Collectors.toList());
 	}
 
 	@Override

@@ -182,9 +182,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		if (key != INVALID_KEY) {
 			return getVtable(key);
 		}
-		if (!(vtable instanceof GnuVtable)) {
-			return null;
-		}
 		acquireLock();
 		try {
 			handler.startTransaction();

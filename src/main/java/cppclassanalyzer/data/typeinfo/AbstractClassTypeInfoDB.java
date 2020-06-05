@@ -4,9 +4,7 @@ import java.util.*;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
-import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
@@ -14,14 +12,15 @@ import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapp
 import ghidra.program.database.DatabaseObject;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
+import cppclassanalyzer.data.vtable.AbstractVtableDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.symbol.Namespace;
 import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
@@ -44,11 +43,10 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	);
 
 	protected final ProgramRttiRecordManager manager;
-	protected final Address address;
-	protected final String typename;
-	protected final GhidraClass gc;
-	protected boolean vtableSearched;
-	protected long vtableKey;
+	private final Address address;
+	private final String typename;
+	private boolean vtableSearched;
+	private long vtableKey;
 	private Structure struct;
 
 	protected AbstractClassTypeInfoDB(ProgramRttiRecordManager manager,
@@ -59,7 +57,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		this.typename = record.getStringValue(TYPENAME);
 		this.vtableSearched = record.getBooleanValue(VTABLE_SEARCHED);
 		this.vtableKey = record.getLongValue(VTABLE_KEY);
-		this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(getProgram(), typename);
 		this.struct = fetchDataType(record);
 	}
 
@@ -69,7 +66,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		this.manager = manager;
 		this.address = type.getAddress();
 		this.typename = type.getTypeName();
-		this.gc = type.getGhidraClass();
 		setRecord(type, record);
 	}
 
@@ -80,7 +76,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		Program program = getProgram();
 		this.address = type.getAddress(program);
 		this.typename = type.getTypeName();
-		this.gc = ClassTypeInfoUtils.getGhidraClassFromTypeName(program, typename);
 		ArchivedGnuVtable archivedVtable = type.getArchivedVtable();
 		if (archivedVtable == null) {
 			this.vtableKey = INVALID_KEY;
@@ -113,8 +108,8 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		record.setLongValue(DATATYPE_ID, INVALID_KEY);
 		Vtable vtable = type.getVtable();
 		if (Vtable.isValid(vtable)) {
-			this.vtableSearched = true;
-			this.vtableKey = getManager().getVtableKey(vtable.getAddress());
+			setVtableSearched();
+			setVtable(vtable);
 		} else {
 			this.vtableSearched = false;
 			this.vtableKey = -1;
@@ -126,6 +121,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	protected abstract long[] getBaseKeys();
 	protected abstract int[] getOffsets();
+	protected abstract String getPureVirtualFunctionName();
 
 	@Override
 	public ClassTypeInfoManagerDB getManager() {
@@ -246,6 +242,17 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	protected boolean refresh(db.Record record) {
 		return refresh(new ClassTypeInfoRecord(record));
 	}
+	
+	protected boolean isVtableSearched() {
+		return vtableSearched;
+	}
+	
+	protected void setVtableSearched() {
+		this.vtableSearched = true;
+		ClassTypeInfoRecord record = getRecord();
+		record.setBooleanValue(VTABLE_SEARCHED, true);
+		manager.updateRecord(record);
+	}
 
 	protected boolean refresh(ClassTypeInfoRecord record) {
 		if (record == null) {
@@ -269,10 +276,10 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	public String getName() {
 		return getNamespace().getName();
 	}
-
+	
 	@Override
-	public Namespace getNamespace() {
-		return TypeInfoUtils.getNamespaceFromTypeName(getProgram(), typename);
+	public final GhidraClass getGhidraClass() {
+		return (GhidraClass) getNamespace();
 	}
 
 	@Override
@@ -331,11 +338,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	@Override
-	public GhidraClass getGhidraClass() {
-		return gc;
-	}
-
-	@Override
 	public Vtable getVtable() {
 		Vtable vtable = manager.getVtable(vtableKey);
 		if (vtable == null) {
@@ -349,6 +351,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		if (vtable != Vtable.NO_VTABLE) {
 			if (!(vtable instanceof DatabaseObject)) {
 				vtable = manager.resolve(vtable);
+				((AbstractVtableDB) vtable).setClassKey(key);
 			}
 			vtableKey = ((DatabaseObject) vtable).getKey();
 		} else {
@@ -392,7 +395,15 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	@Override
 	public boolean isAbstract() {
-		return ClassTypeInfoUtils.isAbstract(this);
+		if (vtableSearched && Vtable.isValid(getVtable())) {
+			String virtualFunctionName = getPureVirtualFunctionName();
+			return Arrays.stream(getVtable().getFunctionTables())
+				.flatMap(Arrays::stream)
+				.filter(Objects::nonNull)
+				.map(Function::getName)
+				.anyMatch(virtualFunctionName::equals);
+		}
+		return false;
 	}
 
 	@Override

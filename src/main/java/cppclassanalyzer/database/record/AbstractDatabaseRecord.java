@@ -37,6 +37,14 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 		}
 		return ByteBuffer.wrap(data);
 	}
+	
+	public static int getArraySize(int[] data) {
+		return Integer.BYTES + Integer.BYTES * data.length;
+	}
+	
+	public static int getArraySize(long[] data) {
+		return Integer.BYTES + Long.BYTES * data.length;
+	}
 
 	public static int[] getIntArray(ByteBuffer buf) {
 		int size = buf.getInt();
