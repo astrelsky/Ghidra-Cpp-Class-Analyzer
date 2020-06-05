@@ -150,7 +150,7 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 	}
 
 	public void typeUpdated(ClassTypeInfoDB type) {
-		if (getKey() != type.getKey()) {
+		if (getTypeKey() != type.getKey()) {
 			record.setLongValue(TYPE_KEY, type.getKey());
 			getManager().updateRecord(record);
 		}
@@ -164,6 +164,31 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 		}
 		return type.getAddress();
 	}
+
+	private long getTypeKey() {
+		return record.getLongValue(TYPE_KEY);
+	}
+
+	@Override
+	public long getKey() {
+		return record.getKey();
+	}
+
+	@Override
+	public TypeInfoTreeNodeRecord getRecord() {
+		return record;
+	}
+
+	@Override
+	public TypeInfoTreeNodeManager getManager() {
+		return type.getManager().getTreeNodeManager();
+	}
+
+	@Override
+	public void setParent(long key) {
+		record.setLongValue(PARENT_KEY, key);
+		getManager().updateRecord(record);
+	};
 
 	private static enum ModifierType {
 		NORMAL,
@@ -232,26 +257,4 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 			return MODIFIERS[ordinal()];
 		}
 	}
-
-	@Override
-	public long getKey() {
-		return record.getKey();
-	}
-
-	@Override
-	public TypeInfoTreeNodeRecord getRecord() {
-		return record;
-	}
-
-	@Override
-	public TypeInfoTreeNodeManager getManager() {
-		return type.getManager().getTreeNodeManager();
-	}
-
-	@Override
-	public void setParent(long key) {
-		record.setLongValue(PARENT_KEY, key);
-		getManager().updateRecord(record);
-	};
-
 }

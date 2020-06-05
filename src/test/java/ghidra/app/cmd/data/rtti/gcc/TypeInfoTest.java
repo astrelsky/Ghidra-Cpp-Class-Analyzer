@@ -20,7 +20,7 @@ public class TypeInfoTest extends GenericGccRttiTest {
 	public void validationTest() throws Exception {
 		X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
 		builder.getTypeInfoStream()
-			   .filter(Predicate.not(FundamentalTypeInfoModel.class::isInstance))
-			   .forEach(TypeInfoTest::validate);
+			.filter(Predicate.not(FundamentalTypeInfoModel.class::isInstance))
+			.forEach(TypeInfoTest::validate);
 	}
 }

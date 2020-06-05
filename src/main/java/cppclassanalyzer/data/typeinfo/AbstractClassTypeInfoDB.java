@@ -22,13 +22,9 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
-import ghidra.program.model.symbol.SourceType;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
-import ghidra.util.exception.InvalidInputException;
 import ghidra.util.exception.NoValueException;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
@@ -224,28 +220,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		}
 	}
 
-	private static boolean isTypeInfoSymbol(Symbol s) {
-		return s.getName().equals(SYMBOL_NAME);
-	}
-
-	private Symbol getSymbol() {
-		SymbolTable table = getProgram().getSymbolTable();
-		return Arrays.stream(table.getSymbols(getAddress()))
-			.filter(AbstractClassTypeInfoDB::isTypeInfoSymbol)
-			.findFirst()
-			.orElseGet(this::createSymbol);
-	}
-
-	private Symbol createSymbol() {
-		Namespace ns = TypeInfoUtils.getNamespaceFromTypeName(getProgram(), getTypeName());
-		try {
-			SymbolTable table = getProgram().getSymbolTable();
-			return table.createLabel(getAddress(), SYMBOL_NAME, ns, SourceType.ANALYSIS);
-		} catch (InvalidInputException e) {
-			throw new AssertException("Ghidra-Cpp-Class-Analyzer: ", e);
-		}
-	}
-
 	byte getClassID() {
 		return getRecord().getByteValue(TYPEINFO_ID);
 	}
@@ -298,7 +272,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	@Override
 	public Namespace getNamespace() {
-		return getSymbol().getParentNamespace();
+		return TypeInfoUtils.getNamespaceFromTypeName(getProgram(), typename);
 	}
 
 	@Override

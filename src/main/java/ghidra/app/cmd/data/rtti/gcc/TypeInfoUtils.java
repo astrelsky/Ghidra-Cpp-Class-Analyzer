@@ -43,6 +43,10 @@ public class TypeInfoUtils {
 	}
 
 	private static boolean isValidTypeName(String s) {
+		if (s.contains("$_")) {
+			// lambda
+			return true;
+		}
 		return s.chars().allMatch(c -> StringUtilities.isValidCLanguageChar((char) c));
 	}
 
