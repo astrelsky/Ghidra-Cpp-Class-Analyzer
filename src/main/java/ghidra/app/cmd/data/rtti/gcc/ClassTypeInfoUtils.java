@@ -179,16 +179,7 @@ public class ClassTypeInfoUtils {
 			if (struct != null && path.isAncestorOrSelf(struct.getCategoryPath())) {
 				struct = dtm.addDataType(struct, DataTypeConflictHandler.REPLACE_HANDLER);
 			} else {
-				struct = new StructureDataType(path, type.getName(), 0, dtm);
-				dtm.addDataType(struct, DataTypeConflictHandler.KEEP_HANDLER);
-				try {
-					struct.setDescription(PLACEHOLDER_DESCRIPTION);
-					struct.setCategoryPath(path);
-				} catch (DuplicateNameException e) {
-					Msg.error(
-						ClassTypeInfoUtils.class, "Failed to change placeholder struct "
-								+type.getName()+"'s CategoryPath", e);
-				}
+				struct = dtm.getDataType(dtPath);
 			}
 		}
 		if (!struct.equals(VariableUtilities.findOrCreateClassStruct(

@@ -11,6 +11,7 @@ import java.util.stream.StreamSupport;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.data.Category;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.GhidraClass;
@@ -23,20 +24,21 @@ import ghidra.util.exception.DuplicateNameException;
 
 import com.google.common.collect.ImmutableList;
 
+import util.CollectionUtils;
+
 public class NamespaceSymbolFixer extends GhidraScript {
 
 	@Override
 	public void run() throws Exception {
 		fixCategories();
 		fixDataTypes();
+		fixStructures();
 		fixSymbols();
 	}
 
 	private void fixDataTypes() throws Exception {
 		DataTypeManager dtm = currentProgram.getDataTypeManager();
-		Spliterator<DataType> split = Spliterators.spliteratorUnknownSize(
-			dtm.getAllDataTypes(), Spliterator.NONNULL | Spliterator.ORDERED);
-		List<DataType> types = StreamSupport.stream(split, false)
+		List<DataType> types = CollectionUtils.asStream(dtm.getAllDataTypes())
 			.filter(dt -> dt.getName().contains("--"))
 			.collect(Collectors.toList());
 		println(String.format("Located %d datatypes", types.size()));
@@ -46,6 +48,24 @@ public class NamespaceSymbolFixer extends GhidraScript {
 			monitor.checkCanceled();
 			String name = dt.getName();
 			dt.setName(name.replaceAll("--", "::"));
+			monitor.incrementProgress(1);
+		}
+	}
+	
+	private void fixStructures() throws Exception {
+		DataTypeManager dtm = currentProgram.getDataTypeManager();
+		List<Structure> structs = CollectionUtils.asList(dtm.getAllStructures());
+		monitor.setMessage("Repairing Structure Members");
+		for (Structure struct : structs) {
+			monitor.checkCanceled();
+			if (!struct.getName().equals("vtable")) {
+				for (DataTypeComponent comp : struct.getComponents()) {
+					String name = comp.getFieldName();
+					if (name != null && name.contains("--")) {
+						comp.setFieldName(name.replaceAll("--", "::"));
+					}
+				}
+			}
 			monitor.incrementProgress(1);
 		}
 	}
