@@ -13,6 +13,7 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
 
 public class VsCppClassBuilder extends AbstractCppClassBuilder {
@@ -30,15 +31,15 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 	}
 
 	@Override
-	protected void addVptr() {
-		try {	
-			addPointers();
+	protected void addVptr(Structure struct) {
+		try {
+			addPointers(struct);
 		} catch (InvalidDataTypeException e) {
 			return;
 		}
 	}
 
-	private void addVfptr(int offset) {
+	private void addVfptr(Structure struct, int offset) {
 		final ClassTypeInfo type = getType();
 		final Program program = getProgram();
 		final DataType vfptr = ClassTypeInfoUtils.getVptrDataType(program, type);
@@ -50,7 +51,7 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 		}
 	}
 
-	private void addVbptr(int offset) throws InvalidDataTypeException {
+	private void addVbptr(Structure struct, int offset) throws InvalidDataTypeException {
 		final Program program = getProgram();
 		final DataTypeManager dtm = program.getDataTypeManager();
 		final int ptrSize = program.getDefaultPointerSize();
@@ -63,17 +64,17 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 			replaceComponent(struct, vbptr, VBPTR, offset);
 		}
 	}
-	
-	private void addPointers() throws InvalidDataTypeException {
+
+	private void addPointers(Structure struct) throws InvalidDataTypeException {
 		WindowsClassTypeInfo type = getType();
 		int offset = 0;
 		Vtable vtable = type.getVtable();
 		if (Vtable.isValid(vtable)) {
-			addVfptr(offset);
+			addVfptr(struct, offset);
 			offset = getProgram().getDefaultPointerSize();
 		}
 		if (!type.getVirtualParents().isEmpty()) {
-			addVbptr(offset);
+			addVbptr(struct, offset);
 		}
 	}
 
@@ -81,7 +82,7 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 	protected Map<ClassTypeInfo, Integer> getBaseOffsets() {
 		return getType().getBaseOffsets();
 	}
-	
+
 	@Override
 	protected WindowsClassTypeInfo getType() {
 		return (WindowsClassTypeInfo) super.getType();

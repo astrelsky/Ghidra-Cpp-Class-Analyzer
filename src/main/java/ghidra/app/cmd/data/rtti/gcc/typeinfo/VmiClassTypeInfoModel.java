@@ -231,6 +231,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 			List<Long> offsets = new ArrayList<>(getVtable().getPrefixes().get(0).getOffsets());
 			if (offsets.size() > 0) {
 				offsets.sort(null);
+				offsets.remove(0);
 				result.addAll(offsets);
 			}
 		}

@@ -92,7 +92,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	static boolean isVirtual(Rtti1Model model) throws InvalidDataTypeException {
 		return (model.getAttributes() >> 4 & 1) == 1;
 	}
-	
+
 	private ClassTypeInfo getParent(Rtti1Model model) {
 		try {
 			Supplier<AssertException> e = () -> new AssertException(
@@ -201,7 +201,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	public Namespace getNamespace() {
 		return getBaseModel().getRtti0Model().getDescriptorAsNamespace();
 	}
-	
+
 	private void invalidError(InvalidDataTypeException e) {
 		throw new AssertException(
 			"Ghidra-Cpp-Class-Analyzer: previously validated data is no longer valid?", e);
@@ -211,13 +211,17 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	protected String getPureVirtualFunctionName() {
 		return PURE_VIRTUAL_FUNCTION_NAME;
 	}
-	
+
 	private TypeDescriptorModel getTypeDescriptorModel() {
 		return new TypeDescriptorModel(getProgram(), getAddress(), DEFAULT_OPTIONS);
 	}
-	
+
 	@Override
 	protected VsCppClassBuilder getClassBuilder() {
 		return new VsCppClassBuilder(this);
+	}
+
+	@Override
+	protected void fillOffsets(ClassTypeInfoRecord record) {
 	}
 }

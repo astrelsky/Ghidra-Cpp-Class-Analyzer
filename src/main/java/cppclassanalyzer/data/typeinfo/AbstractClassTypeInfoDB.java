@@ -123,6 +123,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	protected abstract int[] getOffsets();
 	protected abstract String getPureVirtualFunctionName();
 	protected abstract AbstractCppClassBuilder getClassBuilder();
+	protected abstract void fillOffsets(ClassTypeInfoRecord record);
 
 	@Override
 	public ClassTypeInfoManagerDB getManager() {
@@ -140,8 +141,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	protected static byte[] getClassData(ClassTypeInfoRecord record) {
-		byte[] result = record.getBinaryData(MODEL_DATA);
-		return result;
+		return record.getBinaryData(MODEL_DATA);
 	}
 
 	protected static String getIdentifier(byte id) {
@@ -243,11 +243,11 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	protected boolean refresh(db.Record record) {
 		return refresh(new ClassTypeInfoRecord(record));
 	}
-	
+
 	protected boolean isVtableSearched() {
 		return vtableSearched;
 	}
-	
+
 	protected void setVtableSearched() {
 		this.vtableSearched = true;
 		ClassTypeInfoRecord record = getRecord();
@@ -277,7 +277,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	public String getName() {
 		return getNamespace().getName();
 	}
-	
+
 	@Override
 	public final GhidraClass getGhidraClass() {
 		return (GhidraClass) getNamespace();
@@ -359,6 +359,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			vtableKey = -1;
 		}
 		record.setLongValue(VTABLE_KEY, vtableKey);
+		fillOffsets(record);
 		manager.updateRecord(record);
 	}
 

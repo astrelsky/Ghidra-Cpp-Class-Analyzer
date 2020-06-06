@@ -10,11 +10,8 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
-import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
-import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.XReferenceUtil;
-import ghidra.framework.plugintool.PluginTool;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
@@ -34,9 +31,6 @@ public class ClassTypeInfoUtils {
 
 	private static final String PLACEHOLDER_DESCRIPTION = "PlaceHolder Class Structure";
 	private static final String MISSING = "Missing";
-	private static final CategoryPath DWARF = new CategoryPath(CategoryPath.ROOT, "DWARF");
-	private static final String GENERIC_CPP_LIB = "generic_c++lib";
-	private static final String GENERIC_CPP_LIB64 = GENERIC_CPP_LIB+"_64";
 
 	private ClassTypeInfoUtils() {
 	}
@@ -168,67 +162,17 @@ public class ClassTypeInfoUtils {
 		int id = dtm.startTransaction("getting placeholder struct for "+type.getName());
 		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
 		DataType struct = dtm.getDataType(path, type.getName());
-		struct = VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
-		DataTypePath dtPath = struct.getDataTypePath();
-		if (!isDebug(dtPath)) {
-			DataTypeManager cppDtm = getCppDataTypeManager(dtm);
-			if (cppDtm == null) {
-				cppDtm = dtm;
-			}
-			struct = VariableUtilities.findExistingClassStruct(type.getGhidraClass(), cppDtm);
-			if (struct != null && path.isAncestorOrSelf(struct.getCategoryPath())) {
-				struct = dtm.addDataType(struct, DataTypeConflictHandler.REPLACE_HANDLER);
-			} else {
-				struct = dtm.getDataType(dtPath);
-			}
+		DataType thiscallStruct =
+			VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
+		if (struct == null) {
+			struct = thiscallStruct;
 		}
-		if (!struct.equals(VariableUtilities.findOrCreateClassStruct(
-				type.getGhidraClass(), dtm))) {
-					Msg.trace(ClassTypeInfoUtils.class, "Variable Utils returned wrong class structure! "
-									+ type.getName());
+		if (!struct.equals(thiscallStruct)) {
+			String msg = "Variable Utils returned wrong class structure! " + type.getName();
+			Msg.info(ClassTypeInfoUtils.class, msg);
 		}
 		dtm.endTransaction(id, true);
 		return (Structure) struct;
-	}
-
-	private static boolean isDebug(DataTypePath dtPath) {
-		final String path = dtPath.toString();
-		if (path.contains(".pdb") || path.contains(".xml")) {
-			return true;
-		}
-		return dtPath.isAncestor(DWARF);
-	}
-
-	private static DataTypeManager getCppDataTypeManager(DataTypeManager dtm) {
-		// TODO remove
-		if (dtm instanceof ProgramBasedDataTypeManager) {
-			Program program = ((ProgramBasedDataTypeManager) dtm).getProgram();
-			if (GnuUtils.isGnuCompiler(program)) {
-				AutoAnalysisManager mgr = AutoAnalysisManager.getAnalysisManager(program);
-				PluginTool tool = mgr.getAnalysisTool();
-				if (tool == null) {
-					// we are testing. this is irrelevant
-					return null;
-				}
-				return program.getDefaultPointerSize() > 4 ?
-					getDataTypeManagerByName(tool, GENERIC_CPP_LIB64) :
-					getDataTypeManagerByName(tool, GENERIC_CPP_LIB);
-			}
-			// TODO VisualStudio
-		}
-		return null;
-	}
-
-	private static DataTypeManager getDataTypeManagerByName(PluginTool tool, String name) {
-		DataTypeManagerService service = tool.getService(DataTypeManagerService.class);
-		DataTypeManager[] dataTypeManagers = service.getDataTypeManagers();
-		for (DataTypeManager manager : dataTypeManagers) {
-			String managerName = manager.getName();
-			if (name.equals(managerName)) {
-				return manager;
-			}
-		}
-		return null;
 	}
 
 	/**
@@ -406,7 +350,7 @@ public class ClassTypeInfoUtils {
 		if (type.getParentModels().length == 1) {
 			if (Vtable.isValid(type.getVtable())) {
 				GnuVtable vtable = (GnuVtable) type.getVtable();
-				long offset = vtable.getOffset(0, 1);
+				long offset = vtable.getOffset(0, 0);
 				if (offset < Long.MAX_VALUE && offset > 0) {
 					return Map.of(type.getParentModels()[0], (int) offset);
 				}

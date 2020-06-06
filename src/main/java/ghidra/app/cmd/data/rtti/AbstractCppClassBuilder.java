@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
@@ -62,8 +63,17 @@ public abstract class AbstractCppClassBuilder {
 		return program;
 	}
 
+	private String getSuperName() {
+		return SUPER + type.getName();
+	}
+
+	protected final void addVptr() {
+		addVptr(struct);
+	}
+
 	protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
-	
+	protected abstract void addVptr(Structure struct);
+
 	private static boolean containsMember(Structure struct, String name) {
 		return Arrays.stream(struct.getComponents())
 			.map(DataTypeComponent::getFieldName)
@@ -103,10 +113,6 @@ public abstract class AbstractCppClassBuilder {
 						replaceComponent(struct, parentStruct, memberName, 0);
 						continue;
 					}
-					String msg = getType().getName()
-						+ " has multiple base classes at offset 0"
-						+ " with components other than _vptr";
-					throw new AssertException(msg);
 				}
 				replaceComponent(struct, parentStruct, memberName, 0);
 			} else if (offset < 0) {
@@ -121,6 +127,7 @@ public abstract class AbstractCppClassBuilder {
 		fixComponents();
 		built = true;
 		struct = resolveStruct(struct);
+		resolveStruct(getSuperClassDataType());
 		if (id != null) {
 			program.endTransaction(id, true);
 		}
@@ -139,15 +146,16 @@ public abstract class AbstractCppClassBuilder {
 
 	protected Structure getSuperClassDataType() {
 		if (type.getVirtualParents().isEmpty()) {
-			return getDataType();
+			return struct;
 		}
 		DataTypeManager dtm = program.getDataTypeManager();
 		DataTypePath dtPath = new DataTypePath(path, SUPER+type.getName());
 		DataType dt = dtm.getDataType(dtPath);
 		if (dt == null) {
-			Structure superStruct = (Structure) getDataType().copy(dtm);
+			Structure superStruct = (Structure) struct.copy(dtm);
 			setSuperStructureCategoryPath(superStruct);
 			deleteVirtualComponents(superStruct);
+			addVptr(superStruct);
 			trimStructure(superStruct);
 			return resolveStruct(superStruct);
 		}
@@ -175,8 +183,6 @@ public abstract class AbstractCppClassBuilder {
 			struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
 	}
 
-	protected abstract void addVptr();
-
 	protected static void trimStructure(Structure struct) {
 		DataTypeComponent[] comps = struct.getDefinedComponents();
 		if (comps.length == 0) {
@@ -194,16 +200,14 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	protected void deleteVirtualComponents(Structure superStruct) {
-		Set<Structure> parents = new HashSet<>();
-		for (ClassTypeInfo parent : type.getVirtualParents()) {
-			Structure parentStruct = getParentBuilder(parent).getSuperClassDataType();
-			parents.add(parentStruct);
-			parents.add(parent.getClassDataType());
-		}
+		Set<String> parents = type.getVirtualParents()
+			.stream()
+			.map(this::getParentBuilder)
+			.map(AbstractCppClassBuilder::getSuperName)
+			.collect(Collectors.toSet());
 		DataTypeComponent[] comps = superStruct.getDefinedComponents();
 		for (DataTypeComponent comp : comps) {
-			DataType dt = comp.getDataType();
-			if (parents.contains(dt)) {
+			if (parents.contains(comp.getFieldName())) {
 				int ordinal = comp.getOrdinal();
 				int numComponents = superStruct.getNumComponents() - 1;
 				int[] ordinals = IntStream.rangeClosed(ordinal, numComponents).toArray();
@@ -217,7 +221,7 @@ public abstract class AbstractCppClassBuilder {
 		if (name == null) {
 			return true;
 		}
-		return !name.startsWith(SUPER) && !name.equals("_vptr");
+		return !name.startsWith(SUPER) && !name.contains("_vptr");
 	}
 
 	private void stashComponents() {

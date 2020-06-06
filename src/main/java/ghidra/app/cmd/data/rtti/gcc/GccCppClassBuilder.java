@@ -8,6 +8,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
+import ghidra.program.model.data.Structure;
 
 import static ghidra.program.model.data.Undefined.isUndefined;
 
@@ -25,7 +26,7 @@ public class GccCppClassBuilder extends AbstractCppClassBuilder {
 	}
 
 	@Override
-	protected void addVptr() {
+	protected void addVptr(Structure struct) {
 		if (getType().getVtable() == Vtable.NO_VTABLE) {
 			return;
 		}
