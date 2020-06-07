@@ -1,0 +1,228 @@
+{
+    "AbstractInheritance": {
+        "F": {
+            "size": "16",
+            "offsets": {
+                "f_data": "8"
+            }
+        },
+        "G": {
+            "size": "32",
+            "offsets": {
+                "g_data": "8",
+                "super_F": "16"
+            }
+        },
+        "H": {
+            "size": "16",
+            "offsets": {
+                "h_data": "12",
+                "super_F": "0"
+            }
+        },
+        "I": {
+            "size": "56",
+            "offsets": {
+                "i_data": "32",
+                "super_G": "0",
+                "super_H": "16"
+            }
+        }
+    },
+    "Diamond": {
+        "A": {
+            "size": "16",
+            "offsets": {
+                "a_data": "8",
+                "hidden_a_data": "12"
+            }
+        },
+        "B": {
+            "size": "32",
+            "offsets": {
+                "b_data": "8",
+                "super_A": "16"
+            }
+        },
+        "C": {
+            "size": "32",
+            "offsets": {
+                "c_data": "8",
+                "super_A": "16"
+            }
+        },
+        "D": {
+            "size": "48",
+            "offsets": {
+                "d_data": "28",
+                "super_B": "0",
+                "super_C": "16",
+                "super_A": "32"
+            }
+        }
+    },
+    "LargeInheritance": {
+        "A": {
+            "size": "16",
+            "offsets": {
+                "a_data": "8",
+                "hidden_a_data": "12"
+            }
+        },
+        "B": {
+            "size": "32",
+            "offsets": {
+                "b_data": "8",
+                "super_A": "16"
+            }
+        },
+        "C": {
+            "size": "32",
+            "offsets": {
+                "c_data": "8",
+                "super_A": "16"
+            }
+        },
+        "D": {
+            "size": "48",
+            "offsets": {
+                "d_data": "28",
+                "super_B": "0",
+                "super_C": "16",
+                "super_A": "32"
+            }
+        },
+        "U": {
+            "size": "16",
+            "offsets": {
+                "u_data": "8"
+            }
+        },
+        "V": {
+            "size": "88",
+            "offsets": {
+                "v_data": "64",
+                "super_Z": "0",
+                "super_Y": "16",
+                "super_X": "32",
+                "super_A": "48"
+            }
+        },
+        "W": {
+            "size": "112",
+            "offsets": {
+                "w_data": "44",
+                "super_C": "96",
+                "super_A": "64",
+                "super_B": "48",
+                "super_Z": "16",
+                "super_Y": "0",
+                "super_X": "32",
+                "super_U": "80"
+            }
+        },
+        "X": {
+            "size": "16",
+            "offsets": {
+                "x_data": "8"
+            }
+        },
+        "Y": {
+            "size": "32",
+            "offsets": {
+                "y_data": "8",
+                "super_Y": "16"
+            }
+        },
+        "Z": {
+            "size": "16",
+            "offsets": {
+                "z_data": "8"
+            }
+        }
+    },
+    "NoMembers": {
+        "A": {
+            "size": "8"
+        },
+        "B": {
+            "size": "8"
+        },
+        "C": {
+            "size": "16",
+            "offsets": {
+                "super_A": "0",
+                "super_B": "8"
+            }
+        },
+        "D": {
+            "size": "16",
+            "offsets": {
+                "super_A": "0",
+                "super_B": "8"
+            }
+        }
+    },
+    "NonDiamond": {
+        "A": {
+            "size": "16",
+            "offsets": {
+                "a_data": "8",
+                "hidden_a_data": "12"
+            }
+        },
+        "B": {
+            "size": "32",
+            "offsets": {
+                "b_data": "8",
+                "super_A": "16"
+            }
+        },
+        "C": {
+            "size": "24",
+            "offsets": {
+                "c_data": "16",
+                "super_A": "0"
+            }
+        },
+        "D": {
+            "size": "56",
+            "offsets": {
+                "d_data": "36",
+                "super_A": "40",
+                "super_B": "0"
+            }
+        }
+    },
+    "NoVirtualFunctions": {
+        "A": {
+            "size": "4",
+            "offsets": {
+                "a_data": "0"
+            }
+        },
+        "B": {
+            "size": "16",
+            "offsets": {
+                "b_data": "8",
+                "super_A": "12"
+            }
+        },
+        "C": {
+            "size": "32",
+            "offsets": {
+                "c_data": "8",
+                "super_A": "28",
+                "super_B": "16"
+            }
+        },
+        "D": {
+            "size": "24",
+            "offsets": {
+                "d_data": "12",
+                "super_A": "16",
+                "super_B": "0"
+            }
+        }
+    }
+}

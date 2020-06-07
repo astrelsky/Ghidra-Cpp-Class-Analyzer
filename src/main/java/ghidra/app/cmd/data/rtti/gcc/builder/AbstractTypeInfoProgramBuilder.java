@@ -50,10 +50,11 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 		setupMemory();
 		Program program = getProgram();
 		TestEnv env = new TestEnv();
-		PluginTool tool = env.launchDefaultTool(program);
-		startTransaction();
+		PluginTool tool = env.launchDefaultTool();
 		tool.addPlugin(ClassTypeInfoManagerPlugin.class.getName());
+		env.open(program);
 		manager = ClassTypeInfoUtils.getManager(program);
+		startTransaction();
 		typeMap = getTypeInfoMap();
 		nameMap = getTypeNameMap();
 		vtableMap = getVtableMap();

@@ -1,5 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -8,6 +9,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.Ppc64TypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
+
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.util.task.TaskMonitor;
@@ -17,9 +19,12 @@ import org.junit.Test;
 public class VtableModelTest extends GenericGccRttiTest {
 
 	private void validationTest(AbstractTypeInfoProgramBuilder builder) throws Exception {
-		for (GnuVtable vtable : builder.getVtableList()) {
+		List<GnuVtable> vtables = builder.getVtableList();
+		for (GnuVtable vtable : vtables) {
 			assert Vtable.isValid(vtable) : vtable.getTypeInfo().getNamespace().getName(true);
 		}
+		ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(builder.getProgram());
+		vtables.forEach(manager::resolve);
 	}
 
 	private void locationTest(AbstractTypeInfoProgramBuilder builder) throws Exception {

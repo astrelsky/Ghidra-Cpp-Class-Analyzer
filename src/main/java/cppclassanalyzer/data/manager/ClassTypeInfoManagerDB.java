@@ -414,12 +414,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	public ClassTypeInfoDB getType(GhidraClass gc) {
 		SymbolTable table = program.getSymbolTable();
 		List<Symbol> symbols = table.getSymbols("typeinfo", gc);
-		OptionalLong key = symbols.stream()
-				.map(Symbol::getAddress)
-				.mapToLong(this::encodeAddress)
-				.findFirst();
-		if (key.isPresent()) {
-			return worker.getType(key.getAsLong());
+		if (symbols.size() == 1) {
+			return getType(symbols.get(0).getAddress());
 		}
 		return null;
 	}

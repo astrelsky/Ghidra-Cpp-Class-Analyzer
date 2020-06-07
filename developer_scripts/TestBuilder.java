@@ -1,13 +1,16 @@
 //@category CppClassAnalyzer
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 
 import ghidra.app.script.GhidraScript;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.CreateVtableBackgroundCmd;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
+import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
@@ -39,7 +42,6 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import static ghidra.app.cmd.data.rtti.gcc.factory.TypeInfoFactory.getTypeInfo;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.program.model.data.DataUtilities.ClearDataMode.CLEAR_ALL_CONFLICT_DATA;
 
@@ -365,13 +367,18 @@ public class TestBuilder extends GhidraScript {
 	}
 
 	private void populateMaps() throws Exception {
-		ClassTypeInfoManager manager = ClassTypeInfoManager.getManager(currentProgram);
+		ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(currentProgram);
 		int pointerSize = currentProgram.getDefaultPointerSize();
 		SymbolTable table = currentProgram.getSymbolTable();
 		Listing listing = currentProgram.getListing();
 		Memory mem = currentProgram.getMemory();
 		for (Symbol symbol : table.getSymbols(TypeInfo.SYMBOL_NAME)) {
-			TypeInfo type = manager.getTypeInfo(symbol.getAddress());
+			TypeInfo type = null;
+			try {
+				type = manager.getTypeInfo(symbol.getAddress());
+			} catch (UnresolvedClassTypeInfoException e) {
+				continue;
+			}
 			if (type == null) {
 					println("TypeInfo at "+symbol.getAddress().toString()+" is null");
 					continue;

@@ -42,7 +42,7 @@ import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
 public class GccRttiAnalyzer extends AbstractAnalyzer {
 
-	private static final String NAME = "GCC RTTI Analyzer";
+	public static final String ANALYZER_NAME = "GCC RTTI Analyzer";
 	private static final String DESCRIPTION =
 		"This analyzer finds and creates all of the RTTI metadata structures and their associated vtables.";
 
@@ -85,7 +85,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	 * Constructs an RttiAnalyzer.
 	 */
 	public GccRttiAnalyzer() {
-		super(NAME, DESCRIPTION, AnalyzerType.BYTE_ANALYZER);
+		super(ANALYZER_NAME, DESCRIPTION, AnalyzerType.BYTE_ANALYZER);
 		setSupportsOneTimeAnalysis();
 		setPriority(AnalysisPriority.DATA_TYPE_PROPOGATION.before().before());
 		setDefaultEnablement(true);

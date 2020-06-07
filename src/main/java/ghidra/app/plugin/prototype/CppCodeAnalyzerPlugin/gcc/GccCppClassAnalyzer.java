@@ -15,11 +15,11 @@ import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.isGnuCompiler;
 
 public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
-	private static final String NAME = "GCC C++ Class Analyzer";
+	public static final String ANALYZER_NAME = "GCC C++ Class Analyzer";
 	private GccVtableAnalysisCmd vtableAnalyzer;
 
 	public GccCppClassAnalyzer() {
-		super(NAME);
+		super(ANALYZER_NAME);
 		setPriority(new GccRttiAnalyzer().getPriority().after());
 	}
 
