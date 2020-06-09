@@ -5,6 +5,7 @@ import java.util.*;
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
@@ -348,12 +349,14 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	public Structure getClassDataType() {
 		ClassTypeInfoRecord record = getRecord();
 		if (struct != null) {
-			long dtKey = record.getLongValue(DATATYPE_ID);
-			if (dtKey == INVALID_KEY) {
-				record.setLongValue(DATATYPE_ID, struct.getUniversalID().getValue());
-				manager.updateRecord(record);
+			if (!ClassTypeInfoUtils.isPlaceholder(struct)) {
+				long dtKey = record.getLongValue(DATATYPE_ID);
+				if (dtKey == INVALID_KEY) {
+					record.setLongValue(DATATYPE_ID, struct.getUniversalID().getValue());
+					manager.updateRecord(record);
+				}
+				return struct;
 			}
-			return struct;
 		}
 		AbstractCppClassBuilder builder = getClassBuilder();
 		struct = builder.getDataType();

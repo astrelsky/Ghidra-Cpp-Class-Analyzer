@@ -138,13 +138,13 @@ public class ClassBuilderTest extends GenericGccRttiTest {
                 }
                 DataTypeComponent comp = struct.getComponentAt(member.getOffset());
                 assert comp != null
-                    : String.format("%s is missing %s at offset %d",
-                        name, member.getFieldName(), member.getOffset());
+                    : String.format("%s is missing %s at offset %d\n%s",
+                        name, member.getFieldName(), member.getOffset(), struct);
                 String fieldName = comp.getFieldName();
                 assert fieldName != null && fieldName.equals(member.getFieldName())
                     : String.format(
-                        "%s at offset %d does not match the expected member %s in %s",
-                    fieldName, member.getOffset(), member.getFieldName(), name);
+                        "%s at offset %d does not match the expected member %s in %s\n%s",
+                    fieldName, member.getOffset(), member.getFieldName(), name, struct);
             }
             return true;
         }
