@@ -1,6 +1,7 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,10 +41,13 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.TypedefDataType;
 import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
+import ghidra.util.datastruct.IntSet;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.DummyCancellableTaskMonitor;
 import ghidra.util.task.TaskMonitor;
+
+import cppclassanalyzer.utils.LanguageIdHandler;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.app.util.demangler.DemanglerUtil.demangle;
@@ -62,12 +66,21 @@ public final class GnuUtils {
 
 	public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
 	public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
-	public static final int UNSUPPORTED_RELOCATION = 5;
 
 	private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
 	private static final Pattern DESCRIPTIVE_PREFIX_PATTERN =
 		Pattern.compile("((?:(.+) )+(for|to) )(.+)");
 	private static final Pattern TRAILING_NUMBER_PATTERN = Pattern.compile(".+?(\\d+)$");
+
+	private static final Map<String, IntSet> COPY_RELOCATIONS = Map.of(
+		"x86", new IntSet(new int[]{5}),
+		"sparc", new IntSet(new int[]{19}),
+		"RISCV", new IntSet(new int[]{4}),
+		"PowerPC", new IntSet(new int[]{19}),
+		"MIPS", new IntSet(new int[]{126}),
+		"ARM", new IntSet(new int[]{20}),
+		"AARCH64", new IntSet(new int[]{180, 1024})
+	);
 
 	private GnuUtils() {
 	}
@@ -398,6 +411,14 @@ public final class GnuUtils {
 		} catch (IOException e) {
 			return null;
 		}
+	}
+
+	public static boolean isCopyRelocation(Program program, int type) {
+		LanguageIdHandler handler = new LanguageIdHandler(program.getLanguageID());
+		if (COPY_RELOCATIONS.containsKey(handler.getProcessor())) {
+			return COPY_RELOCATIONS.get(handler.getProcessor()).contains(type);
+		}
+		return false;
 	}
 
 }

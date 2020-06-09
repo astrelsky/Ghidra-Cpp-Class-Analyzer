@@ -89,8 +89,7 @@ public class CreateVttBackgroundCmd extends BackgroundCommand {
 	private boolean createAssociatedData() throws InvalidDataTypeException {
 		SymbolTable table = program.getSymbolTable();
 		for (GnuVtable model : vtt.getConstructionVtableModels()) {
-			Address vtableAddress = model.getTypeInfo().getVtable().getAddress();
-			if (!model.getAddress().equals(vtableAddress)) {
+			if (model instanceof VtableModel && ((VtableModel) model).isConstruction()) {
 					CreateConstructionVtableBackgroundCmd cmd =
 					new CreateConstructionVtableBackgroundCmd(model, child);
 					if (!cmd.applyTo(program, monitor)) {

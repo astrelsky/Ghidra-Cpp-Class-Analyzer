@@ -15,6 +15,8 @@ import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.AbstractTypeInfoModel;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.listing.BookmarkManager;
+import ghidra.program.model.listing.BookmarkType;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
@@ -73,12 +75,24 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel i
 		}
 		SymbolTable table = program.getSymbolTable();
 		for (Symbol symbol : table.getSymbols(VtableModel.SYMBOL_NAME, getGhidraClass())) {
-			GnuVtable tmpVtable =
+			GnuVtable tmpVtable = (GnuVtable) manager.getVtable(symbol.getAddress());
+			if (Vtable.isValid(tmpVtable)) {
+				vtable = tmpVtable;
+				return vtable;
+			}
+			tmpVtable =
 				VtableModel.getVtable(program, symbol.getAddress(), this);
 			if (Vtable.isValid(tmpVtable)) {
 				vtable = tmpVtable;
 				return vtable;
 			}
+			BookmarkManager man = program.getBookmarkManager();
+			man.setBookmark(
+				symbol.getAddress(), BookmarkType.ERROR, null, "Vtable Validation Failed");
+			String msg = String.format(
+				"Symbol %s at %s is a valid vtable symbol but the data validation check failed",
+				symbol.getName(), symbol.getAddress());
+			Msg.warn(this, msg);
 		}
 		vtable = (GnuVtable) ClassTypeInfoUtils.findVtable(program, address, monitor);
 		return vtable;

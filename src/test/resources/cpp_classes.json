@@ -1,5 +1,5 @@
 {
-    "AbstractInheritance": {
+    "abstract_inheritance": {
         "F": {
             "size": "16",
             "offsets": {
@@ -29,7 +29,7 @@
             }
         }
     },
-    "Diamond": {
+    "diamond": {
         "A": {
             "size": "16",
             "offsets": {
@@ -61,7 +61,7 @@
             }
         }
     },
-    "LargeInheritance": {
+    "large_inheritance": {
         "A": {
             "size": "16",
             "offsets": {
@@ -141,29 +141,29 @@
             }
         }
     },
-    "NoMembers": {
+    "no_members": {
         "A": {
-            "size": "8"
+            "size": "1"
         },
         "B": {
-            "size": "8"
+            "size": "1"
         },
         "C": {
-            "size": "16",
+            "size": "1",
             "offsets": {
                 "super_A": "0",
-                "super_B": "8"
+                "super_B": "0"
             }
         },
         "D": {
-            "size": "16",
+            "size": "8",
             "offsets": {
                 "super_A": "0",
-                "super_B": "8"
+                "super_B": "0"
             }
         }
     },
-    "NonDiamond": {
+    "non_diamond": {
         "A": {
             "size": "16",
             "offsets": {
@@ -194,7 +194,7 @@
             }
         }
     },
-    "NoVirtualFunctions": {
+    "no_virtual_functions": {
         "A": {
             "size": "4",
             "offsets": {

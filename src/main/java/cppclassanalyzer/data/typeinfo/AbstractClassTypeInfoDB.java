@@ -35,13 +35,6 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	public static final String CLASS_TYPEINFO_TABLE_NAME = "ClassTypeInfo Table";
 
-	private static final List<Class<? extends ClassTypeInfo>> CLASS_IDS = List.of(
-		ClassTypeInfoModel.class,
-		SiClassTypeInfoModel.class,
-		VmiClassTypeInfoModel.class,
-		RttiModelWrapper.class
-	);
-
 	protected final ProgramRttiRecordManager manager;
 	private final Address address;
 	private final String typename;
@@ -103,7 +96,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	private void setRecord(ClassTypeInfo type, ClassTypeInfoRecord record) {
 		record.setStringValue(TYPENAME, type.getTypeName());
-		record.setByteValue(TYPEINFO_ID, getClassId(type));
+		record.setByteValue(TYPEINFO_ID, TypeId.encode(type));
 		record.setLongValue(ADDRESS, getManager().encodeAddress(type.getAddress()));
 		record.setLongValue(DATATYPE_ID, INVALID_KEY);
 		Vtable vtable = type.getVtable();
@@ -130,10 +123,11 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		return (ClassTypeInfoManagerDB) manager.getManager();
 	}
 
+	@Override
 	public Map<ClassTypeInfo, Integer> getBaseOffsets() {
 		long[] baseKeys = getBaseKeys();
 		int[] baseOffsets = getOffsets();
-		Map<ClassTypeInfo, Integer> map = new HashMap<>(baseKeys.length);
+		Map<ClassTypeInfoDB, Integer> map = new HashMap<>(baseKeys.length);
 		for (int i = 0; i < baseKeys.length; i++) {
 			map.put(manager.getType(baseKeys[i]), baseOffsets[i]);
 		}
@@ -145,18 +139,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	protected static String getIdentifier(byte id) {
-		try {
-			return (String) CLASS_IDS.get(id).getField("ID_STRING").get(null);
-		} catch (NoSuchFieldException e) {
-			return "";
-		} catch (IllegalAccessException e2) {
-			throw new AssertException(e2);
-		}
-	}
-
-	private static byte getClassId(ClassTypeInfo type) {
-		byte result = (byte) CLASS_IDS.indexOf(type.getClass());
-		return result;
+		return TypeId.decode(id).getIdentifier();
 	}
 
 	protected boolean getVtableSearched() {
@@ -165,14 +148,18 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	public static int getBaseCount(ClassTypeInfoRecord record) {
-		byte b = record.getByteValue(TYPEINFO_ID);
-		if (b <= CLASS_IDS.indexOf(VmiClassTypeInfoModel.class)) {
-			return GnuClassTypeInfoDB.getBaseCount(record);
+		byte id = record.getByteValue(TYPEINFO_ID);
+		switch (TypeId.decode(id)) {
+			case CLASS:
+			case SI_CLASS:
+			case VMI_CLASS:
+				return GnuClassTypeInfoDB.getBaseCount(record);
+			case RTTI_MODEL_WRAPPER:
+				return WindowsClassTypeInfoDB.getBaseCount(record);
+			default:
+				// impossible but javac complains for some reason
+				throw new AssertException("Ghidra-Cpp-Class-Analyzer: invalid database record");
 		}
-		if (b == CLASS_IDS.indexOf(RttiModelWrapper.class)) {
-			return WindowsClassTypeInfoDB.getBaseCount(record);
-		}
-		throw new AssertException("Ghidra-Cpp-Class-Analyzer: invalid database record");
 	}
 
 	private Structure fetchDataType(ClassTypeInfoRecord record) {
@@ -189,13 +176,21 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	public static long[] getBaseKeys(ClassTypeInfoRecord record) {
 		byte id = record.getByteValue(TYPEINFO_ID);
-		if (id <= CLASS_IDS.indexOf(VmiClassTypeInfoModel.class)) {
-			return GnuClassTypeInfoDB.getBaseKeys(record);
+		switch (TypeId.decode(id)) {
+			case CLASS:
+			case SI_CLASS:
+			case VMI_CLASS:
+				return GnuClassTypeInfoDB.getBaseKeys(record);
+			case RTTI_MODEL_WRAPPER:
+				return WindowsClassTypeInfoDB.getBaseKeys(record);
+			default:
+				// impossible but javac complains for some reason
+				throw new AssertException("Ghidra-Cpp-Class-Analyzer: invalid database record");
 		}
-		if (id == CLASS_IDS.indexOf(RttiModelWrapper.class)) {
-			return WindowsClassTypeInfoDB.getBaseKeys(record);
-		}
-		return new long[0];
+	}
+
+	public TypeId getTypeId() {
+		return TypeId.decode(getRecord().getByteValue(TYPEINFO_ID));
 	}
 
 	protected static void updateKeys(long[] keys, LongIntHashtable keyMap) {
@@ -210,15 +205,16 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	public static void updateRecord(ClassTypeInfoRecord record, LongIntHashtable keyMap) {
 		byte id = record.getByteValue(TYPEINFO_ID);
-		if (id <= CLASS_IDS.indexOf(VmiClassTypeInfoModel.class)) {
-			GnuClassTypeInfoDB.updateRecord(record, keyMap);
-		} else if (id == CLASS_IDS.indexOf(RttiModelWrapper.class)) {
-			WindowsClassTypeInfoDB.updateRecord(record, keyMap);
+		switch (TypeId.decode(id)) {
+			case CLASS:
+			case SI_CLASS:
+			case VMI_CLASS:
+				GnuClassTypeInfoDB.updateRecord(record, keyMap);
+				break;
+			case RTTI_MODEL_WRAPPER:
+				WindowsClassTypeInfoDB.updateRecord(record, keyMap);
+				break;
 		}
-	}
-
-	byte getClassID() {
-		return getRecord().getByteValue(TYPEINFO_ID);
 	}
 
 	@Override
@@ -301,36 +297,21 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	@Override
 	public String getIdentifier() {
 		ClassTypeInfoRecord record = getRecord();
-		byte b = record.getByteValue(TYPEINFO_ID);
-		if (b < CLASS_IDS.size()) {
-			try {
-				return (String) CLASS_IDS.get(b).getDeclaredField("ID_STRING").get(null);
-			} catch (NoSuchFieldException e) {
-				// Identifiers are for GNU RTTI only
-				return "";
-			} catch (Exception e) {
-				throw new AssertException("Ghidra-Cpp-Class-Analyzer: ", e);
-			}
-		}
-		throw new AssertException(
-			"Ghidra-Cpp-Class-Analyzer: db record contains illegal typeinfo id");
+		byte id = record.getByteValue(TYPEINFO_ID);
+		return TypeId.decode(id).getIdentifier();
 	}
 
 	@Override
 	public DataType getDataType() {
 		ClassTypeInfoRecord record = getRecord();
-		byte b = record.getByteValue(TYPEINFO_ID);
-		if (b <= CLASS_IDS.size()) {
-			try {
-				return (DataType) CLASS_IDS.get(b)
-					.getDeclaredMethod("getDataType", DataTypeManager.class)
-					.invoke(null, getProgram().getDataTypeManager());
-			} catch (Exception e) {
-				throw new AssertException("Ghidra-Cpp-Class-Analyzer: ", e);
-			}
+		byte id = record.getByteValue(TYPEINFO_ID);
+		try {
+			return (DataType) TypeId.decode(id).clazz
+				.getDeclaredMethod("getDataType", DataTypeManager.class)
+				.invoke(null, getProgram().getDataTypeManager());
+		} catch (Exception e) {
+			throw new AssertException("Ghidra-Cpp-Class-Analyzer: ", e);
 		}
-		throw new AssertException(
-			"Ghidra-Cpp-Class-Analyzer: db record contains illegal typeinfo id");
 	}
 
 	@Override
@@ -416,6 +397,52 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	@Override
 	public final boolean isModifiable() {
 		return true;
+	}
+
+	public static enum TypeId {
+		CLASS(ClassTypeInfoModel.class),
+		SI_CLASS(SiClassTypeInfoModel.class),
+		VMI_CLASS(VmiClassTypeInfoModel.class),
+		RTTI_MODEL_WRAPPER(RttiModelWrapper.class);
+
+		private final Class<? extends ClassTypeInfo> clazz;
+
+		private TypeId(Class<? extends ClassTypeInfo> clazz) {
+			this.clazz = clazz;
+		}
+
+		public String getIdentifier() {
+			switch (this) {
+				case CLASS:
+					return ClassTypeInfoModel.ID_STRING;
+				case SI_CLASS:
+					return SiClassTypeInfoModel.ID_STRING;
+				case VMI_CLASS:
+					return VmiClassTypeInfoModel.ID_STRING;
+				default:
+					return "";
+			}
+		}
+
+		private static TypeId decode(byte b) {
+			return values()[b];
+		}
+
+		private static byte encode(ClassTypeInfo type) {
+			return (byte) Arrays.stream(values())
+				.filter(v -> v.isEquivalent(type))
+				.mapToInt(TypeId::ordinal)
+				.findFirst()
+				.orElseThrow();
+		}
+
+		private boolean isEquivalent(ClassTypeInfo type) {
+			return clazz == type.getClass();
+		}
+
+		protected byte encode() {
+			return (byte) ordinal();
+		}
 	}
 
 }

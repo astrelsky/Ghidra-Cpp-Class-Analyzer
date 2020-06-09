@@ -7,12 +7,16 @@ import java.util.*;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.XReferenceUtil;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
+import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB.TypeId;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
@@ -395,6 +399,40 @@ public class ClassTypeInfoUtils {
 	 */
 	public static ProgramClassTypeInfoManager getManager(Program program) {
 		return (ProgramClassTypeInfoManager) TypeInfoUtils.getManager(program);
+	}
+
+	public static int getMaxVtableCount(ClassTypeInfo type) {
+		if (type instanceof VmiClassTypeInfoModel) {
+			return doGetMaxVtableCount(type);
+		}
+		if (type instanceof GnuClassTypeInfoDB) {
+			if (((GnuClassTypeInfoDB) type).getTypeId() == TypeId.VMI_CLASS) {
+				return doGetMaxVtableCount(type);
+			}
+		}
+		return type.getVirtualParents().size()+1;
+	}
+
+	private static int doGetMaxVtableCount(ClassTypeInfo type) {
+		Program program = type.getGhidraClass().getSymbol().getProgram();
+		int defaultMax = type.getVirtualParents().size()+1;
+		BaseClassTypeInfoModel[] bases;
+		if (type instanceof VmiClassTypeInfoModel) {
+			// vmi already has it constructed so check first
+			bases = ((VmiClassTypeInfoModel) type).getBases();
+		} else {
+			bases = VmiClassTypeInfoModel.getBases(program, type.getAddress());
+		}
+		int offset = Arrays.stream(bases)
+			.map(BaseClassTypeInfoModel::getVirtualBases)
+			.flatMap(Set::stream)
+			.mapToInt(BaseClassTypeInfoModel::getOffset)
+			.min()
+			.orElse(0);
+		if (offset >= 0) {
+			return type.getVirtualParents().size()+1;
+		}
+		return Math.max(defaultMax, Math.abs(offset) / program.getDefaultPointerSize() - 1);
 	}
 
 }

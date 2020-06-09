@@ -178,11 +178,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		try {
 			final Optional<Function[][]> function =
 				getStream().filter(GccRttiAnalyzer::isPureVirtualType)
-						   .map(ClassTypeInfo::getVtable)
-						   .filter(Vtable::isValid)
-						   .map(Vtable::getFunctionTables)
-						   .filter(this::checkTableAddresses)
-						   .findFirst();
+					.map(ClassTypeInfo::getVtable)
+					.filter(Vtable::isValid)
+					.map(Vtable::getFunctionTables)
+					.filter(this::checkTableAddresses)
+					.findFirst();
 			if (function.isPresent()) {
 				// pre checked
 				return function.get()[0][2];
@@ -314,7 +314,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				continue;
 			}
 			if (name.equals(target)) {
-				if (reloc.getType() == GnuUtils.UNSUPPORTED_RELOCATION) {
+				if (GnuUtils.isCopyRelocation(program, reloc.getType())) {
 					return getClangDynamicReferences(reloc);
 				}
 				result.add(reloc.getAddress());

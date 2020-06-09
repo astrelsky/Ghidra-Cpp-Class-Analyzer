@@ -2,6 +2,10 @@ package cppclassanalyzer.data.typeinfo;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -29,6 +33,7 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
+import ghidra.program.model.symbol.Symbol;
 import ghidra.util.UniversalID;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
@@ -71,7 +76,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		this.programName = type.getProgram().getName();
 		this.typeName = type.getTypeName();
 		this.symbolName = TypeInfoUtils.getSymbolName(type);
-		this.classId = type.getClassID();
+		this.classId = type.getTypeId().encode();
 		this.struct = (Structure) archiveDtm.resolve(type.getClassDataType(), KEEP_HANDLER);
 		DataTypeManager dtm = struct.getDataTypeManager();
 		DataType superDt = dtm.getDataType(getCategoryPath(), "super_" + struct.getName());
@@ -152,7 +157,18 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 	}
 
 	public Address getAddress(Program program) {
-		return program.getAddressMap().decodeAddress(address);
+		List<Symbol> symbols = program.getSymbolTable().getGlobalSymbols(symbolName);
+		if (symbols.size() != 1) {
+			throw new AssertException("Expected only 1 " + symbolName + " to exist");
+		}
+		return symbols.get(0).getAddress();
+	}
+
+	public Address getExternalAddress(Program program) {
+		if (address != 0) {
+			return program.getAddressMap().decodeAddress(address);
+		}
+		return Address.NO_ADDRESS;
 	}
 
 	@Override
@@ -229,11 +245,20 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 		return virtualKeys;
 	}
 
-	/**
+		/**
 	 * @return the baseOffsets
 	 */
-	public int[] getBaseOffsets() {
+	public int[] getBaseOffsetValues() {
 		return baseOffsets;
+	}
+
+	@Override
+	public Map<ClassTypeInfo, Integer> getBaseOffsets() {
+		Map<ClassTypeInfo, Integer> map = new HashMap<>(baseKeys.length);
+		for (int i = 0; i < baseKeys.length; i++) {
+			map.put(manager.getType(baseKeys[i]), baseOffsets[i]);
+		}
+		return Collections.unmodifiableMap(map);
 	}
 
 	@Override

@@ -1,5 +1,7 @@
 package cppclassanalyzer.data.typeinfo;
 
+import java.util.Map;
+
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.program.database.DatabaseObject;
 import cppclassanalyzer.data.ClassTypeInfoManager;
@@ -34,5 +36,7 @@ public abstract class ClassTypeInfoDB extends DatabaseObject implements ClassTyp
 	public abstract long getClassDataTypeId();
 
 	public abstract boolean isModifiable();
+
+	public abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
 
 }

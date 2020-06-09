@@ -12,6 +12,8 @@ import ghidra.program.model.data.Array;
 import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
@@ -232,7 +234,15 @@ public final class VtableModel implements GnuVtable {
 
 	private void setupVtablePrefixes() {
 		vtablePrefixes = new ArrayList<>();
-		int count = construction ? 2 : type.getVirtualParents().size()+1;
+		ClassTypeInfo tmpType;
+		if (type instanceof ClassTypeInfoDB) {
+			ProgramClassTypeInfoManager manager =
+				(ProgramClassTypeInfoManager) ((ClassTypeInfoDB) type).getManager();
+			tmpType = (ClassTypeInfo) manager.getTypeInfo(type.getAddress(), false);
+		} else {
+			tmpType = type;
+		}
+		int count = construction ? 2 : ClassTypeInfoUtils.getMaxVtableCount(tmpType);
 		VtablePrefixModel prefix = new VtablePrefixModel(getNextPrefixAddress(), count);
 		if (!prefix.isValid()) {
 			return;
@@ -260,6 +270,10 @@ public final class VtableModel implements GnuVtable {
 	@Override
 	public List<VtablePrefix> getPrefixes() {
 		return Collections.unmodifiableList(vtablePrefixes);
+	}
+
+	public boolean isConstruction() {
+		return construction;
 	}
 
 	private class VtablePrefixModel implements VtablePrefix {

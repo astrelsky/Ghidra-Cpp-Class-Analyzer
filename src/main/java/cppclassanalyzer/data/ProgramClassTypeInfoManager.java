@@ -3,6 +3,7 @@ package cppclassanalyzer.data;
 import java.util.stream.Stream;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
@@ -21,6 +22,7 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 	Program getProgram();
 	ClassTypeInfoDB getType(Address address) throws UnresolvedClassTypeInfoException;
 	Vtable resolve(Vtable vtable);
+	Vtable getVtable(Address address);
 	default Iterable<ClassTypeInfoDB> getTypes() {
 		return getTypes(false);
 	}
@@ -41,5 +43,7 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 
 	ClassTypeInfoDB resolve(ArchivedClassTypeInfo type);
 	Vtable resolve(ArchivedGnuVtable vtable);
+
+	TypeInfo getTypeInfo(Address address, boolean resolve);
 
 }

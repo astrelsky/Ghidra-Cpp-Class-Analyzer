@@ -3,7 +3,11 @@ package cppclassanalyzer.data.typeinfo;
 import static cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields.*;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -11,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
@@ -18,12 +23,15 @@ import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.database.DatabaseObject;
+import ghidra.program.model.listing.BookmarkManager;
+import ghidra.program.model.listing.BookmarkType;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
-import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
+
+import ghidra.util.datastruct.LongArrayList;
 import ghidra.util.datastruct.LongIntHashtable;
 
 import ghidra.util.exception.CancelledException;
@@ -90,7 +98,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		this.nonVirtualBaseKeys = extractKeys(aMan, type.getNonVirtualBaseKeys());
 		this.virtualBaseKeys = extractKeys(aMan, type.getVirtualKeys());
 		this.baseKeys = extractKeys(aMan, type.getBaseKeys());
-		this.baseOffsets = type.getBaseOffsets();
+		this.baseOffsets = type.getBaseOffsetValues();
 		fillRecord(record);
 	}
 
@@ -217,10 +225,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			return;
 		}
 		if (baseKeys.length == 0 && baseOffsets.length == 0 && isVtableSearched()) {
-			ClassTypeInfoManagerDB manager = getManager();
-			ClassTypeInfo type = (ClassTypeInfo) manager.getTypeInfo(getAddress(), false);
-			type.findVtable();
-			Map<ClassTypeInfo, Integer> bases = ClassTypeInfoUtils.getBaseOffsets(type);
+			Map<ClassTypeInfo, Integer> bases = doGetBaseOffsets();
 			baseKeys = bases.keySet().stream()
 				.map(manager::resolve)
 				.mapToLong(ClassTypeInfoDB::getKey)
@@ -230,6 +235,54 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 				.toArray();
 			fillRecord(record);
 		}
+	}
+
+	private Map<ClassTypeInfo, Integer> doGetBaseOffsets() {
+		switch (getTypeId()) {
+			case SI_CLASS:
+				if (Vtable.isValid(getVtable())) {
+					GnuVtable vtable = (GnuVtable) getVtable();
+					long offset = vtable.getOffset(0, 0);
+					if (offset < Long.MAX_VALUE && offset > 0) {
+						return Map.of(getParentModels()[0], (int) offset);
+					}
+				}
+				return Map.of(getParentModels()[0], 0);
+			case VMI_CLASS:
+				LongArrayList offsets = doGetOffsets();
+				ClassTypeInfo[] parents = getParentModels();
+				Map<ClassTypeInfo, Integer> result = new HashMap<>(parents.length);
+				for (int i = 0; i < parents.length; i++) {
+					result.put(parents[i], offsets.get(i).intValue());
+				}
+				return result;
+			default:
+				return Collections.emptyMap();
+		}
+	}
+
+	LongArrayList doGetOffsets() {
+		BaseClassTypeInfoModel[] bases = getBases();
+		LongArrayList result = new LongArrayList();
+		for (BaseClassTypeInfoModel base : bases) {
+			if(!base.isVirtual()) {
+				result.add((long) base.getOffset());
+			}
+		}
+		GnuVtable vtable = (GnuVtable) getVtable();
+		if (Vtable.isValid(vtable)) {
+			List<Long> offsets = new ArrayList<>(vtable.getPrefixes().get(0).getOffsets());
+			if (offsets.size() > 0) {
+				offsets.sort(null);
+				offsets.remove(0);
+				result.addAll(offsets);
+			}
+		}
+		return result;
+	}
+
+	private BaseClassTypeInfoModel[] getBases() {
+		return VmiClassTypeInfoModel.getBases(getProgram(), getAddress());
 	}
 
 	@Override

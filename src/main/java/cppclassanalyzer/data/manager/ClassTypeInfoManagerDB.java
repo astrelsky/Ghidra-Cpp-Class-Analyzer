@@ -411,6 +411,20 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	@Override
+	public Vtable getVtable(Address address) {
+		lock.acquire();
+		try {
+			long key = getVtableKey(address);
+			if (key == INVALID_KEY) {
+				return Vtable.NO_VTABLE;
+			}
+			return worker.getVtable(key);
+		} finally {
+			lock.release();
+		}
+	}
+
+	@Override
 	public ClassTypeInfoDB getType(GhidraClass gc) {
 		SymbolTable table = program.getSymbolTable();
 		List<Symbol> symbols = table.getSymbols("typeinfo", gc);

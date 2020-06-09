@@ -17,7 +17,13 @@ import ghidra.program.model.listing.Program;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
@@ -153,5 +159,25 @@ public final class BaseClassTypeInfoModel {
 		} catch (AddressOverflowException e) {
 			Msg.error(this, e);
 		}
+	}
+
+	public Set<BaseClassTypeInfoModel> getVirtualBases() {
+		TypeInfo type = manager.getTypeInfo(getClassAddress(), false);
+		if (!(type instanceof VmiClassTypeInfoModel)) {
+			if (isVirtual()) {
+				return Set.of(this);
+			}
+			return Collections.emptySet();
+		}
+		VmiClassTypeInfoModel vmi = (VmiClassTypeInfoModel) type;
+		Set<BaseClassTypeInfoModel> result = Arrays.stream(vmi.getBases())
+			.map(BaseClassTypeInfoModel::getVirtualBases)
+			.flatMap(Set::stream)
+			.filter(BaseClassTypeInfoModel::isVirtual)
+			.collect(Collectors.toSet());
+		if (isVirtual()) {
+			result.add(this);
+		}
+		return result;
 	}
 }

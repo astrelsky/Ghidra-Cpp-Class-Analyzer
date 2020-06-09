@@ -6,6 +6,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.util.Msg;
 import ghidra.util.datastruct.LongArrayList;
 import ghidra.util.exception.AssertException;
@@ -39,7 +40,6 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
 	private static final int FLAGS_ORDINAL = 1;
 	private static final int BASE_COUNT_ORDINAL = 2;
-	private static final int BASE_ARRAY_ORDINAL = 3;
 
 	protected static final CategoryPath SUB_PATH =
 		new CategoryPath(getCxxAbiCategoryPath(), STRUCTURE_NAME);
@@ -52,6 +52,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		UNKNOWN
 	}
 
+	private final BaseClassTypeInfoHelper helper;
 	private BaseClassTypeInfoModel[] bases;
 	private Flags flags;
 
@@ -64,11 +65,15 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private VmiClassTypeInfoModel(Program program, Address address) {
+	private VmiClassTypeInfoModel(Program program, Address address) throws InvalidDataTypeException {
 		super(program, address);
 		if (!typeName.equals(DEFAULT_TYPENAME)) {
-			this.bases = getBases();
+			this.helper = new BaseClassTypeInfoHelper(program, address);
+			this.bases = helper.getBases();
 			this.flags = getFlags(getBuffer());
+		} else {
+			throw new InvalidDataTypeException(
+				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 		}
 	}
 
@@ -97,9 +102,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		StructureDataType struct =
 			new StructureDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
 		struct.add(ClassTypeInfoModel.getDataType(dtm),
-				   AbstractTypeInfoModel.SUPER + ClassTypeInfoModel.STRUCTURE_NAME,
-				   null);
-		struct.add(getFlags(dtm, VmiClassTypeInfoModel.SUB_PATH), FLAGS_NAME, null);
+			AbstractTypeInfoModel.SUPER + ClassTypeInfoModel.STRUCTURE_NAME, null);
+		struct.add(getFlags(dtm, SUB_PATH), FLAGS_NAME, null);
 		struct.add(IntegerDataType.dataType.clone(dtm), BASE_COUNT_NAME, null);
 		struct.setFlexibleArrayComponent(
 			BaseClassTypeInfoModel.getDataType(dtm), ARRAY_NAME, null);
@@ -121,11 +125,6 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		return ID_STRING;
 	}
 
-	private Address getArrayAddress() {
-		DataTypeComponent arrayComponent = getDataType().getFlexibleArrayComponent();
-		return address.add(arrayComponent.getOffset());
-	}
-
 	@Override
 	public boolean hasParent() {
 		return true;
@@ -133,10 +132,6 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
     private List<ClassTypeInfo> getParents() {
         List<ClassTypeInfo> parents = new ArrayList<>();
-        if (bases == null) {
-            // this SHOULD be impossible
-            bases = getBases();
-        }
         for (BaseClassTypeInfoModel base : bases) {
             if (!base.isVirtual()) {
                 parents.add(base.getClassModel());
@@ -160,10 +155,10 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		Set<ClassTypeInfo> result = new LinkedHashSet<>();
 		for (BaseClassTypeInfoModel base : bases) {
 			ClassTypeInfo parent = base.getClassModel();
-			result.addAll(parent.getVirtualParents());
 			if (base.isVirtual()) {
 				result.add(parent);
 			}
+			result.addAll(parent.getVirtualParents());
 		}
 		return result;
 	}
@@ -180,40 +175,17 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		return result;
 	}
 
-	private int getBaseCount() {
-		MemBuffer buf = getBuffer();
-		DataTypeComponent comp = getDataType().getComponent(BASE_COUNT_ORDINAL);
-		try {
-			return buf.getVarLengthInt(comp.getOffset(), comp.getLength());
-		} catch (MemoryAccessException e) {
-			Msg.error(this, e);
-			return 0;
-		}
-	}
-
-	public int getDataSize() {
-		DataTypeManager dtm = program.getDataTypeManager();
-		DataType baseDt = BaseClassTypeInfoModel.getDataType(dtm);
-		return getDataType().getLength() + baseDt.getLength() * getBaseCount();
-	}
-
 	/**
 	 * Gets this {@value #STRUCTURE_NAME}'s {@value BaseClassTypeInfoModel#STRUCTURE_NAME} array
 	 * @return the BaseClassTypeInfo[] representation of
 	 * the {@value BaseClassTypeInfoModel#STRUCTURE_NAME} array.
 	 */
 	public BaseClassTypeInfoModel[] getBases() {
-		if (bases != null) {
-			return bases;
-		}
-		BaseClassTypeInfoModel base = new BaseClassTypeInfoModel(program, getArrayAddress());
-		int baseCount = getBaseCount();
-		bases = new BaseClassTypeInfoModel[baseCount];
-		for (int i = 0; i < baseCount; i++) {
-			bases[i] = new BaseClassTypeInfoModel(program, base.getAddress());
-			base.advance();
-		}
 		return bases;
+	}
+
+	public static BaseClassTypeInfoModel[] getBases(Program program, Address address) {
+		return new BaseClassTypeInfoHelper(program, address).getBases();
 	}
 
 	/**
@@ -285,9 +257,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 	 * @return the DataType representation of the __base_class_type_info array
 	 */
 	public DataType getBaseArrayDataType() {
-		int baseCount = getBaseCount();
 		DataType base = BaseClassTypeInfoModel.getDataType(program.getDataTypeManager());
-		return new ArrayDataType(base, baseCount, base.getLength(), program.getDataTypeManager());
+		return new ArrayDataType(base, helper.count, base.getLength(), program.getDataTypeManager());
 	}
 
 	public static DataType getBaseArrayDataType(Data data) {
@@ -306,11 +277,46 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		}
 	}
 
-	/**
-	 * Gets the address of the __base_class_type_info array
-	 * @return the address of the __base_class_type_info array
-	 */
-	public Address getBaseArrayAddress() {
-		return address.add(getDataType().getComponent(BASE_ARRAY_ORDINAL).getOffset());
+	private static class BaseClassTypeInfoHelper {
+
+		private final Program program;
+		private final Address address;
+		private final int count;
+
+		BaseClassTypeInfoHelper(Program program, Address address) {
+			this.program = program;
+			this.address = getArrayAddress(address);
+			this.count = getBaseCount(address);
+		}
+
+		private Address getArrayAddress(Address addr) {
+			DataTypeComponent arrayComponent =
+				getDataType(program.getDataTypeManager()).getFlexibleArrayComponent();
+			return addr.add(arrayComponent.getOffset());
+		}
+
+		private int getBaseCount(Address addr) {
+			DataTypeManager dtm = program.getDataTypeManager();
+			DataTypeComponent comp = getDataType(dtm).getComponent(BASE_COUNT_ORDINAL);
+			try {
+				MemBuffer buf = new MemoryBufferImpl(program.getMemory(), addr);
+				return buf.getVarLengthInt(comp.getOffset(), comp.getLength());
+			} catch (MemoryAccessException e) {
+				Msg.error(VmiClassTypeInfoModel.class, e);
+				return 0;
+			}
+		}
+
+		private BaseClassTypeInfoModel[] getBases() {
+			BaseClassTypeInfoModel[] bases = new BaseClassTypeInfoModel[count];
+			Address currentAddress = address;
+			int size =
+				BaseClassTypeInfoModel.getDataType(program.getDataTypeManager()).getLength();
+			for (int i = 0; i < count; i++) {
+				bases[i] = new BaseClassTypeInfoModel(program, currentAddress);
+				currentAddress = currentAddress.add(size);
+			}
+			return bases;
+		}
 	}
 }
