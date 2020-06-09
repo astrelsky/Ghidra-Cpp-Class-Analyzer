@@ -169,7 +169,12 @@ public class ClassTypeInfoUtils {
 		DataType thiscallStruct =
 			VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
 		if (struct == null) {
-			struct = thiscallStruct;
+			if (isCorrectDataTypePath(thiscallStruct, type)) {
+				struct = thiscallStruct;
+			} else {
+				struct = new StructureDataType(path, type.getName(), 0, dtm);
+				struct = dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
+			}
 		}
 		if (!struct.equals(thiscallStruct)) {
 			String msg = "Variable Utils returned wrong class structure! " + type.getName();
@@ -177,6 +182,13 @@ public class ClassTypeInfoUtils {
 		}
 		dtm.endTransaction(id, true);
 		return (Structure) struct;
+	}
+
+	private static boolean isCorrectDataTypePath(DataType struct, ClassTypeInfo type) {
+		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
+		DataTypePath dtPath = struct.getDataTypePath();
+		return dtPath.getCategoryPath().equals(path)
+			&& dtPath.getDataTypeName().equals(type.getName());
 	}
 
 	/**

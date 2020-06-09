@@ -3,16 +3,11 @@ package cppclassanalyzer.data.typeinfo;
 import static cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields.*;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
@@ -223,60 +218,46 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 			return;
 		}
 		if (baseKeys.length == 0 && baseOffsets.length == 0 && isVtableSearched()) {
-			Map<ClassTypeInfo, Integer> bases = doGetBaseOffsets();
-			baseKeys = bases.keySet().stream()
-				.map(manager::resolve)
-				.mapToLong(ClassTypeInfoDB::getKey)
-				.toArray();
-			baseOffsets = bases.values().stream()
-				.mapToInt(Integer::intValue)
-				.toArray();
+			baseKeys = getBaseKeys(record);
+			baseOffsets = doGetBaseOffsets();
 			fillRecord(record);
 		}
 	}
 
-	private Map<ClassTypeInfo, Integer> doGetBaseOffsets() {
-		switch (getTypeId()) {
-			case SI_CLASS:
-				if (Vtable.isValid(getVtable())) {
-					GnuVtable vtable = (GnuVtable) getVtable();
-					long offset = vtable.getOffset(0, 0);
-					if (offset < Long.MAX_VALUE && offset > 0) {
-						return Map.of(getParentModels()[0], (int) offset);
-					}
-				}
-				return Map.of(getParentModels()[0], 0);
-			case VMI_CLASS:
-				LongArrayList offsets = doGetOffsets();
-				ClassTypeInfo[] parents = getParentModels();
-				Map<ClassTypeInfo, Integer> result = new HashMap<>(parents.length);
-				for (int i = 0; i < parents.length; i++) {
-					result.put(parents[i], offsets.get(i).intValue());
-				}
-				return result;
-			default:
-				return Collections.emptyMap();
-		}
+	private int[] doGetBaseOffsets() {
+		return Stream.concat(doGetOffsets().stream(), getSortedOffsets().stream())
+			.mapToInt(Long::intValue)
+			.toArray();
 	}
 
-	LongArrayList doGetOffsets() {
-		BaseClassTypeInfoModel[] bases = getBases();
-		LongArrayList result = new LongArrayList();
-		for (BaseClassTypeInfoModel base : bases) {
-			if(!base.isVirtual()) {
-				result.add((long) base.getOffset());
+	List<Long> doGetOffsets() {
+		if (getTypeId() == TypeId.VMI_CLASS) {
+			BaseClassTypeInfoModel[] bases = getBases();
+			LongArrayList result = new LongArrayList();
+			for (BaseClassTypeInfoModel base : bases) {
+				if(!base.isVirtual()) {
+					result.add((long) base.getOffset());
+				}
 			}
+			return result;
 		}
+		if (nonVirtualBaseKeys.length == 1) {
+			return List.of(0L);
+		}
+		return Collections.emptyList();
+	}
+
+	List<Long> getSortedOffsets() {
 		GnuVtable vtable = (GnuVtable) getVtable();
 		if (Vtable.isValid(vtable)) {
 			List<Long> offsets = new ArrayList<>(vtable.getPrefixes().get(0).getOffsets());
 			if (offsets.size() > 0) {
 				offsets.sort(null);
 				offsets.remove(0);
-				result.addAll(offsets);
 			}
+			return offsets;
 		}
-		return result;
+		return Collections.emptyList();
 	}
 
 	private BaseClassTypeInfoModel[] getBases() {

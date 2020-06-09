@@ -131,35 +131,13 @@
             "size": "32",
             "offsets": {
                 "y_data": "8",
-                "super_Y": "16"
+                "super_U": "16"
             }
         },
         "Z": {
             "size": "16",
             "offsets": {
                 "z_data": "8"
-            }
-        }
-    },
-    "no_members": {
-        "A": {
-            "size": "1"
-        },
-        "B": {
-            "size": "1"
-        },
-        "C": {
-            "size": "1",
-            "offsets": {
-                "super_A": "0",
-                "super_B": "0"
-            }
-        },
-        "D": {
-            "size": "8",
-            "offsets": {
-                "super_A": "0",
-                "super_B": "0"
             }
         }
     },
