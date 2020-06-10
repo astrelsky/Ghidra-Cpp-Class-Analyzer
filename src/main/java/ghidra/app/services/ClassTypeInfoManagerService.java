@@ -29,7 +29,7 @@ public interface ClassTypeInfoManagerService {
 
 	public void removeTypeInfoManagerChangeListener(TypeInfoManagerListener listener);
 
-	public void closeArchive(ClassTypeInfoManager manager);
+	public void closeManager(ClassTypeInfoManager manager);
 
 	public default void openArchive(File archive)
 			throws IOException, DuplicateIdException {
@@ -41,10 +41,6 @@ public interface ClassTypeInfoManagerService {
 
 	public void createArchive(File archive)
 		throws IOException, DuplicateIdException;
-
-	public void createProjectArchive() throws IOException;
-
-	public void openProjectArchive() throws IOException;
 
 	public ProgramClassTypeInfoManager getManager(Program program);
 

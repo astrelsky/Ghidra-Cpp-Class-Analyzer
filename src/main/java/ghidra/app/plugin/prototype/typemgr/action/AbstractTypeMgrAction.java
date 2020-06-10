@@ -2,6 +2,8 @@ package ghidra.app.plugin.prototype.typemgr.action;
 
 import javax.swing.Icon;
 
+import ghidra.app.plugin.core.datamgr.archive.DataTypeManagerHandler;
+import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNode;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
@@ -30,6 +32,10 @@ abstract class AbstractTypeMgrAction extends DockingAction {
 		setMenuBarData(data);
 	}
 
+	final DataTypeManagerHandler getDataTypeManagerHandler() {
+		return handler.getPlugin().getDataTypeManagerHandler();
+	}
+
 	abstract MenuGroupType getGroup();
 
 	Icon getIcon() {
@@ -41,7 +47,8 @@ abstract class AbstractTypeMgrAction extends DockingAction {
 	}
 
 	ClassTypeInfoManager getManager(ActionContext context) {
-		return handler.getArchiveNode(context).getTypeManager();
+		TypeInfoArchiveNode node = handler.getArchiveNode(context);
+		return node != null ? node.getTypeManager() : null;
 	}
 
 	TypeInfoTreeNode getSelectedNode(ActionContext context) {

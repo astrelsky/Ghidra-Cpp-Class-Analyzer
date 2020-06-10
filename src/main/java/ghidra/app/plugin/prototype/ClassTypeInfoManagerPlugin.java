@@ -16,7 +16,6 @@ import ghidra.app.plugin.core.datamgr.archive.DataTypeManagerHandler;
 import ghidra.app.plugin.core.datamgr.archive.FileArchive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
-import ghidra.app.plugin.prototype.typemgr.dialog.OpenProjectArchiveDialog;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.services.DataTypeManagerService;
@@ -39,7 +38,6 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
 import ghidra.util.SystemUtilities;
-import ghidra.util.exception.CancelledException;
 
 import docking.ActionContext;
 import docking.Tool;
@@ -120,9 +118,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	}
 
 	@Override
-	public void closeArchive(ClassTypeInfoManager manager) {
-		managers.remove(manager);
-		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
+	public void closeManager(ClassTypeInfoManager manager) {
 		if (manager instanceof FileArchiveClassTypeInfoManager) {
 			((FileArchiveClassTypeInfoManager) manager).close();
 		}
@@ -141,21 +137,12 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		managerAdded(manager);
 	}
 
-	@Override
-	public void createProjectArchive() throws IOException {
-		try {
-			ProjectArchive archive =
-				(ProjectArchive) dtmPlugin.getDataTypeManagerHandler().createProjectArchive();
-			ClassTypeInfoManager manager = ProjectClassTypeInfoManager.createManager(this, archive);
-			managerAdded(manager);
-		} catch (CancelledException e) {
-		}
-	}
-
-	@Override
-	public void openProjectArchive() throws IOException {
-		OpenProjectArchiveDialog dialog = new OpenProjectArchiveDialog(this);
-		dialog.show();
+	public boolean hasManager(ProjectArchive archive) {
+		String name = archive.getName();
+		return managers.stream()
+			.filter(ProjectClassTypeInfoManager.class::isInstance)
+			.map(ClassTypeInfoManager::getName)
+			.anyMatch(name::equals);
 	}
 
 	public void openProjectArchive(ProjectArchive archive) throws IOException {

@@ -44,7 +44,7 @@ public class TypeInfoTreeNodeManager implements DBListener {
 	public TypeInfoTreeNodeManager(ClassTypeInfoManager manager, DBHandle handle, String name) {
 		this(manager, name + " " + TypeInfoTreeNodeManager.class.getSimpleName(), handle);
 	}
-	
+
 	private TypeInfoTreeNodeManager(ClassTypeInfoManager manager, String name, DBHandle handle) {
 		this.handle = handle;
 		this.manager = manager;
@@ -281,11 +281,11 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		children.sort(null);
 		return children;
 	}
-	
+
 	private void refresh() {
 		this.root = root.rebuild();
 	}
-	
+
 	@Override
 	public void dbRestored(DBHandle dbh) {
 		if (handle.equals(dbh)) {
@@ -295,12 +295,7 @@ public class TypeInfoTreeNodeManager implements DBListener {
 
 	@Override
 	public void dbClosed(DBHandle dbh) {
-		if (handle.equals(dbh)) {
-			GTreeNode parent = root.getParent();
-			if (parent != null) {
-				parent.removeNode(root);
-			}
-		}
+		// let the plugin handle it
 	}
 
 	@Override

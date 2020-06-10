@@ -22,7 +22,7 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 		// force generate now to prevent deadlock
 		children();
 	}
-	
+
 	abstract AbstractManagerNode rebuild();
 
 	@Override
@@ -51,7 +51,7 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 	}
 
 	@Override
-	public final ClassTypeInfoManager getTypeManager() {
+	public ClassTypeInfoManager getTypeManager() {
 		return manager;
 	}
 

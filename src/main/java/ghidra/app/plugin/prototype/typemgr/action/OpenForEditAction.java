@@ -41,7 +41,7 @@ final class OpenForEditAction extends AbstractFileArchivePopupAction {
 		FileArchiveClassTypeInfoManager manager = getManager(context);
 		File file = new File(manager.getPath());
 		ClassTypeInfoManagerPlugin plugin = getHandler().getPlugin();
-		plugin.closeArchive(manager);
+		plugin.closeManager(manager);
 		try {
 			plugin.openArchive(file, true);
 		} catch (IOException e) {

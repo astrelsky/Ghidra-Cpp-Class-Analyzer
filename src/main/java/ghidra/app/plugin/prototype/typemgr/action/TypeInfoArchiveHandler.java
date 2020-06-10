@@ -80,6 +80,10 @@ public final class TypeInfoArchiveHandler {
 		return new EditDataTypeAction(this);
 	}
 
+	public DockingAction getRenameAction() {
+		return new RenameManagerAction(this);
+	}
+
 	private Stream<TypeInfoTreeNode> getSelectedNodes(ActionContext context) {
 		TreePath[] selectionPaths = getTree().getSelectionPaths();
 		if (selectionPaths.length == 0) {

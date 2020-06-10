@@ -53,6 +53,9 @@ abstract class AbstractFileArchivePopupAction extends AbstractTypeMgrAction {
 	@Override
 	final FileArchiveClassTypeInfoManager getManager(ActionContext context) {
 		ClassTypeInfoManager manager = super.getManager(context);
+		if (manager == null) {
+			return null;
+		}
 		if (manager instanceof FileArchiveClassTypeInfoManager) {
 			return (FileArchiveClassTypeInfoManager) manager;
 		}

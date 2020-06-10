@@ -1,9 +1,5 @@
 package ghidra.app.plugin.prototype.typemgr.action;
 
-import java.io.IOException;
-
-import ghidra.util.Msg;
-
 import docking.ActionContext;
 
 final class OpenProjectArchiveAction extends AbstractTypeMgrAction {
@@ -20,11 +16,7 @@ final class OpenProjectArchiveAction extends AbstractTypeMgrAction {
 
 	@Override
 	public void actionPerformed(ActionContext context) {
-		try {
-			getHandler().getPlugin().openProjectArchive();
-		} catch (IOException e) {
-			Msg.error(this, e);
-		}
+		getHandler().getPlugin().getDataTypeManagerPlugin().openProjectDataTypeArchive();
 	}
 
 	@Override

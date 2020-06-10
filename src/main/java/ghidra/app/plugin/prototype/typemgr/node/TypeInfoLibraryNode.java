@@ -1,8 +1,12 @@
 package ghidra.app.plugin.prototype.typemgr.node;
 
+import ghidra.util.InvalidNameException;
+import ghidra.util.Msg;
+import ghidra.util.exception.DuplicateNameException;
+
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 
-final class TypeInfoLibraryNode extends AbstractSingleManagerNode {
+public final class TypeInfoLibraryNode extends AbstractSingleManagerNode {
 
 	TypeInfoLibraryNode(LibraryClassTypeInfoManager manager) {
 		super(manager);
@@ -13,4 +17,25 @@ final class TypeInfoLibraryNode extends AbstractSingleManagerNode {
 		return null;
 	}
 
+	@Override
+	public boolean isEditable() {
+		return true;
+	}
+
+	@Override
+	public LibraryClassTypeInfoManager getTypeManager() {
+		return (LibraryClassTypeInfoManager) super.getTypeManager();
+	}
+
+	@Override
+	public void valueChanged(Object newValue) {
+		if (newValue instanceof String) {
+			LibraryClassTypeInfoManager manager = getTypeManager();
+			try {
+				manager.rename((String) newValue);
+			} catch (InvalidNameException | DuplicateNameException e) {
+				Msg.error(this, e);
+			}
+		}
+	}
 }

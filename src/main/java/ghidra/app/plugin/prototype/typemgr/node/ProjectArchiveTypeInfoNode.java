@@ -66,4 +66,9 @@ public final class ProjectArchiveTypeInfoNode extends AbstractManagerNode {
 		parent.addNode(result);
 		return result;
 	}
+
+	@Override
+	public ProjectClassTypeInfoManager getTypeManager() {
+		return (ProjectClassTypeInfoManager) super.getTypeManager();
+	}
 }

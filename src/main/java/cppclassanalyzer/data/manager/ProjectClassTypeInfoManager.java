@@ -24,9 +24,11 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
+import ghidra.util.InvalidNameException;
 import ghidra.util.Lock;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.VersionException;
 import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
@@ -58,6 +60,10 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		new Class<?>[] { StringField.class, StringField.class, StringField.class },
 		new String[] { "Name", "TypeTable", "VtableTable" });
 
+	private static final int NAME_INDEX = 0;
+	private static final int TYPE_INDEX = 1;
+	private static final int VTABLE_INDEX = 2;
+
 	private final ClassTypeInfoManagerPlugin plugin;
 	private final ProjectArchive archive;
 	private final LibraryMap libMap;
@@ -86,15 +92,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		return getDB(archive).getLock();
 	}
 
-	public static ProjectClassTypeInfoManager createManager(ClassTypeInfoManagerPlugin plugin,
-			ProjectArchive archive) throws IOException {
-		try {
-			return new ProjectClassTypeInfoManager(plugin, archive);
-		} catch (VersionException | CancelledException e) {
-			throw new AssertException(e);
-		}
-	}
-
 	public static ProjectClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin,
 			ProjectArchive archive) throws IOException {
 		try {
@@ -103,6 +100,8 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			throw new AssertException(e);
 		}
 	}
+
+
 
 	private ArchivedClassTypeInfoDatabaseTable getClassTable(String name)
 			throws IOException {
@@ -359,14 +358,45 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		}
 	}
 
-	@Override
-	public void close() {
-		plugin.getDataTypeManagerHandler().closeArchive(archive);
+	public DBHandle getDBHandle() {
+		return getDB(archive).getDBHandle();
 	}
 
-	private class LibraryMap {
+	LibraryMap getLibMap() {
+		return libMap;
+	}
+
+	@Override
+	public void close() {
+		archive.close();
+	}
+
+	public static void init(ProjectArchive archive) throws IOException {
+		Lock lock = getDB(archive).getLock();
+		lock.acquire();
+		try {
+			createLibMapTable(getDBHandle(archive));
+		} finally {
+			lock.release();
+		}
+	}
+
+	private static Table createLibMapTable(DBHandle dbHandle) throws IOException {
+		long id = dbHandle.startTransaction();
+		boolean success = false;
+		try {
+			Table table = dbHandle.createTable(LibraryMap.NAME, SCHEMA, new int[] { NAME_INDEX });
+			success = true;
+			return table;
+		} finally {
+			dbHandle.endTransaction(id, success);
+		}
+	}
+
+	class LibraryMap {
 
 		private static final String NAME = "LibraryMap";
+		private static final int NAME_ORDINAL = 0;
 
 		private final HashMap<String, LibraryClassTypeInfoManager> libMap;
 		private final Table table;
@@ -375,9 +405,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			Table tmp = dbHandle.getTable(NAME);
 			if (tmp == null) {
 				try {
-					long id = dbHandle.startTransaction();
-					tmp = dbHandle.createTable(NAME, SCHEMA, new int[] { 0 });
-					dbHandle.endTransaction(id, true);
+					tmp = createLibMapTable(dbHandle);
 				} catch (IOException e) {
 					dbError(e);
 				}
@@ -431,9 +459,9 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				libMap.put(name, man);
 				ArchivedRttiTablePair tables = man.getTables();
 				db.Record record = SCHEMA.createRecord(table.getKey());
-				record.setString(0, name);
-				record.setString(1, tables.getTypeTable().getName());
-				record.setString(2, tables.getVtableTable().getName());
+				record.setString(NAME_INDEX, name);
+				record.setString(TYPE_INDEX, tables.getTypeTable().getName());
+				record.setString(VTABLE_INDEX, tables.getVtableTable().getName());
 				table.putRecord(record);
 				dbHandle.endTransaction(id, true);
 			} catch (IOException e) {
@@ -441,6 +469,94 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			} finally {
 				releaseLock();
 			}
+		}
+
+		db.Record getRecord(String name) {
+			acquireLock();
+			try {
+				StringField nameField = new StringField(name);
+				long[] keys = table.findRecords(nameField, NAME_ORDINAL);
+				if (keys.length > 1) {
+					throw new AssertException("Duplicate library "+name+" detected");
+				}
+				if (keys.length == 1) {
+					return table.getRecord(keys[0]);
+				}
+			} catch (IOException e) {
+				dbError(e);
+			} finally {
+				releaseLock();
+			}
+			return null;
+		}
+
+		void rename(String oldName, String newName)
+				throws InvalidNameException, DuplicateNameException {
+			if (newName == null || newName.length() == 0) {
+				throw new InvalidNameException("Name is invalid: " + newName);
+			}
+			if (oldName.equals(newName)) {
+				return;
+			}
+			if (libMap.containsKey(newName)) {
+				throw new DuplicateNameException(newName + " already exists");
+			}
+			int id = startTransaction("Renaming "+oldName+" to "+newName);
+			boolean success = false;
+			acquireLock();
+			try {
+				db.Record record = getRecord(oldName);
+				if (record == null) {
+					throw new AssertException("Library "+oldName+" does not exist");
+				}
+				Renamer renamer = new Renamer(libMap.remove(oldName), newName, record);
+				renamer.renameTypeTable();
+				renamer.renameVtableTable();
+				libMap.put(newName, renamer.getManager());
+				table.putRecord(record);
+				success = true;
+			} catch (IOException e) {
+				dbError(e);
+			} finally {
+				endTransaction(id, success);
+				releaseLock();
+			}
+		}
+	}
+
+	private class Renamer {
+		private final LibraryClassTypeInfoManager manager;
+		private final String name;
+		private final db.Record record;
+
+		Renamer(LibraryClassTypeInfoManager manager, String name, db.Record record) {
+			this.manager = manager;
+			this.name = name;
+			this.record = record;
+			record.setString(NAME_INDEX, name);
+		}
+
+		void renameTypeTable() throws DuplicateNameException {
+			rename(manager.getTables().getTypeTable(), TYPE_INDEX);
+		}
+
+		void renameVtableTable() throws DuplicateNameException {
+			rename(manager.getTables().getVtableTable(), VTABLE_INDEX);
+		}
+
+		private void rename(Table table, int index) throws DuplicateNameException {
+			acquireLock();
+			try {
+				String oldName = table.getName();
+				table.setName(oldName.replace(manager.getName(), name));
+				record.setString(index, table.getName());
+			} finally {
+				releaseLock();
+			}
+		}
+
+		LibraryClassTypeInfoManager getManager() {
+			return manager;
 		}
 	}
 
@@ -472,5 +588,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	TransactionHandler getHandler() {
 		return new TransactionHandler(this::startTransaction, this::endTransaction);
 	}
+
+
 
 }

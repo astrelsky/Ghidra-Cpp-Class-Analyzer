@@ -22,13 +22,15 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
+import ghidra.util.InvalidNameException;
+import ghidra.util.exception.DuplicateNameException;
 
 public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 
 	private final ProjectClassTypeInfoManager manager;
 	private final TypeInfoTreeNodeManager treeNodeManager;
 	private final RttiRecordWorker worker;
-	private final String name;
+	private String name;
 
 	LibraryClassTypeInfoManager(ProjectClassTypeInfoManager manager, ArchivedRttiTablePair tables,
 			DBHandle dbHandle, String name) {
@@ -117,6 +119,16 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 
 	private TransactionHandler getHandler() {
 		return manager.getHandler();
+	}
+
+	public void rename(String name) throws InvalidNameException, DuplicateNameException {
+		manager.getLibMap().rename(this.name, name);
+		this.name = name;
+	}
+
+	@Override
+	public String toString() {
+		return name;
 	}
 
 	private final class RttiRecordWorker extends ArchiveRttiRecordWorker {

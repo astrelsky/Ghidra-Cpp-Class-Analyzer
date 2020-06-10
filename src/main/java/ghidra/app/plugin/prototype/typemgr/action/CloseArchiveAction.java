@@ -13,7 +13,7 @@ final class CloseArchiveAction extends AbstractFileArchivePopupAction {
 	public final String getDescription() {
 		return "Closes a type info archive";
 	}
-	
+
 	@Override
 	public boolean isAddToPopup(ActionContext context) {
 		if (super.isAddToPopup(context)) {
@@ -24,7 +24,7 @@ final class CloseArchiveAction extends AbstractFileArchivePopupAction {
 
 	@Override
 	public void actionPerformed(ActionContext context) {
-		getHandler().getPlugin().closeArchive(getManager(context));
+		getHandler().getPlugin().closeManager(getManager(context));
 	}
 
 	@Override
