@@ -16,11 +16,13 @@ import ghidra.app.services.AnalysisPriority;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.util.Msg;
@@ -286,6 +288,14 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
+	private AddressSetView getDataAddressSet() {
+		AddressSet set = new AddressSet();
+		for (MemoryBlock block : GnuUtils.getAllDataBlocks(program)) {
+			set.add(block.getStart(), block.getEnd());
+		}
+		return set;
+	}
+
 	private Set<Address> getClangDynamicReferences(Relocation reloc) throws CancelledException {
 		Data data = program.getListing().getDataContaining(reloc.getAddress());
 		if (data == null) {
@@ -296,6 +306,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		int ptrdiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
 		Set<Address> result = new HashSet<>();
 		while (start < data.getLength()) {
+			monitor.checkCanceled();
 			result.addAll(GnuUtils.getDirectDataReferences(
 				program, data.getAddress().add(start), dummy));
 			start += ptrdiffSize;
@@ -305,9 +316,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 
 	private Set<Address> getDynamicReferences(String typeString) throws CancelledException {
 		String target = VtableModel.MANGLED_PREFIX+typeString;
-		Iterator<Relocation> relocations = program.getRelocationTable().getRelocations();
+		Iterator<Relocation> relocations = program.getRelocationTable()
+			.getRelocations(getDataAddressSet());
 		Set<Address> result = new LinkedHashSet<>();
 		while (relocations.hasNext()) {
+			monitor.checkCanceled();
 			Relocation reloc = relocations.next();
 			String name = reloc.getSymbolName();
 			if (name == null) {
