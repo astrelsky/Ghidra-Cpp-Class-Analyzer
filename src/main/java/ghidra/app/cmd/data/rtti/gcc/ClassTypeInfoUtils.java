@@ -185,6 +185,10 @@ public class ClassTypeInfoUtils {
 	}
 
 	private static boolean isCorrectDataTypePath(DataType struct, ClassTypeInfo type) {
+		if (struct.getCategoryPath().getPath().contains("DWARF")) {
+			// short circuit
+			return true;
+		}
 		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
 		DataTypePath dtPath = struct.getDataTypePath();
 		return dtPath.getCategoryPath().equals(path)
