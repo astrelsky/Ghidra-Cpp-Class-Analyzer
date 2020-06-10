@@ -138,13 +138,18 @@ public final class GnuUtils {
 		MemoryBlock[] blocks = program.getMemory().getBlocks();
 		List<MemoryBlock> dataBlocks = new ArrayList<MemoryBlock>();
 		for (MemoryBlock block : blocks) {
-			if (isDataBlock(block) && block.getName().contains("data")) {
+			if (isDataBlock(block) && isDataBlockName(block)) {
 				if (!block.isVolatile()) {
 					dataBlocks.add(block);
 				}
 			}
 		}
 		return dataBlocks;
+	}
+
+	private static boolean isDataBlockName(MemoryBlock block) {
+		String name = block.getName();
+		return name.contains("data") || name.equals(".bss");
 	}
 
 	/**
