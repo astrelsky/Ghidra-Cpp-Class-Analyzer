@@ -7,17 +7,15 @@ import ghidra.program.model.data.DataType;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.symbol.Namespace;
-import ghidra.program.model.symbol.SourceType;
-import ghidra.program.model.symbol.SymbolTable;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.data.DataUtilities;
 import ghidra.program.model.data.Structure;
-import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
-import ghidra.util.exception.InvalidInputException;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
+import ghidra.app.util.demangler.DemangledObject;
+import ghidra.app.util.demangler.DemanglerOptions;
+import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.program.model.util.CodeUnitInsertionException;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -27,8 +25,9 @@ import static ghidra.program.model.data.DataUtilities.ClearDataMode.CLEAR_ALL_CO
 public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 
 	private static final String NAME = CreateTypeInfoBackgroundCmd.class.getSimpleName();
+	private static final DemanglerOptions OPTIONS = new DemanglerOptions();
 
-	private TypeInfo typeInfo;
+	private TypeInfo type;
 	private TaskMonitor monitor;
 	private Program program;
 
@@ -40,14 +39,14 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 	 */
 	public CreateTypeInfoBackgroundCmd(TypeInfo typeInfo) {
 		super(NAME, true, true, false);
-		this.typeInfo = typeInfo;
+		this.type = typeInfo;
 	}
 
 	@Override
 	public final boolean applyTo(DomainObject obj, TaskMonitor taskMonitor) {
 		try {
 			if (!(obj instanceof Program)) {
-				String message = "Can only apply a " + typeInfo.getName() + " data type to a program.";
+				String message = "Can only apply a " + type.getName() + " data type to a program.";
 				Msg.error(this, message);
 				return false;
 			}
@@ -63,10 +62,10 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 	private boolean doApplyTo() throws CancelledException {
 		try {
 			monitor.checkCanceled();
-			Data data = createData(typeInfo.getAddress(), typeInfo.getDataType());
-			if (((Structure) typeInfo.getDataType()).hasFlexibleArrayComponent()) {
+			Data data = createData(type.getAddress(), type.getDataType());
+			if (((Structure) type.getDataType()).hasFlexibleArrayComponent()) {
 				DataType array = VmiClassTypeInfoModel.getBaseArrayDataType(data);
-				Address arrayAddress = typeInfo.getAddress().add(data.getLength());
+				Address arrayAddress = type.getAddress().add(data.getLength());
 				createData(arrayAddress, array);
 			}
 			return applyTypeInfoSymbols() && data != null;
@@ -81,16 +80,22 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 	}
 
 	private boolean applyTypeInfoSymbols() {
-		SymbolTable table = program.getSymbolTable();
-		Namespace ns = typeInfo.getNamespace();
 		Address typenameAddress = getAbsoluteAddress(
-			program, typeInfo.getAddress().add(program.getDefaultPointerSize()));
+			program, type.getAddress().add(program.getDefaultPointerSize()));
+		String typename = type.getTypeName();
 		try {
-			table.createLabel(typeInfo.getAddress(), TypeInfo.SYMBOL_NAME, ns, SourceType.ANALYSIS);
-			table.createLabel(typenameAddress, TypeInfo.SYMBOL_NAME+"-name", ns, SourceType.ANALYSIS);
-		} catch (InvalidInputException e) {
-			throw new AssertException("Ghidra-Cpp-Class-Analyzer: unexpected exception", e);
+			DemangledObject demangled = DemanglerUtil.demangle(program, "_ZTI" +typename);
+			if (demangled != null) {
+				demangled.applyTo(program, type.getAddress(), OPTIONS, monitor);
+			}
+			demangled = DemanglerUtil.demangle(program, "_ZTS" +typename);
+			if (demangled != null) {
+				demangled.applyTo(program, typenameAddress, OPTIONS, monitor);
+			}
+			return true;
+		} catch (Exception e) {
+			setStatusMsg(e.getMessage());
+			return false;
 		}
-		return true;
 	}
 }

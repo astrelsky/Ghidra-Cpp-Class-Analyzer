@@ -22,6 +22,7 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
@@ -128,6 +129,11 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	public Map<ClassTypeInfo, Integer> getBaseOffsets() {
 		long[] baseKeys = getBaseKeys();
 		int[] baseOffsets = getOffsets();
+		if (baseKeys.length > 0 && baseOffsets.length == 0) {
+			String msg = "Invalid model data for "+getGhidraClass().getName(true);
+			Msg.warn(this, msg);
+			return Collections.emptyMap();
+		}
 		Map<ClassTypeInfoDB, Integer> map = new HashMap<>(baseKeys.length);
 		for (int i = 0; i < baseKeys.length; i++) {
 			map.put(manager.getType(baseKeys[i]), baseOffsets[i]);

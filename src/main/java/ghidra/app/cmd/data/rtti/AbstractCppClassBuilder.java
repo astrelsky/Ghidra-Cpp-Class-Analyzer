@@ -221,6 +221,10 @@ public abstract class AbstractCppClassBuilder {
 		if(dtComps.isEmpty()) {
 			dtComps = new HashMap<>(struct.getNumDefinedComponents());
 			for (DataTypeComponent comp : struct.getDefinedComponents()) {
+				if (comp.getDataType() == null) {
+					// how?!?
+					continue;
+				}
 				String fieldName = comp.getFieldName();
 				if (validFieldName(fieldName)) {
 					if (!comp.getDataType().isNotYetDefined()) {
