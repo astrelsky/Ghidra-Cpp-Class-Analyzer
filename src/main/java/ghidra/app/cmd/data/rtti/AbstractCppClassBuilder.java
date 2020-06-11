@@ -17,6 +17,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.util.CompositeDataTypeElementInfo;
 import ghidra.util.InvalidNameException;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 import ghidra.util.exception.DuplicateNameException;
 
 public abstract class AbstractCppClassBuilder {
@@ -222,8 +223,9 @@ public abstract class AbstractCppClassBuilder {
 			dtComps = new HashMap<>(struct.getNumDefinedComponents());
 			for (DataTypeComponent comp : struct.getDefinedComponents()) {
 				if (comp.getDataType() == null) {
-					// how?!?
-					continue;
+					String msg = struct.getDataTypePath().toString()
+						+ " is corrupted and must be deleted through the user interface";
+					throw new AssertException(msg);
 				}
 				String fieldName = comp.getFieldName();
 				if (validFieldName(fieldName)) {

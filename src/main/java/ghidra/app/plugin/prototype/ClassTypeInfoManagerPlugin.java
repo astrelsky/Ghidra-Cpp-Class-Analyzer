@@ -19,8 +19,6 @@ import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.services.DataTypeManagerService;
-import ghidra.framework.model.DomainFile;
-import ghidra.framework.plugintool.Plugin;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
@@ -66,9 +64,6 @@ import docking.widgets.tree.GTree;
 public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		implements ClassTypeInfoManagerService, PopupActionProvider, ArchiveManagerListener {
 
-	private static final Set<ClassTypeInfoManagerPlugin> plugins =
-		Collections.synchronizedSet(new HashSet<>());
-
 	private final List<ClassTypeInfoManager> managers;
 	private final List<TypeInfoManagerListener> listeners;
 	private final TypeInfoTreeProvider provider;
@@ -77,7 +72,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	public ClassTypeInfoManagerPlugin(PluginTool tool) {
 		super(tool, true, true);
-		plugins.add(this);
 		this.clipboard = new Clipboard(getName());
 		this.listeners = new ArrayList<>();
 		this.managers = new ArrayList<>();
@@ -219,19 +213,8 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 				.orElseThrow();
 	}
 
-	public static boolean isEnabled(Program program) {
-		// check program's listeners for instance of this
-		DomainFile f = program.getDomainFile();
-		return plugins.stream()
-				.map(Plugin::getTool)
-				.map(PluginTool::getDomainFiles)
-				.flatMap(Arrays::stream)
-				.anyMatch(f::equals);
-	}
-
 	@Override
 	protected void dispose() {
-		plugins.remove(this);
 		tool.removeComponentProvider(provider);
 		provider.dispose();
 	}
@@ -294,14 +277,10 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	public void archiveStateChanged(Archive archive) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void archiveDataTypeManagerChanged(Archive archive) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override

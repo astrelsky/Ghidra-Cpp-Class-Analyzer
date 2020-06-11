@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 
 import ghidra.program.model.listing.Data;
 import cppclassanalyzer.data.TypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
@@ -28,7 +30,6 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
-import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.demangler.Demangled;
@@ -40,7 +41,7 @@ import ghidra.framework.plugintool.PluginTool;
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
 public class TypeInfoUtils {
-	
+
 	private static Pattern LAMBDA_PATTERN = Pattern.compile("[\\$\\.]_");
 
 	private TypeInfoUtils() {
@@ -412,7 +413,10 @@ public class TypeInfoUtils {
 	 * @return the program's TypeInfoManager
 	 */
 	public static TypeInfoManager getManager(Program program) {
-		PluginTool tool = AutoAnalysisManager.getAnalysisManager(program).getAnalysisTool();
+		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
+		if (tool == null) {
+			return null;
+		}
 		ClassTypeInfoManagerService service = tool.getService(ClassTypeInfoManagerService.class);
 		return service.getManager(program);
 	}
