@@ -8,14 +8,15 @@ import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
-import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
+import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import static ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils.getClassFunction;
-import static ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils.isProcessedFunction;
 
 public class GccVtableAnalysisCmd extends BackgroundCommand {
 
@@ -55,28 +56,29 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 			}
 			if (vtt != null && vtt.isValid()) {
 				for (Vtable parentVtable : vtt.getConstructionVtableModels()) {
-					try {
-						setupFunctions(parentVtable);
-					} catch (InvalidDataTypeException e) {
-						Msg.error(this, e);
-					}
+					monitor.checkCanceled();
+					setupFunctions(parentVtable);
 				}
 			}
 			setupFunctions(vtable);
-		} catch (InvalidDataTypeException e) {
-			Msg.error(this, e);
+		} catch (CancelledException e) {
+		} catch (Exception e) {
+			setStatusMsg(e.getMessage());
+			return false;
 		}
 		return true;
 	}
-	
-	private void setupFunctions(Vtable vftable) throws InvalidDataTypeException {
+
+	private void setupFunctions(Vtable vftable) throws Exception {
 		ClassTypeInfo type = vftable.getTypeInfo();
 		Function[][] functionTables = vftable.getFunctionTables();
 		// Also if the function has a reference to this::vtable, then it owns the function
 		for (int i = 0; i < functionTables.length; i++) {
+			monitor.checkCanceled();
 			if (i == 0) {
 				for (Function function : functionTables[i]) {
-					if (isProcessedFunction(function)) {
+					monitor.checkCanceled();
+					if (!CppClassAnalyzerUtils.isDefaultFunction(function)) {
 						continue;
 					} getClassFunction(program, type, function.getEntryPoint());
 				}
@@ -87,9 +89,10 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 	}
 
 	private void setupThunkFunctions(ClassTypeInfo type, Vtable vftable,
-		Function[] functionTable, int ordinal) {
+		Function[] functionTable, int ordinal) throws CancelledException {
 		for (Function function : functionTable) {
-			if (isProcessedFunction(function)) {
+			monitor.checkCanceled();
+			if (!CppClassAnalyzerUtils.isDefaultFunction(function)) {
 				continue;
 			}
 			if (CreateThunkFunctionCmd.isThunk(program, function)) {

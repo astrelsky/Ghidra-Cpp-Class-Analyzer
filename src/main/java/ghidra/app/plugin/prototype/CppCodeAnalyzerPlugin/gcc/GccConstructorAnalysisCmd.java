@@ -13,7 +13,6 @@ import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.AddParameterCommand;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -30,6 +29,8 @@ import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
+
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
@@ -90,7 +91,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 			return;
 		} else if (fTable[0][0].getName().equals(vtable.getTypeInfo().getName())) {
 			// if this was marked as a constructor fix it
-			fTable[0][0].removeTag(VftableAnalysisUtils.CONSTRUCTOR);
+			fTable[0][0].removeTag(CppClassAnalyzerUtils.CONSTRUCTOR);
 			createVirtualDestructors(vtable.getTypeInfo());
 			return;
 		}
@@ -215,7 +216,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 					Function function = fManager.getFunctionContaining(reference.getFromAddress());
 					if (fTables[0][0].equals(function)) {
 						createVirtualDestructors(type);
-					} else if (!VftableAnalysisUtils.isDestructor(function)) {
+					} else if (!CppClassAnalyzerUtils.isDestructor(function)) {
 						createConstructor(type, function.getEntryPoint());
 					}
 				}
@@ -240,7 +241,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 								Function callee = ClassTypeInfoUtils.getClassFunction(
 									program, baseType, calleeAddress);
 								setFunction(
-									baseType, callee, VftableAnalysisUtils.isDestructor(caller));
+									baseType, callee, CppClassAnalyzerUtils.isDestructor(caller));
 								setVttParam(callee, baseType);
 							}
 						}
@@ -292,7 +293,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 				Address address = functionTables[i][j].getEntryPoint();
 				if (i == 0) {
 					Function function = ClassTypeInfoUtils.getClassFunction(program, typeinfo, address);
-					if (VftableAnalysisUtils.isDestructor(function)) {
+					if (CppClassAnalyzerUtils.isDestructor(function)) {
 						return;
 					}
 					setFunction(typeinfo, function, true);

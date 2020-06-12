@@ -250,6 +250,38 @@ public class ClassTypeInfoUtils {
 	}
 
 	/**
+	 * Sets the provided function to be a class function for the provided type
+	 * @param type the class type
+	 * @param function the function
+	 */
+	public static void setClassFunction(ClassTypeInfo type, Function function) {
+		Objects.requireNonNull(type);
+		Objects.requireNonNull(function);
+		Address entry = function.getEntryPoint();
+		if (function.getBody().getNumAddresses() <= 1) {
+			DisassembleCommand cmd =
+				new DisassembleCommand(entry, null, true);
+			cmd.applyTo(function.getProgram());
+		}
+		boolean success = false;
+		int id = function.getProgram().startTransaction(
+			String.format("Setting class function for %s at %s", type, entry));
+		try {
+			function.setParentNamespace(type.getGhidraClass());
+			function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
+			// necessary due to ghidra bug.
+			function.setCustomVariableStorage(true);
+			function.setCustomVariableStorage(false);
+			success = true;
+		} catch (Exception e) {
+			throw new AssertException(String.format(
+				"Failed to retrieve class function for %s at %s", type, entry), e);
+		} finally {
+			function.getProgram().endTransaction(id, success);
+		}
+	}
+
+	/**
 	 * Sorts a list of classes in order of most derived
 	 * @param program the program containing the list of ClassTypeInfo
 	 * @param classes the list of ClassTypeInfo

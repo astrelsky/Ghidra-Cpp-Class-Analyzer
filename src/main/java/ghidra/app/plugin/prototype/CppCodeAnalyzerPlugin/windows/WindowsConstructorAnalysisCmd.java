@@ -7,7 +7,6 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
 import ghidra.app.util.XReferenceUtil;
 import ghidra.app.util.bin.format.pdb.PdbProgramAttributes;
 import ghidra.program.model.address.Address;
@@ -19,6 +18,8 @@ import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.symbol.FlowType;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
+
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 public class WindowsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
@@ -61,7 +62,7 @@ public class WindowsConstructorAnalysisCmd extends AbstractConstructorAnalysisCm
 				return false;
 			}
 			ClassTypeInfo typeinfo = vtable.getTypeInfo();
-			
+
 			List<Address> references = Arrays.asList(XReferenceUtil.getXRefList(data, -1));
 			if (references.isEmpty()) {
 				return false;
@@ -134,8 +135,7 @@ public class WindowsConstructorAnalysisCmd extends AbstractConstructorAnalysisCm
 					continue;
 				}
 				Set<Function> destructors = getThunks(destructor);
-				Function vDestructor = VftableAnalysisUtils.recurseThunkFunctions(
-					program, functionTable[0]);
+				Function vDestructor = CppClassAnalyzerUtils.createThunkFunctions(functionTable[0]);
 				Function calledFunction = getFirstCalledFunction(vDestructor);
 				if (calledFunction == null) {
 					continue;
@@ -191,8 +191,7 @@ public class WindowsConstructorAnalysisCmd extends AbstractConstructorAnalysisCm
 					return null;
 				}
 			}
-			return VftableAnalysisUtils.recurseThunkFunctions(
-				program, function);
+			return CppClassAnalyzerUtils.createThunkFunctions(function);
 		}
 		return null;
 	}

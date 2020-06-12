@@ -2,7 +2,7 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Function;
@@ -10,8 +10,11 @@ import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
 import ghidra.util.task.TaskMonitor;
 
-import static ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils.getClassFunction;
-import static ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.VftableAnalysisUtils.isProcessedFunction;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 
@@ -19,7 +22,6 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 
 
 	private ClassTypeInfo typeinfo;
-	private Program program;
 
 	protected WindowsVftableAnalysisCmd() {
 		super(NAME, false, true, false);
@@ -41,9 +43,11 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 			Msg.error(this, message);
 			return false;
 		}
-		this.program = (Program) obj;
 		try {
 			Vtable vtable = typeinfo.getVtable();
+			if (!Vtable.isValid(vtable)) {
+				return false;
+			}
 			setupFunctions(vtable);
 			return true;
 		} catch (Exception e) {
@@ -51,21 +55,17 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 		}
 		return true;
 	}
-	
-	private void setupFunctions(Vtable vftable) throws Exception {
+
+	private void setupFunctions(Vtable vftable) {
 		ClassTypeInfo type = vftable.getTypeInfo();
+		Consumer<Function> typeSetter = f -> ClassTypeInfoUtils.setClassFunction(type, f);
 		Function[][] functionTables = vftable.getFunctionTables();
-		for (Function[] functionTable : functionTables) {
-			for (Function function : functionTable) {
-				if (!isProcessedFunction(function)) {
-					Function thunkedFunction =
-						VftableAnalysisUtils.recurseThunkFunctions(program, function);
-					if (!isProcessedFunction(thunkedFunction)) {
-						getClassFunction(program, type, thunkedFunction.getEntryPoint());
-					}
-				}
-			}
-		}
+		Arrays.stream(functionTables)
+			.flatMap(Arrays::stream)
+			.filter(Objects::nonNull)
+			.filter(CppClassAnalyzerUtils::isDefaultFunction)
+			.map(CppClassAnalyzerUtils::createThunkFunctions)
+			.forEach(typeSetter);
 	}
 
 }
