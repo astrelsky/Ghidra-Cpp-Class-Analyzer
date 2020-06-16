@@ -1,10 +1,7 @@
 package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
-import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.plugin.prototype.GccRttiAnalyzer;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
@@ -36,7 +33,7 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	@Override
 	protected AbstractConstructorAnalysisCmd getConstructorAnalyzer() {
 		this.vtableAnalyzer = new GccVtableAnalysisCmd();
-		return new GccConstructorAnalysisCmd();
+		return new GccDecompilerConstructorAnalysisCmd(getTimeout());
 	}
 
 	@Override
@@ -57,12 +54,8 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 			// can only analyze types with valid vtables
 			return false;
 		}
-		VttModel vtt = VtableUtils.getVttModel(program, (GnuVtable) vtable);
-		if (vtt.isValid()) {
-			((GccConstructorAnalysisCmd) constructorAnalyzer).setVtt(vtt);
-		} else {
-			constructorAnalyzer.setTypeInfo(type);
-		}
+		//VttModel vtt = VtableUtils.getVttModel(program, (GnuVtable) vtable);
+		constructorAnalyzer.setTypeInfo(type);
 		return constructorAnalyzer.applyTo(program);
 	}
 }

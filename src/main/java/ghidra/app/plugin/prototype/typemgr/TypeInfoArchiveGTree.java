@@ -23,8 +23,9 @@ import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
 import docking.widgets.tree.support.GTreeDragNDropHandler;
 
-@SuppressWarnings("serial")
 public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManagerListener {
+
+	private static final long serialVersionUID = 1L;
 
 	private final ClassTypeInfoManagerPlugin plugin;
 	private final TypeInfoDragNDropHandler dropHandler;

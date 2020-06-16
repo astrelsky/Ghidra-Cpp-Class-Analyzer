@@ -105,4 +105,8 @@ public interface ClassTypeInfo extends TypeInfo {
 		return new SymbolPath(getGhidraClass().getSymbol());
 	}
 
+	default String getFullName() {
+		return getGhidraClass().getName(true);
+	}
+
 }

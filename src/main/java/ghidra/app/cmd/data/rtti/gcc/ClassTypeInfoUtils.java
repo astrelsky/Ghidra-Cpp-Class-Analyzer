@@ -270,8 +270,8 @@ public class ClassTypeInfoUtils {
 			function.setParentNamespace(type.getGhidraClass());
 			function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
 			// necessary due to ghidra bug.
-			function.setCustomVariableStorage(true);
-			function.setCustomVariableStorage(false);
+			//function.setCustomVariableStorage(true);
+			//function.setCustomVariableStorage(false);
 			success = true;
 		} catch (Exception e) {
 			throw new AssertException(String.format(

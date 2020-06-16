@@ -71,6 +71,7 @@ import db.LongField;
 import db.RecordIterator;
 import db.Table;
 import resources.ResourceManager;
+import util.CollectionUtils;
 
 // man = cppclassanalyzer.data.ClassTypeInfoManagerDB(currentProgram)
 public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoManager {
@@ -447,7 +448,12 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	@Override
 	public ClassTypeInfoDB getType(String name) {
-		return getType(name, program.getGlobalNamespace());
+		SymbolTable table = program.getSymbolTable();
+		return CollectionUtils.asStream(table.getSymbols(name))
+			.map(Symbol::getAddress)
+			.map(this::getType)
+			.findFirst()
+			.orElse(null);
 	}
 
 	@Override

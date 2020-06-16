@@ -13,6 +13,7 @@ import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.lang.Register;
+import ghidra.program.model.listing.AutoParameterType;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
@@ -84,7 +85,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 		return !CppClassAnalyzerUtils.isDefaultFunction(function);
 	}
 
-	protected void setDestructor(ClassTypeInfo typeinfo, Function function) {
+	protected void setDestructor(ClassTypeInfo typeinfo, Function function) throws Exception {
 		setFunction(typeinfo, function, true);
 		if (function.isThunk()) {
 			setFunction(typeinfo, function.getThunkedFunction(false), true);
@@ -116,19 +117,16 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 		return false;
 	}
 
-	protected void setFunction(ClassTypeInfo typeinfo, Function function, boolean destructor) {
-		try {
-			String name = destructor ? "~"+typeinfo.getName() : typeinfo.getName();
-			function.setName(name, SourceType.IMPORTED);
-			function.setParentNamespace(typeinfo.getGhidraClass());
-			function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
-			CppClassAnalyzerUtils.setConstructorDestructorTag(function, destructor);
-			// necessary due to ghidra bug.
-			function.setCustomVariableStorage(true);
-			function.setCustomVariableStorage(false);
-		} catch (Exception e) {
-			Msg.error(this, "setFunction", e);
-		}
+	protected void setFunction(ClassTypeInfo typeinfo, Function function, boolean destructor)
+			throws Exception {
+		String name = destructor ? "~"+typeinfo.getName() : typeinfo.getName();
+		function.setName(name, SourceType.IMPORTED);
+		function.setParentNamespace(typeinfo.getGhidraClass());
+		function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
+		CppClassAnalyzerUtils.setConstructorDestructorTag(function, !destructor);
+		// necessary due to ghidra bug.
+		//function.setCustomVariableStorage(true);
+		//function.setCustomVariableStorage(false);
 	}
 
 	protected void createSubConstructors(ClassTypeInfo type, Function constructor,
@@ -174,7 +172,10 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 	}
 
 	private Register getThisRegister(Parameter param) {
-		return param.getRegister();
+		if (param.getAutoParameterType() == AutoParameterType.THIS) {
+			return param.getRegister();
+		}
+		return null;
 	}
 
 	protected SymbolicPropogator analyzeFunction(Function function) throws CancelledException {

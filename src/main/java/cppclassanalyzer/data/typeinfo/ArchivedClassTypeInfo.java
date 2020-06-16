@@ -19,6 +19,7 @@ import ghidra.app.util.SymbolPath;
 import ghidra.app.util.SymbolPathParser;
 import ghidra.app.util.demangler.Demangled;
 
+import cppclassanalyzer.cmd.CreateExternalSymbolBackgroundCmd;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
@@ -158,6 +159,14 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
 
 	public Address getAddress(Program program) {
 		List<Symbol> symbols = program.getSymbolTable().getGlobalSymbols(symbolName);
+		if (symbols.isEmpty()) {
+			CreateExternalSymbolBackgroundCmd cmd = new CreateExternalSymbolBackgroundCmd(this);
+			if (!cmd.applyTo(program)) {
+				// this should never fail
+				throw new AssertException("Failed to create external symbol for "+symbolName);
+			}
+			return cmd.getExternalLocation().getExternalSpaceAddress();
+		}
 		if (symbols.size() != 1) {
 			throw new AssertException("Expected only 1 " + symbolName + " to exist");
 		}

@@ -85,7 +85,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 		return false;
 	}
 
-	private void detectVirtualDestructors(Set<Address> addresses, Vtable vtable) throws InvalidDataTypeException {
+	private void detectVirtualDestructors(Set<Address> addresses, Vtable vtable) throws Exception {
 		Function[][] fTable = vtable.getFunctionTables();
 		if (fTable.length == 0 || fTable[0].length == 0 || fTable[0][0] == null) {
 			return;
@@ -117,7 +117,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 		}
 	}
 
-	private boolean analyzeVtable(Vtable vtable) throws InvalidDataTypeException {
+	private boolean analyzeVtable(Vtable vtable) throws Exception {
 		Address[] tableAddresses = vtable.getTableAddresses();
 		if (tableAddresses.length == 0) {
 			// no virtual functions, nothing to analyze.
@@ -285,7 +285,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 		}
 	}
 
-	private void createVirtualDestructors(ClassTypeInfo typeinfo) throws InvalidDataTypeException {
+	private void createVirtualDestructors(ClassTypeInfo typeinfo) throws Exception {
 		Vtable vtable = typeinfo.getVtable();
 		Function[][] functionTables = vtable.getFunctionTables();
 		for (int i = 0; i < functionTables.length; i++) {

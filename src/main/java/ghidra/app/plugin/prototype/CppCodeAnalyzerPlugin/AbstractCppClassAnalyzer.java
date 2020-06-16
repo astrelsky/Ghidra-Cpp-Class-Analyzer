@@ -25,6 +25,7 @@ import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
 
 import static ghidra.program.model.data.GenericCallingConvention.thiscall;
+import static ghidra.app.plugin.core.analysis.DecompilerFunctionAnalyzer.OPTION_DEFAULT_DECOMPILER_TIMEOUT_SECS;
 
 public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
@@ -34,15 +35,23 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	private static final String OPTION_VTABLE_ANALYSIS_NAME = "Locate Constructors";
 	private static final boolean OPTION_DEFAULT_VTABLE_ANALYSIS = false;
 	private static final String OPTION_VTABLE_ANALYSIS_DESCRIPTION =
-		"Turn on to search for Constructors/Destructors.";
+		"Turn on to search for Constructors/Destructors.\n" +
+		"WARNING: This can take a SIGNIFICANT Amount of Time!\n" +
+		"         Turned off by default" + "\n";
 
 	private static final String OPTION_FILLER_ANALYSIS_NAME = "Fill Class Fields";
 	private static final boolean OPTION_DEFAULT_FILLER_ANALYSIS = false;
 	private static final String OPTION_FILLER_ANALYSIS_DESCRIPTION =
 		"Turn on to fill out the found class structures.";
 
+	private static final String OPTION_NAME_DECOMPILER_TIMEOUT_SECS =
+		"Analysis Decompiler Timeout (sec)";
+	private static final String OPTION_DESCRIPTION_DECOMPILER_TIMEOUT_SECS =
+		"Set timeout in seconds for analyzer decompiler calls.";
+
 	private boolean constructorAnalysisOption;
 	private boolean fillClassFieldsOption;
+	private int decompilerTimeout;
 
 	protected Program program;
 	private TaskMonitor monitor;
@@ -89,8 +98,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		this.manager = ClassTypeInfoUtils.getManager(program);
 
 		try {
-			analyzeVftables();
 			repairInheritance();
+			analyzeVftables();
 			if (fillClassFieldsOption) {
 				fillStructures();
 			}
@@ -300,18 +309,30 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
+	protected int getTimeout() {
+		return decompilerTimeout;
+	}
+
 	@Override
-	public void optionsChanged(Options options, Program program) {
-		super.optionsChanged(options, program);
+	public void registerOptions(Options options, Program program) {
 		options.registerOption(OPTION_VTABLE_ANALYSIS_NAME, OPTION_DEFAULT_VTABLE_ANALYSIS, null,
 			OPTION_VTABLE_ANALYSIS_DESCRIPTION);
 		options.registerOption(OPTION_FILLER_ANALYSIS_NAME, OPTION_DEFAULT_FILLER_ANALYSIS, null,
 			OPTION_FILLER_ANALYSIS_DESCRIPTION);
+		options.registerOption(OPTION_NAME_DECOMPILER_TIMEOUT_SECS,
+			OPTION_DEFAULT_DECOMPILER_TIMEOUT_SECS, null,
+			OPTION_DESCRIPTION_DECOMPILER_TIMEOUT_SECS);
+	}
 
+	@Override
+	public void optionsChanged(Options options, Program program) {
 		constructorAnalysisOption =
 			options.getBoolean(OPTION_VTABLE_ANALYSIS_NAME, OPTION_DEFAULT_VTABLE_ANALYSIS);
 		fillClassFieldsOption =
 			options.getBoolean(OPTION_FILLER_ANALYSIS_NAME, OPTION_DEFAULT_FILLER_ANALYSIS);
+		decompilerTimeout =
+			options.getInt(OPTION_NAME_DECOMPILER_TIMEOUT_SECS,
+			OPTION_DEFAULT_DECOMPILER_TIMEOUT_SECS);
 	}
 
 }
