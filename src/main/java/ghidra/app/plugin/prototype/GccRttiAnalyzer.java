@@ -275,12 +275,15 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		monitor.setMessage(null);
 	}
 
-	private Set<Address> getStaticReferences(String typeString) throws CancelledException {
+	private Set<Address> getStaticReferences(String typeString) throws Exception {
 		try {
 			ClassTypeInfo typeinfo = (ClassTypeInfo) TypeInfoUtils.findTypeInfo(
 				program, typeString, dummy);
 			monitor.setMessage("Locating vtable for "+typeinfo.getName());
 			Vtable vtable = typeinfo.findVtable(dummy);
+			if (!Vtable.isValid(vtable)) {
+				throw new Exception("Vtable for "+typeinfo.getFullName()+" not found");
+			}
 			return GnuUtils.getDirectDataReferences(
 				program, vtable.getTableAddresses()[0], dummy);
 		} catch (NullPointerException e) {
@@ -335,10 +338,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		} return result;
 	}
 
-	private Set<Address> getReferences(String typeString) throws CancelledException {
+	private Set<Address> getReferences(String typeString) throws Exception {
 		if (relocatable) {
 			return getDynamicReferences(typeString);
-		} return getStaticReferences(typeString);
+		}
+		return getStaticReferences(typeString);
 	}
 
 	private void applyTypeInfoTypes(String typeString) throws Exception {

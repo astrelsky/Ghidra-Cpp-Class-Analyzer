@@ -59,7 +59,9 @@ import ghidra.util.classfinder.ClassSearcher;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
-public class DynamicCaster extends GhidraScript {
+import cppclassanalyzer.script.CppClassAnalyzerGhidraScript;
+
+public class DynamicCaster extends CppClassAnalyzerGhidraScript {
 
 	private static final String UNSUPPORTED_MESSAGE =
 		"Currently only processors passing parameters via registers are supported.";
@@ -157,17 +159,15 @@ public class DynamicCaster extends GhidraScript {
 		Value value = prop.getRegisterValue(address, reg);
 		if (value != null) {
 			final Address typeAddress = toAddr(value.getValue());
-			if (TypeInfoUtils.isTypeInfo(currentProgram, typeAddress)) {
-				return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(
-					currentProgram, typeAddress);
+			if (currentManager.isTypeInfo(typeAddress)) {
+				return currentManager.getType(typeAddress);
 			}
 		}
 		value = prop.getRegisterValue(getDelayAddress(address), reg);
 		if (value != null) {
 			final Address typeAddress = toAddr(value.getValue());
-			if (TypeInfoUtils.isTypeInfo(currentProgram, typeAddress)) {
-				return (ClassTypeInfo) TypeInfoFactory.getTypeInfo(
-					currentProgram, typeAddress);
+			if (currentManager.isTypeInfo(typeAddress)) {
+				return currentManager.getType(typeAddress);
 			}
 		}
 		return null;
@@ -202,10 +202,10 @@ public class DynamicCaster extends GhidraScript {
 				def.setReturnType(destType);
 				return def;
 	}
-	
+
 	private void overrideFunction(Function function, Address address,
 		ClassTypeInfo src, ClassTypeInfo dest) throws Exception {
-			int transaction = -1; 
+			int transaction = -1;
 			if (currentProgram.getCurrentTransaction() == null) {
 				transaction = currentProgram.startTransaction("Override Signature");
 			}
@@ -235,7 +235,7 @@ public class DynamicCaster extends GhidraScript {
 
 		private static ConstantPropagationAnalyzer getConstantAnalyzer(Program program) {
 			AutoAnalysisManager mgr = AutoAnalysisManager.getAnalysisManager(program);
-			List<ConstantPropagationAnalyzer> analyzers = 
+			List<ConstantPropagationAnalyzer> analyzers =
 				ClassSearcher.getInstances(ConstantPropagationAnalyzer.class);
 			for (ConstantPropagationAnalyzer analyzer : analyzers) {
 				if (analyzer.canAnalyze(program)) {
@@ -244,7 +244,7 @@ public class DynamicCaster extends GhidraScript {
 			}
 			return null;
 		}
-	
+
 		public static SymbolicPropogator analyzeFunction(Function function,
 			ConstantPropagationAnalyzer analyzer, TaskMonitor monitor) throws CancelledException {
 				Program program = function.getProgram();

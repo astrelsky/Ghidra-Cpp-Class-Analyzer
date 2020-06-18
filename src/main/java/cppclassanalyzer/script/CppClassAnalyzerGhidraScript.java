@@ -7,15 +7,15 @@ import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemanglerUtil;
 
-import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 
 /**
  * A GhidraScript extension providing convenient access to the current
- * {@link ClassTypeInfoManager}.
+ * {@link ProgramClassTypeInfoManager}.
  */
 public abstract class CppClassAnalyzerGhidraScript extends GhidraScript {
 
-	protected ClassTypeInfoManager currentManager;
+	protected ProgramClassTypeInfoManager currentManager;
 
 	@Override
 	protected void loadPropertiesFile() throws IOException {

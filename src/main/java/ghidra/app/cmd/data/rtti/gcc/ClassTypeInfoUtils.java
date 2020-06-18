@@ -83,13 +83,15 @@ public class ClassTypeInfoUtils {
 			Set<Address> references = Collections.emptySet();
 			Data tiData = listing.getDataAt(type.getAddress());
 			if (tiData != null) {
-				List<Address> referenceList = List.of(XReferenceUtil.getXRefList(tiData));
-				references = GnuUtils.getDirectDataReferences(program, type.getAddress());
-				references.removeAll(referenceList);
+				references = Set.of(XReferenceUtil.getXRefList(tiData));
+				if (!references.isEmpty()) {
+					Vtable vtable = getValidVtable(program, references, monitor, type);
+					if (Vtable.isValid(vtable)) {
+						return vtable;
+					}
+				}
 			}
-			if (references.isEmpty()) {
-				references = GnuUtils.getDirectDataReferences(program, type.getAddress());
-			}
+			references = GnuUtils.getDirectDataReferences(program, type.getAddress());
 			return getValidVtable(program, references, monitor, type);
 	}
 
