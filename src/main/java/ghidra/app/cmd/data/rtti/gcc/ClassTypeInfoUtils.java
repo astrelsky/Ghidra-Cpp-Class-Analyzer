@@ -3,6 +3,8 @@ package ghidra.app.cmd.data.rtti.gcc;
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
@@ -18,6 +20,7 @@ import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB.TypeId;
 
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.SpecialAddress;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.DumbMemBufferImpl;
@@ -83,7 +86,9 @@ public class ClassTypeInfoUtils {
 			Set<Address> references = Collections.emptySet();
 			Data tiData = listing.getDataAt(type.getAddress());
 			if (tiData != null) {
-				references = Set.of(XReferenceUtil.getXRefList(tiData));
+				references = Arrays.stream(XReferenceUtil.getXRefList(tiData))
+					.filter(Predicate.not(SpecialAddress.class::isInstance))
+					.collect(Collectors.toSet());
 				if (!references.isEmpty()) {
 					Vtable vtable = getValidVtable(program, references, monitor, type);
 					if (Vtable.isValid(vtable)) {
