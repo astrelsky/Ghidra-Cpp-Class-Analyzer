@@ -384,17 +384,21 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	}
 
 	private static Table createLibMapTable(DBHandle dbHandle) throws IOException {
+		Table table = dbHandle.getTable(LibraryMap.NAME);
+		if (table != null) {
+			return table;
+		}
 		long id = dbHandle.startTransaction();
 		boolean success = false;
 		try {
-			Table table = dbHandle.createTable(LibraryMap.NAME, SCHEMA, new int[] { NAME_INDEX });
+			table = dbHandle.createTable(LibraryMap.NAME, SCHEMA, new int[] { NAME_INDEX });
 			success = true;
 			return table;
 		} finally {
 			dbHandle.endTransaction(id, success);
 		}
 	}
-	
+
 	public <T extends ArchivedRttiData> T getRttiData(Class<T> clazz, String symbolName) {
 		return libMap.values()
 			.stream()
