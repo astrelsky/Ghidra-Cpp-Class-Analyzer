@@ -8,10 +8,12 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.GnuVtable.VtablePrefix;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.program.database.DatabaseObject;
+
 import cppclassanalyzer.data.manager.recordmanagers.ArchiveRttiRecordManager;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import ghidra.program.model.address.Address;
@@ -28,7 +30,7 @@ import ghidra.util.UniversalID;
 
 import cppclassanalyzer.database.record.ArchivedGnuVtableRecord;
 
-public class ArchivedGnuVtable extends DatabaseObject {
+public class ArchivedGnuVtable extends DatabaseObject implements ArchivedVtable {
 
 	private static final UniversalID BAD_ID = new UniversalID(-1);
 	public static final String TABLE_NAME = "Vtable Archive Table";
@@ -68,6 +70,23 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		this.prefixes = getArray(data);
 	}
 
+	@Override
+	protected boolean refresh() {
+		return false;
+	}
+
+	@Override
+	public ClassTypeInfo getTypeInfo() {
+		return type;
+	}
+
+	@Override
+	public FunctionDefinition[][] getFunctionDefinitions() {
+		return Arrays.stream(prefixes)
+			.map(ArchivedVtablePrefix::getDefinitions)
+			.toArray(FunctionDefinition[][]::new);
+	}
+
 	public Address getAddress(Program program) {
 		return program.getAddressMap().decodeAddress(address);
 	}
@@ -87,17 +106,6 @@ public class ArchivedGnuVtable extends DatabaseObject {
 		return Arrays.stream(prefix.getDefinitions())
 			.map(f -> getFunction(program, f))
 			.toArray(Function[]::new);
-	}
-
-	public FunctionDefinition[][] getFunctionDefinitions() {
-		return Arrays.stream(prefixes)
-			.map(ArchivedVtablePrefix::getDefinitions)
-			.toArray(FunctionDefinition[][]::new);
-	}
-
-	@Override
-	protected boolean refresh() {
-		return false;
 	}
 
 	public String getSymbolName() {
@@ -155,7 +163,7 @@ public class ArchivedGnuVtable extends DatabaseObject {
 			return fun.map(Function::getSignature)
 			.map(this::resolve)
 			.map(FunctionDefinition::getUniversalID)
-			.orElseGet(() -> {return BAD_ID;});
+			.orElse(BAD_ID);
 		}
 
 		private FunctionDefinition resolve(FunctionSignature sig) {

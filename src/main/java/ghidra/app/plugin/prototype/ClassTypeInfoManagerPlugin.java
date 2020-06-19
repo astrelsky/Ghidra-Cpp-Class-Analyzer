@@ -24,12 +24,14 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.database.ProgramDB;
 import cppclassanalyzer.data.manager.ArchiveClassTypeInfoManager;
+import cppclassanalyzer.data.ArchivedRttiData;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
+import cppclassanalyzer.data.vtable.ArchivedVtable;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 
 import ghidra.program.model.address.Address;
@@ -298,5 +300,25 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 			}
 		}
 		throw new UnresolvedClassTypeInfoException(program, mangled);
+	}
+
+	@Override
+	public ArchivedClassTypeInfo getArchivedClassTypeInfo(String symbolName) {
+		return getArchivedRttiData(ArchivedClassTypeInfo.class, symbolName);
+	}
+
+	@Override
+	public ArchivedVtable getArchivedVtable(String symbolName) {
+		return getArchivedRttiData(ArchivedVtable.class, symbolName);
+	}
+
+	private <T extends ArchivedRttiData> T getArchivedRttiData(Class<T> clazz, String symbolName) {
+		return managers.stream()
+			.filter(ProjectClassTypeInfoManager.class::isInstance)
+			.map(ProjectClassTypeInfoManager.class::cast)
+			.map(m -> m.getRttiData(clazz, symbolName))
+			.filter(Objects::nonNull)
+			.findFirst()
+			.orElse(null);
 	}
 }

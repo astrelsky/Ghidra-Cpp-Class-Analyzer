@@ -404,7 +404,7 @@ public class TypeInfoUtils {
 			.map(Symbol::getName)
 			.filter(TypeInfoUtils::isMangled)
 			.findFirst()
-			.orElseGet(() -> { return "_ZTV" + type.getTypeName(); });
+			.orElse("_ZTI" + type.getTypeName());
 	}
 
 	/**

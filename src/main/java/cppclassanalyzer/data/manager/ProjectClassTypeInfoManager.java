@@ -14,6 +14,8 @@ import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
 import ghidra.program.database.DataTypeArchiveDB;
 import ghidra.program.database.data.ProjectDataTypeManager;
+
+import cppclassanalyzer.data.ArchivedRttiData;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
@@ -391,6 +393,16 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		} finally {
 			dbHandle.endTransaction(id, success);
 		}
+	}
+	
+	public <T extends ArchivedRttiData> T getRttiData(Class<T> clazz, String symbolName) {
+		return libMap.values()
+			.stream()
+			.map(lib -> lib.getArchivedData(symbolName))
+			.filter(clazz::isInstance)
+			.map(clazz::cast)
+			.findFirst()
+			.orElse(null);
 	}
 
 	class LibraryMap {

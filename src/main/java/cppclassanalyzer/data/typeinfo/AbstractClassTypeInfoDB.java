@@ -371,6 +371,17 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		return struct;
 	}
 
+	public void setClassDataType(Structure struct) {
+		if (this.struct == null) {
+			this.struct =
+				ClassTypeInfoUtils.getPlaceholderStruct(this, getProgram().getDataTypeManager());
+		}
+		this.struct.replaceWith(struct);
+		ClassTypeInfoRecord record = getRecord();
+		record.setLongValue(DATATYPE_ID, this.struct.getUniversalID().getValue());
+		manager.updateRecord(record);
+	}
+
 	public long getClassDataTypeId() {
 		ClassTypeInfoRecord record = getRecord();
 		return record.getLongValue(DATATYPE_ID);

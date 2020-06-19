@@ -18,6 +18,7 @@ import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.database.utils.TransactionHandler;
 import db.DBHandle;
 
+import ghidra.program.database.DatabaseObject;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
@@ -129,6 +130,10 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 	@Override
 	public String toString() {
 		return name;
+	}
+	
+	DatabaseObject getArchivedData(String symbolName) {
+		return worker.getArchivedData(symbolName);
 	}
 
 	private final class RttiRecordWorker extends ArchiveRttiRecordWorker {

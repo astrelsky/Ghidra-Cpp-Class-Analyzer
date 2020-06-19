@@ -20,6 +20,7 @@ import ghidra.app.util.SymbolPathParser;
 import ghidra.app.util.demangler.Demangled;
 
 import cppclassanalyzer.cmd.CreateExternalSymbolBackgroundCmd;
+import cppclassanalyzer.data.ArchivedRttiData;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
@@ -45,7 +46,7 @@ import cppclassanalyzer.database.record.ArchivedClassTypeInfoRecord;
 import static cppclassanalyzer.database.schema.fields.ArchivedClassTypeInfoSchemaFields.*;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
 
-public final class ArchivedClassTypeInfo extends ClassTypeInfoDB {
+public final class ArchivedClassTypeInfo extends ClassTypeInfoDB implements ArchivedRttiData {
 
 	public static final String TABLE_NAME = "ClassTypeInfo Archive Table";
 

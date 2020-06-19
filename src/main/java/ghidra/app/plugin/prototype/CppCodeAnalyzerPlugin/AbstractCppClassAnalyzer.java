@@ -3,6 +3,8 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
@@ -12,7 +14,15 @@ import ghidra.app.services.AnalyzerType;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.options.Options;
+import ghidra.framework.plugintool.PluginTool;
+
+import cppclassanalyzer.cmd.ApplyVtableDefinitionsBackgroundCmd;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
+import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
+import cppclassanalyzer.data.vtable.ArchivedVtable;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.*;
@@ -21,6 +31,7 @@ import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.util.SymbolicPropogator;
+import ghidra.util.Msg;
 import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
 
@@ -44,6 +55,12 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	private static final String OPTION_FILLER_ANALYSIS_DESCRIPTION =
 		"Turn on to fill out the found class structures.";
 
+	private static final String OPTION_ARCHIVED_DATA_NAME = "Use Archived RTTI Data";
+	private static final boolean OPTION_DEFAULT_ARCHIVED_DATA = true;
+	private static final String OPTION_ARCHIVED_DATA_DESCRIPTION =
+		"Use open archives to apply virtual function definitions and structures.\n"
+		+ "This will replace previously defined structures and function definitions.";
+
 	private static final String OPTION_NAME_DECOMPILER_TIMEOUT_SECS =
 		"Analysis Decompiler Timeout (sec)";
 	private static final String OPTION_DESCRIPTION_DECOMPILER_TIMEOUT_SECS =
@@ -51,6 +68,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
 	private boolean constructorAnalysisOption;
 	private boolean fillClassFieldsOption;
+	private boolean useArchivedData;
 	private int decompilerTimeout;
 
 	protected Program program;
@@ -139,6 +157,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	}
 
 	private void repairInheritance() throws CancelledException, InvalidDataTypeException {
+		ClassTypeInfoManagerService service = getService();
 		monitor.initialize(manager.getTypeCount());
 		monitor.setMessage("Fixing Class Inheritance...");
 		for (ClassTypeInfo type : manager.getTypes()) {
@@ -147,6 +166,16 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 				// this works for both vs and gcc
 				monitor.incrementProgress(1);
 				continue;
+			}
+			if (useArchivedData) {
+				String symbolName = TypeInfoUtils.getSymbolName(type);
+				ArchivedClassTypeInfo data = service.getArchivedClassTypeInfo(symbolName);
+				if (data != null) {
+					((AbstractClassTypeInfoDB) type).setClassDataType(data.getClassDataType());
+					Msg.info(this, "Used archived class data for "+type.getFullName());
+					monitor.incrementProgress(1);
+					continue;
+				}
 			}
 			// this takes care of everything
 			type.getClassDataType();
@@ -283,10 +312,24 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	}
 
 	protected void analyzeVftables() throws Exception {
+		ClassTypeInfoManagerService service = getService();
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Analyzing Vftables");
 		for (Vtable vtable : manager.getVtables()) {
 			monitor.checkCanceled();
+			if (useArchivedData) {
+				ArchivedVtable data =
+					service.getArchivedVtable(VtableUtils.getSymbolName(vtable));
+				if (data != null) {
+					ApplyVtableDefinitionsBackgroundCmd cmd =
+						new ApplyVtableDefinitionsBackgroundCmd(vtable, data);
+					if (!cmd.applyTo(program, monitor)) {
+						monitor.checkCanceled();
+					}
+					monitor.incrementProgress(1);
+					continue;
+				}
+			}
 			analyzeVftable(vtable.getTypeInfo());
 			monitor.incrementProgress(1);
 		}
@@ -297,6 +340,10 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
 	protected boolean shouldAnalyzeConstructors() {
 		return constructorAnalysisOption;
+	}
+
+	protected boolean shouldUseArchivedData() {
+		return useArchivedData;
 	}
 
 	protected void analyzeConstructors() throws Exception {
@@ -319,6 +366,8 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			OPTION_VTABLE_ANALYSIS_DESCRIPTION);
 		options.registerOption(OPTION_FILLER_ANALYSIS_NAME, OPTION_DEFAULT_FILLER_ANALYSIS, null,
 			OPTION_FILLER_ANALYSIS_DESCRIPTION);
+		options.registerOption(OPTION_ARCHIVED_DATA_NAME, OPTION_DEFAULT_ARCHIVED_DATA, null,
+			OPTION_ARCHIVED_DATA_DESCRIPTION);
 		options.registerOption(OPTION_NAME_DECOMPILER_TIMEOUT_SECS,
 			OPTION_DEFAULT_DECOMPILER_TIMEOUT_SECS, null,
 			OPTION_DESCRIPTION_DECOMPILER_TIMEOUT_SECS);
@@ -330,9 +379,16 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			options.getBoolean(OPTION_VTABLE_ANALYSIS_NAME, OPTION_DEFAULT_VTABLE_ANALYSIS);
 		fillClassFieldsOption =
 			options.getBoolean(OPTION_FILLER_ANALYSIS_NAME, OPTION_DEFAULT_FILLER_ANALYSIS);
+		useArchivedData =
+			options.getBoolean(OPTION_ARCHIVED_DATA_NAME, OPTION_DEFAULT_ARCHIVED_DATA);
 		decompilerTimeout =
 			options.getInt(OPTION_NAME_DECOMPILER_TIMEOUT_SECS,
 			OPTION_DEFAULT_DECOMPILER_TIMEOUT_SECS);
+	}
+
+	private ClassTypeInfoManagerService getService() {
+		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
+		return tool.getService(ClassTypeInfoManagerService.class);
 	}
 
 }

@@ -18,6 +18,7 @@ import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 
+import ghidra.program.database.DatabaseObject;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
@@ -161,13 +162,13 @@ abstract class ArchiveRttiRecordWorker extends
 		return null;
 	}
 
-	ArchivedClassTypeInfo getType(String typeName) throws UnresolvedClassTypeInfoException {
-		if (typeName.isBlank() || !typeName.startsWith(MANGLED_TYPEINFO_PREFIX)) {
+	ArchivedClassTypeInfo getType(String symbolName) throws UnresolvedClassTypeInfoException {
+		if (symbolName.isBlank() || !symbolName.startsWith(MANGLED_TYPEINFO_PREFIX)) {
 			return null;
 		}
 		acquireLock();
 		try {
-			db.Field f = new StringField(typeName);
+			db.Field f = new StringField(symbolName);
 			long[] keys = getTables().getTypeTable().findRecords(
 				f, ArchivedClassTypeInfoSchemaFields.MANGLED_SYMBOL.ordinal());
 			if (keys.length == 1) {
@@ -177,6 +178,18 @@ abstract class ArchiveRttiRecordWorker extends
 			dbError(e);
 		} finally {
 			releaseLock();
+		}
+		return null;
+	}
+	
+	DatabaseObject getArchivedData(String symbolName) {
+		long key = getTypeKey(symbolName);
+		if (key != INVALID_KEY) {
+			return getType(key);
+		}
+		key = getVtableKey(symbolName);
+		if (key != INVALID_KEY) {
+			return getVtable(key);
 		}
 		return null;
 	}
