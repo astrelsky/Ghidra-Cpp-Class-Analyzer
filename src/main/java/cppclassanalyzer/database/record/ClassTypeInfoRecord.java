@@ -2,7 +2,6 @@ package cppclassanalyzer.database.record;
 
 import cppclassanalyzer.database.schema.ClassTypeInfoSchema;
 import cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields;
-import cppclassanalyzer.database.record.AbstractDatabaseRecord;
 import db.Field;
 import db.Schema;
 import db.Table;

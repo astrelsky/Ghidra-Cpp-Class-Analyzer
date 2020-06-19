@@ -12,7 +12,6 @@ import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.AbstractTypeInfoModel;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.BookmarkManager;
@@ -29,7 +28,8 @@ import ghidra.util.task.TaskMonitor;
 /**
  * Base Model for __class_type_info and its derivatives.
  */
-public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel implements ClassTypeInfo {
+public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel
+		implements ClassTypeInfo {
 
 	protected GnuVtable vtable = null;
 	private GccCppClassBuilder builder;

@@ -2,7 +2,6 @@ package cppclassanalyzer.database.record;
 
 import cppclassanalyzer.database.schema.TypeInfoTreeNodeSchema;
 import cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields;
-import cppclassanalyzer.database.record.AbstractDatabaseRecord;
 
 public class TypeInfoTreeNodeRecord extends AbstractDatabaseRecord<TypeInfoTreeNodeSchemaFields> {
 

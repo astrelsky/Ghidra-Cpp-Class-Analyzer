@@ -2,7 +2,6 @@ package cppclassanalyzer.database.record;
 
 import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.schema.fields.ArchivedGnuVtableSchemaFields;
-import cppclassanalyzer.database.record.AbstractDatabaseRecord;
 import db.Field;
 import db.Schema;
 import db.Table;

@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
-import cppclassanalyzer.database.record.DatabaseRecord;
 import cppclassanalyzer.database.schema.fields.FieldEnum;
 import db.Buffer;
 import db.Field;
@@ -37,11 +36,11 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 		}
 		return ByteBuffer.wrap(data);
 	}
-	
+
 	public static int getArraySize(int[] data) {
 		return Integer.BYTES + Integer.BYTES * data.length;
 	}
-	
+
 	public static int getArraySize(long[] data) {
 		return Integer.BYTES + Long.BYTES * data.length;
 	}

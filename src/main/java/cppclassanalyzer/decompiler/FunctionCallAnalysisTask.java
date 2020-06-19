@@ -35,7 +35,7 @@ public class FunctionCallAnalysisTask extends Task {
 
 	@Override
 	public void run(TaskMonitor monitor) throws CancelledException {
-		this.results = DecompilerUtils.getClangStatements(function, monitor)
+		this.results = DecompilerUtils.getClangStatements(function, monitor, timeout)
 			.stream()
 			.map(FunctionCallAnalysisResult::new)
 			.collect(Collectors.toList());
