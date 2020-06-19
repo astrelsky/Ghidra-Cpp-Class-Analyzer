@@ -2,6 +2,7 @@
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
 import ghidra.app.script.GhidraScript;
+import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.program.database.ProgramDB;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
@@ -20,6 +21,10 @@ public class ResetDatabaseScript extends GhidraScript {
 
 	@Override
 	public void run() throws Exception {
+		if (ClassTypeInfoManagerService.isEnabled(currentProgram)) {
+			printerr("Please disable the plugin prior to removing the database");
+			return;
+		}
 		DBHandle handle = ((ProgramDB) currentProgram).getDBHandle();
 		if (handle.getTable(TYPE_TABLE_NAME) != null) {
 			handle.deleteTable(TYPE_TABLE_NAME);
@@ -30,6 +35,6 @@ public class ResetDatabaseScript extends GhidraScript {
 		if (handle.getTable(TREE_TABLE_NAME) != null) {
 			handle.deleteTable(TREE_TABLE_NAME);
 		}
-		println("Database removed. Please restart ghidra");
+		println("Database removed. You may now re-enable the plugin.");
 	}
 }
