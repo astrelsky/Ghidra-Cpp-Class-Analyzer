@@ -88,11 +88,12 @@ abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 			return;
 		}
 		path = path.getParent();
-		ArrayDeque<SymbolPath> stack = new ArrayDeque<>(path.asList().size());
 		if (path != null && treePaths.containsKey(path)) {
 			GTreeNode node = treePaths.get(path);
 			createTypeNode(node, type);
 		} else {
+			int size = path != null ? path.asList().size() : 0;
+			ArrayDeque<SymbolPath> stack = new ArrayDeque<>(size);
 			while (!treePaths.containsKey(path) && path != null) {
 				stack.push(path);
 				path = path.getParent();
