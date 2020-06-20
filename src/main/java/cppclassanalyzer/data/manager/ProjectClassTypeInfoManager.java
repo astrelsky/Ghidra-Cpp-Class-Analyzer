@@ -372,7 +372,8 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		Lock lock = getDB(archive).getLock();
 		lock.acquire();
 		try {
-			createLibMapTable(getDBHandle(archive));
+			Table table = createLibMapTable(getDBHandle(archive));
+			getDB(archive).setChanged(-1, null, table);
 		} finally {
 			lock.release();
 		}

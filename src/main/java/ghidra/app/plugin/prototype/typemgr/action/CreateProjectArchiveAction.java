@@ -49,6 +49,7 @@ final class CreateProjectArchiveAction extends AbstractTypeMgrAction {
 		void open() {
 			if (archive != null) {
 				getDataTypeManagerHandler().removeArchiveManagerListener(this);
+				getDataTypeManagerHandler().save(archive.getDomainObject());
 				if (!getHandler().getPlugin().hasManager(archive)) {
 					getHandler().getPlugin().archiveOpened(archive);
 				}
