@@ -10,7 +10,6 @@ public enum TypeInfoTreeNodeSchemaFields implements FieldEnum {
 	SYMBOL_PATH(StringField.class),
 	TYPE_ID(ByteField.class),
 	TYPE_KEY(LongField.class),
-	PARENT_KEY(LongField.class),
 	CHILDREN_KEYS(BinaryField.class);
 
 	private final Class<? extends Field> fieldClass;

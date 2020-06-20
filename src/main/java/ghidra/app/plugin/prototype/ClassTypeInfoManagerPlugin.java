@@ -37,7 +37,6 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
-import ghidra.util.SystemUtilities;
 
 import docking.ActionContext;
 import docking.Tool;
@@ -169,7 +168,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	@Override
 	protected void programDeactivated(Program program) {
 		ClassTypeInfoManager manager = getManager(program);
-		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
+		listeners.forEach(l -> l.managerClosed(manager));
 	}
 
 	public Clipboard getClipboard() {
@@ -187,17 +186,13 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	public void fireArchiveChanged(TypeInfoArchiveChangeRecord record) {
 		switch (record.getChangeType()) {
 			case TYPE_ADDED:
-				SystemUtilities.runSwingLater(
-					() -> listeners.forEach(l -> l.typeAdded(record.getType())));
+				listeners.forEach(l -> l.typeAdded(record.getType()));
 				break;
 			case TYPE_REMOVED:
-				SystemUtilities.runSwingLater(
-					() -> listeners.forEach(l -> l.typeRemoved(record.getType())));
+				listeners.forEach(l -> l.typeRemoved(record.getType()));
 				break;
 			case TYPE_UPDATED:
-				// running now will cause deadlock
-				SystemUtilities.runSwingLater(
-					() -> listeners.forEach(l -> l.typeUpdated(record.getType())));
+				listeners.forEach(l -> l.typeUpdated(record.getType()));
 				break;
 		}
 	}
@@ -239,7 +234,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	public void managerAdded(ClassTypeInfoManager manager) {
-		SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerOpened(manager)));
+		listeners.forEach(l -> l.managerOpened(manager));
 	}
 
 	@Override
@@ -273,7 +268,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		ClassTypeInfoManager manager = getManager(archive);
 		if (manager != null) {
 			managers.remove(manager);
-			SystemUtilities.runSwingNow(() -> listeners.forEach(l -> l.managerClosed(manager)));
+			listeners.forEach(l -> l.managerClosed(manager));
 		}
 	}
 

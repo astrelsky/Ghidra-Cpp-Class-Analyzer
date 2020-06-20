@@ -7,6 +7,7 @@ import ghidra.app.cmd.function.AddFunctionTagCmd;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
 import ghidra.framework.main.AppInfo;
+import ghidra.framework.model.DomainObject;
 import ghidra.framework.model.Project;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -26,15 +27,15 @@ public final class CppClassAnalyzerUtils {
 	}
 
 	/**
-	 * Gets the first PluginTool which has the provided program opened
-	 * @param program the opened program
+	 * Gets the first PluginTool which has the provided domain object opened
+	 * @param obj the domain object
 	 * @return the first found PluginTool or null if none found
 	 */
-	public static PluginTool getTool(Program program) {
+	public static PluginTool getTool(DomainObject obj) {
 		Project project = AppInfo.getActiveProject();
 		PluginTool[] tools = project.getToolManager().getRunningTools();
 		return Arrays.stream(tools)
-			.filter(program::isUsedBy)
+			.filter(obj::isUsedBy)
 			.findFirst()
 			.orElse(null);
 	}

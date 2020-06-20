@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.program.model.data.AlignedStructureInspector;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
@@ -12,6 +13,7 @@ import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.AlignedStructurePacker.StructurePackResult;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.util.CompositeDataTypeElementInfo;
@@ -150,7 +152,9 @@ public abstract class AbstractCppClassBuilder {
 			setSuperStructureCategoryPath(superStruct);
 			deleteVirtualComponents(superStruct);
 			addVptr(superStruct);
-			trimStructure(superStruct);
+			if (!superStruct.isMachineAligned()) {
+				trimStructure(superStruct);
+			}
 			return resolveStruct(superStruct);
 		}
 		return (Structure) dt;
@@ -190,7 +194,16 @@ public abstract class AbstractCppClassBuilder {
 
 	protected static Structure resolveStruct(Structure struct) {
 		DataTypeManager dtm = struct.getDataTypeManager();
-		return (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
+		struct =
+			(Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
+		if (struct.getNumComponents() == 0 || struct.isMachineAligned()) {
+			return struct;
+		}
+		StructurePackResult results = AlignedStructureInspector.packComponents(struct);
+		if (!results.componentsChanged) {
+			struct.setMinimumAlignment(results.alignment);
+		}
+		return struct;
 	}
 
 	protected void deleteVirtualComponents(Structure superStruct) {

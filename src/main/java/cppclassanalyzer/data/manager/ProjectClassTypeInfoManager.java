@@ -12,6 +12,7 @@ import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
+import ghidra.framework.model.UndoableDomainObject;
 import ghidra.program.database.DataTypeArchiveDB;
 import ghidra.program.database.data.ProjectDataTypeManager;
 
@@ -128,12 +129,10 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	private ArchivedClassTypeInfoDatabaseTable createClassTable(String name) throws IOException {
 		acquireLock();
 		try {
-			long id = dbHandle.startTransaction();
 			Table classTable = dbHandle.createTable(
 				name + " " + ArchivedClassTypeInfo.TABLE_NAME,
 				ArchivedClassTypeInfoSchema.SCHEMA,
 				ArchivedClassTypeInfoSchema.INDEXED_COLUMNS);
-			dbHandle.endTransaction(id, true);
 			return new ArchivedClassTypeInfoDatabaseTable(classTable);
 		} finally {
 			releaseLock();
@@ -143,12 +142,10 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	private ArchivedGnuVtableDatabaseTable createVtableTable(String name) throws IOException {
 		acquireLock();
 		try {
-			long id = dbHandle.startTransaction();
 			Table vtableTable = dbHandle.createTable(
 				name + " " + ArchivedGnuVtable.TABLE_NAME,
 				ArchivedGnuVtableSchema.SCHEMA,
 				ArchivedGnuVtableSchema.INDEXED_COLUMNS);
-			dbHandle.endTransaction(id, true);
 			return new ArchivedGnuVtableDatabaseTable(vtableTable);
 		} finally {
 			releaseLock();
@@ -347,21 +344,19 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		plugin.managerAdded(libManager);
 		acquireLock();
 		try {
-			int id = startTransaction("Adding " + manager.getName());
 			monitor.initialize(manager.getTypeCount());
 			for (ClassTypeInfo type : manager.getTypes()) {
 				monitor.checkCanceled();
 				libManager.resolve(type);
 				monitor.incrementProgress(1);
 			}
-			endTransaction(id, true);
 		} finally {
 			releaseLock();
 		}
 	}
 
-	public DBHandle getDBHandle() {
-		return getDB(archive).getDBHandle();
+	public UndoableDomainObject getDomainObject() {
+		return archive.getDomainObject();
 	}
 
 	LibraryMap getLibMap() {
@@ -408,6 +403,35 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			.findFirst()
 			.orElse(null);
 	}
+
+	public static FileArchiveClassTypeInfoManager openIfManagerArchive(
+			ClassTypeInfoManagerPlugin plugin, Archive archive) throws IOException {
+		if (archive instanceof ProjectArchive) {
+			DBHandle handle = getDB((ProjectArchive) archive).getDBHandle();
+			if (handle.getTable(LibraryMap.NAME) != null) {
+				return open(plugin, (ProjectArchive) archive);
+			}
+		}
+		return null;
+	}
+
+	public Stream<LibraryClassTypeInfoManager> getAvailableManagers(String[] names) {
+		Stream.Builder<LibraryClassTypeInfoManager> builder = Stream.builder();
+		for (String name : names) {
+			if (libMap.containsKey(name)) {
+				builder.add(libMap.get(name));
+			}
+		}
+		return builder.build();
+	}
+
+	private void endTransaction(long id, boolean commit) {
+		endTransaction((int) id, commit);
+	}
+
+TransactionHandler getHandler() {
+	return new TransactionHandler(this::startTransaction, this::endTransaction);
+}
 
 	class LibraryMap {
 
@@ -471,7 +495,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		void put(String name, LibraryClassTypeInfoManager man) {
 			acquireLock();
 			try {
-				long id = dbHandle.startTransaction();
 				libMap.put(name, man);
 				ArchivedRttiTablePair tables = man.getTables();
 				db.Record record = SCHEMA.createRecord(table.getKey());
@@ -479,7 +502,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				record.setString(TYPE_INDEX, tables.getTypeTable().getName());
 				record.setString(VTABLE_INDEX, tables.getVtableTable().getName());
 				table.putRecord(record);
-				dbHandle.endTransaction(id, true);
 			} catch (IOException e) {
 				dbError(e);
 			} finally {
@@ -575,36 +597,4 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			return manager;
 		}
 	}
-
-	public static FileArchiveClassTypeInfoManager openIfManagerArchive(
-			ClassTypeInfoManagerPlugin plugin, Archive archive) throws IOException {
-		if (archive instanceof ProjectArchive) {
-			DBHandle handle = getDB((ProjectArchive) archive).getDBHandle();
-			if (handle.getTable(LibraryMap.NAME) != null) {
-				return open(plugin, (ProjectArchive) archive);
-			}
-		}
-		return null;
-	}
-
-	public Stream<LibraryClassTypeInfoManager> getAvailableManagers(String[] names) {
-		Stream.Builder<LibraryClassTypeInfoManager> builder = Stream.builder();
-		for (String name : names) {
-			if (libMap.containsKey(name)) {
-				builder.add(libMap.get(name));
-			}
-		}
-		return builder.build();
-	}
-
-	private void endTransaction(long id, boolean commit) {
-		endTransaction((int) id, commit);
-	}
-
-	TransactionHandler getHandler() {
-		return new TransactionHandler(this::startTransaction, this::endTransaction);
-	}
-
-
-
 }

@@ -40,12 +40,6 @@ public final class NamespacePathNode extends GTreeSlowLoadingNode implements Typ
 	}
 
 	@Override
-	public void setParent(long key) {
-		record.setLongValue(PARENT_KEY, key);
-		manager.updateRecord(record);
-	}
-
-	@Override
 	public void addNode(GTreeNode node) {
 		if (node instanceof TypeInfoTreeNode) {
 			TypeInfoTreeNode treeNode = (TypeInfoTreeNode) node;
@@ -55,7 +49,6 @@ public final class NamespacePathNode extends GTreeSlowLoadingNode implements Typ
 			newChildren[children.length] = treeNode.getKey();
 			record.setLongArray(CHILDREN_KEYS, newChildren);
 			manager.updateRecord(record);
-			treeNode.setParent(getKey());
 		}
 		super.addNode(node);
 		children().sort(null);

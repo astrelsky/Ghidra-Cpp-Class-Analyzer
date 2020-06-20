@@ -66,13 +66,11 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 		} else {
 			getRoot().addNode(manager);
 		}
-		repaint();
 	}
 
 	@Override
 	public void managerClosed(ClassTypeInfoManager manager) {
 		getRoot().removeNode(manager);
-		repaint();
 	}
 
 	private TypeInfoArchiveNode getManagerNode(ClassTypeInfoDB type) {

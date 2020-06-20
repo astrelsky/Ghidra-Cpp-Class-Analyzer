@@ -97,7 +97,9 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 	public static Structure getDataType(DataTypeManager dtm) {
 		DataType existingDt = dtm.getDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME);
 		if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
-			return (Structure) existingDt;
+			if (((Structure) existingDt).hasFlexibleArrayComponent()) {
+				return (Structure) existingDt;
+			}
 		}
 		StructureDataType struct =
 			new StructureDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
@@ -108,15 +110,6 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		struct.setFlexibleArrayComponent(
 			BaseClassTypeInfoModel.getDataType(dtm), ARRAY_NAME, null);
 		struct.setDescription(DESCRIPTION);
-		Structure result = (Structure) dtm.resolve(struct, KEEP_HANDLER);
-		if (!result.isNotYetDefined()) {
-			Structure flexComponent = (Structure) result.getFlexibleArrayComponent().getDataType();
-			DataTypeComponent baseFlagsComp = flexComponent.getComponent(
-				BaseClassTypeInfoModel.FLAGS_ORDINAL);
-			if (baseFlagsComp.getDataType() instanceof Structure) {
-				return result;
-			}
-		}
 		return (Structure) dtm.resolve(struct, REPLACE_HANDLER);
 	}
 

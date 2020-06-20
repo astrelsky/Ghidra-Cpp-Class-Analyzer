@@ -5,9 +5,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoArchiveNode;
+import ghidra.framework.cmd.BackgroundCommand;
+import ghidra.framework.model.DomainObject;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.util.exception.CancelledException;
-import ghidra.util.task.Task;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
@@ -28,11 +29,11 @@ final class PasteArchiveAction extends AbstractArchiveClipboardAction {
 	@Override
 	public boolean isAddToPopup(ActionContext context) {
 		return getSelectedRootTreeNodes(context)
-			.stream()
-			.map(TypeInfoArchiveNode.class::cast)
-			.map(TypeInfoArchiveNode::getTypeManager)
-			.filter(ProjectClassTypeInfoManager.class::isInstance)
-			.count() == 1;
+				.stream()
+				.map(TypeInfoArchiveNode.class::cast)
+				.map(TypeInfoArchiveNode::getTypeManager)
+				.filter(ProjectClassTypeInfoManager.class::isInstance)
+				.count() == 1;
 	}
 
 	private ProjectClassTypeInfoManager getSelectedManager(ActionContext context) {
@@ -45,20 +46,21 @@ final class PasteArchiveAction extends AbstractArchiveClipboardAction {
 		PluginTool tool = getHandler().getPlugin().getTool();
 		ProjectClassTypeInfoManager manager = getSelectedManager(context);
 		List<ClassTypeInfoManager> srcManagers = getClipboardContents()
-			.stream()
-			.map(TypeInfoArchiveNode.class::cast)
-			.map(TypeInfoArchiveNode::getTypeManager)
-			.collect(Collectors.toList());
-		PasteArchiveTask task = new PasteArchiveTask(manager, srcManagers);
-		tool.execute(task);
+				.stream()
+				.map(TypeInfoArchiveNode.class::cast)
+				.map(TypeInfoArchiveNode::getTypeManager)
+				.collect(Collectors.toList());
+		PasteArchiveBackgroundCommand cmd =
+			new PasteArchiveBackgroundCommand(manager, srcManagers);
+		tool.executeBackgroundCommand(cmd, manager.getDomainObject());
 	}
 
-	private static final class PasteArchiveTask extends Task {
+	private static final class PasteArchiveBackgroundCommand extends BackgroundCommand {
 
 		private final ProjectClassTypeInfoManager manager;
 		private final List<ClassTypeInfoManager> srcManagers;
 
-		public PasteArchiveTask(ProjectClassTypeInfoManager manager,
+		public PasteArchiveBackgroundCommand(ProjectClassTypeInfoManager manager,
 				List<ClassTypeInfoManager> srcManagers) {
 			super("Paste Archive", true, true, true);
 			this.manager = manager;
@@ -66,8 +68,14 @@ final class PasteArchiveAction extends AbstractArchiveClipboardAction {
 		}
 
 		@Override
-		public void run(TaskMonitor monitor) throws CancelledException {
-			manager.insert(srcManagers, monitor);
+		public boolean applyTo(DomainObject obj, TaskMonitor monitor) {
+			try {
+				manager.insert(srcManagers, monitor);
+			} catch (CancelledException e) {
+				setStatusMsg("Task cancelled");
+				return false;
+			}
+			return true;
 		}
 
 	}

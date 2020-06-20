@@ -7,17 +7,21 @@ import docking.widgets.tree.GTreeNode;
 
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
 
-import java.util.List;
+import java.util.*;
 
 import ghidra.app.util.SymbolPath;
+import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 
+	private final Map<SymbolPath, GTreeNode> treePaths;
+
 	AbstractSingleManagerNode(ClassTypeInfoManager manager) {
 		super(manager);
+		this.treePaths = new HashMap<>(manager.getTypeCount());
 	}
 
 	@Override
@@ -31,7 +35,6 @@ abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 			newChildren[children.length] = treeNode.getKey();
 			record.setLongArray(CHILDREN_KEYS, newChildren);
 			getManager().updateRecord(record);
-			treeNode.setParent(getKey());
 		}
 		super.addNode(node);
 		children().sort(null);
@@ -42,50 +45,79 @@ abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 		return getManager().generateChildren(this, monitor);
 	}
 
+	private void convertToTypeNode(NamespacePathNode node, ClassTypeInfoDB type) {
+		TypeInfoTreeNodeManager treeManager = getManager();
+		GTreeNode parent = node.getParent();
+		parent.removeNode(node);
+		TypeInfoTreeNodeRecord record = ((TypeInfoTreeNode) node).getRecord();
+		node.dispose();
+		record.setByteValue(TYPE_ID, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
+		record.setLongValue(TYPE_KEY, type.getKey());
+		treeManager.updateRecord(record);
+		GTreeNode child = new TypeInfoNode(type, record);
+		treePaths.put(type.getSymbolPath(), child);
+		parent.addNode(child);
+	}
+
+	private void createTypeNode(GTreeNode node, ClassTypeInfoDB type) {
+		TypeInfoTreeNodeManager treeManager = getManager();
+		GTreeNode child = treeManager.createTypeNode(type);
+		treePaths.put(type.getSymbolPath(), child);
+		node.addNode(child);
+		return;
+	}
+
+	private GTreeNode createNamespaceNode(GTreeNode node, SymbolPath path) {
+		TypeInfoTreeNodeManager treeManager = getManager();
+		GTreeNode child = treeManager.createNamespaceNode(path);
+		treePaths.put(path, child);
+		node.addNode(child);
+		return child;
+	}
+
 	@Override
 	public final void addNode(ClassTypeInfoDB type) {
-		List<String> paths = type.getSymbolPath().asList();
-		GTreeNode node = this;
-		TypeInfoTreeNodeManager treeManager = getManager();
-		for (int i = 0; i < paths.size(); i++) {
-			String path = paths.get(i);
-			GTreeNode currentNode = node.getChild(path);
-			if (currentNode == null) {
-				List<String> subPaths = paths.subList(0, i+1);
-				if (subPaths.size() == paths.size()) {
-					currentNode = treeManager.createTypeNode(subPaths, type);
-				} else {
-					currentNode = treeManager.createNamespaceNode(subPaths);
-				}
-				node.addNode(currentNode);
+		SymbolPath path = type.getSymbolPath();
+		if (treePaths.containsKey(path)) {
+			GTreeNode node = treePaths.get(path);
+			if (node instanceof TypeInfoNode) {
+				Msg.warn(this, "Node for "+type.getFullName()+" already exists");
+			} else if (node instanceof NamespacePathNode) {
+				convertToTypeNode((NamespacePathNode) node, type);
 			}
-			node = currentNode;
+			return;
 		}
-		if (node instanceof NamespacePathNode) {
-			GTreeNode parent = node.getParent();
-			parent.removeNode(node);
-			TypeInfoTreeNodeRecord record = ((TypeInfoTreeNode) node).getRecord();
-			node.dispose();
-			record.setByteValue(TYPE_ID, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
-			record.setLongValue(TYPE_KEY, type.getKey());
-			treeManager.updateRecord(record);
-			GTreeNode currentNode = new TypeInfoNode(type, record);
-			parent.addNode(currentNode);
+		path = path.getParent();
+		ArrayDeque<SymbolPath> stack = new ArrayDeque<>(path.asList().size());
+		if (path != null && treePaths.containsKey(path)) {
+			GTreeNode node = treePaths.get(path);
+			createTypeNode(node, type);
+		} else {
+			while (!treePaths.containsKey(path) && path != null) {
+				stack.push(path);
+				path = path.getParent();
+			}
+			GTreeNode node = path != null ? treePaths.get(path) : this;
+			while (!stack.isEmpty()) {
+				node = createNamespaceNode(node, stack.pop());
+			}
+			createTypeNode(node, type);
 		}
 		children().sort(null);
 	}
 
 	@Override
 	public final TypeInfoNode getNode(ClassTypeInfoDB type) {
-		TypeInfoTreeNodeManager treeManager = getManager();
 		SymbolPath path = type.getSymbolPath();
-		GTreeNode node = treeManager.getNode(path);
+		if (!treePaths.containsKey(path)) {
+			Msg.warn(this, "Node for "+type.getName()+" not found");
+			addNode(type);
+		}
+		GTreeNode node = treePaths.get(path);
 		if (node instanceof TypeInfoNode) {
 			return (TypeInfoNode) node;
 		}
-		if (node == null) {
-			throw new AssertException("Node for "+type.getName()+" not found");
-		}
+		// should be unreachable
 		throw new AssertException("Node for "+type.getName()+" is not the correct node type");
 	}
 }

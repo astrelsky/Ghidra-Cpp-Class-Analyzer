@@ -13,6 +13,7 @@ import ghidra.program.model.data.Category;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.VariableUtilities;
@@ -34,6 +35,7 @@ public class NamespaceSymbolFixer extends GhidraScript {
 		fixDataTypes();
 		fixStructures();
 		fixSymbols();
+		fixClasses();
 	}
 
 	private void fixDataTypes() throws Exception {
@@ -47,11 +49,17 @@ public class NamespaceSymbolFixer extends GhidraScript {
 		for (DataType dt : types) {
 			monitor.checkCanceled();
 			String name = dt.getName();
-			dt.setName(name.replaceAll("--", "::"));
+			try {
+				dt.setName(name.replaceAll("--", "::"));
+			} catch (DuplicateNameException e) {
+				DataTypePath path =
+					new DataTypePath(dt.getCategoryPath(), name.replaceAll("--", "::"));
+				printerr("Duplicate type "+path.toString());
+			}
 			monitor.incrementProgress(1);
 		}
 	}
-	
+
 	private void fixStructures() throws Exception {
 		DataTypeManager dtm = currentProgram.getDataTypeManager();
 		List<Structure> structs = CollectionUtils.asList(dtm.getAllStructures());
@@ -93,74 +101,30 @@ public class NamespaceSymbolFixer extends GhidraScript {
 
 	private void fixSymbols() throws Exception {
 		SymbolTable table = currentProgram.getSymbolTable();
-		List<Symbol> symbols =
-			StreamSupport.stream(table.getAllSymbols(false).spliterator(), false)
-				.filter(s -> s.getName(true).contains("--"))
-				.collect(Collectors.toList());
-		monitor.setMessage("Repairing Namespaces");
-		monitor.initialize(symbols.size());
-		for (Symbol symbol : symbols) {
+		monitor.setMessage("Repairing Symbols");
+		monitor.initialize(table.getNumSymbols());
+		for (Symbol symbol : table.getAllSymbols(false)) {
 			monitor.checkCanceled();
-			fixSymbol(symbol);
-			monitor.incrementProgress(1);
-		}
-		for (Symbol symbol : symbols) {
-			monitor.checkCanceled();
-			fixNamespace(symbol);
-			monitor.incrementProgress(1);
-		}
-	}
-
-	private void fixSymbol(Symbol symbol) throws Exception {
-		Symbol currentSymbol = symbol;
-		while (currentSymbol != null && !currentSymbol.isGlobal()) {
-			monitor.checkCanceled();
-			if (!currentSymbol.checkIsValid()) {
-				break;
-			}
-			String name = currentSymbol.getName();
+			String name = symbol.getName();
 			if (name.contains("--")) {
-				currentSymbol.setName(name.replaceAll("--", "::"), SourceType.USER_DEFINED);
-			}
-			//fixNamespace(currentSymbol);
-			currentSymbol = currentSymbol.getParentSymbol();
-		}
-	}
-
-	private void fixNamespace(Symbol symbol) throws Exception {
-		if (!symbol.checkIsValid()) {
-			return;
-		}
-		Namespace ns = symbol.getParentNamespace();
-		if (!ns.isGlobal()) {
-			String name = ns.getSymbol().getName();
-			if (name.contains("--")) {
-				try {
-					ns.getSymbol().setName(name.replaceAll("--", "::"), SourceType.USER_DEFINED);
-				} catch (DuplicateNameException e) {
-					correctNamespace(ns);
-				}
-				ns.getSymbol().delete();
-			}
-		} else {
-			try {
-				String name = symbol.getName();
 				symbol.setName(name.replaceAll("--", "::"), SourceType.USER_DEFINED);
-			} catch (DuplicateNameException e) {
 			}
+			monitor.incrementProgress(1);
 		}
 	}
 
-	private void correctNamespace(Namespace ns) throws Exception {
-		String name = ns.getSymbol().getName().replaceAll("--", "::");
+	private void fixClasses() throws Exception {
 		SymbolTable table = currentProgram.getSymbolTable();
-		List<Symbol> symbols =
-			StreamSupport.stream(table.getChildren(ns.getSymbol()).spliterator(), false)
-				.collect(Collectors.toList());
-		Namespace newNamespace = table.getNamespace(name, ns.getParentNamespace());
-		for (Symbol symbol : symbols) {
+		List<GhidraClass> classes = CollectionUtils.asList(table.getClassNamespaces());
+		monitor.setMessage("Repairing Classes");
+		monitor.initialize(classes.size());
+		for (GhidraClass gc : classes) {
 			monitor.checkCanceled();
-			symbol.setNamespace(newNamespace);
+			String name = gc.getName();
+			if (name.contains("--")) {
+				gc.getSymbol().setName(name.replaceAll("--", "::"), SourceType.USER_DEFINED);
+			}
+			monitor.incrementProgress(1);
 		}
 	}
 }

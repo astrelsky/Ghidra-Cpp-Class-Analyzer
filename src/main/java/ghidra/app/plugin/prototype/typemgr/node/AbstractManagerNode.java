@@ -1,6 +1,5 @@
 package ghidra.app.plugin.prototype.typemgr.node;
 
-import javax.help.UnsupportedOperationException;
 import javax.swing.Icon;
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
@@ -42,7 +41,7 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 
 	@Override
 	public final boolean isLeaf() {
-		return manager.getTypeCount() == 0;
+		return false;
 	}
 
 	@Override
@@ -68,11 +67,6 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 	@Override
 	public TypeInfoTreeNodeManager getManager() {
 		return manager.getTreeNodeManager();
-	}
-
-	@Override
-	public void setParent(long key) {
-		throw new UnsupportedOperationException("The root node cannot have a parent node");
 	}
 
 	@Override

@@ -2,7 +2,6 @@ package ghidra.app.plugin.prototype.typemgr.node;
 
 import ghidra.app.util.SymbolPath;
 import ghidra.util.Lock;
-import ghidra.util.SystemUtilities;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -13,22 +12,19 @@ import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 import cppclassanalyzer.database.schema.TypeInfoTreeNodeSchema;
 import cppclassanalyzer.database.tables.TypeInfoTreeNodeTable;
 import db.DBHandle;
-import db.DBListener;
 import db.StringField;
 import db.Table;
 import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
 
 import static cppclassanalyzer.database.record.TypeInfoTreeNodeRecord.*;
-import static cppclassanalyzer.database.schema.TypeInfoTreeNodeSchema.INDEXED_COLUMNS;
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
-public class TypeInfoTreeNodeManager implements DBListener {
+public class TypeInfoTreeNodeManager {
 
 	private final TypeInfoTreeNodeTable table;
 	private final ClassTypeInfoManager manager;
@@ -50,7 +46,6 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		this.manager = manager;
 		this.handler = new TransactionHandler(handle);
 		this.table = getTable(name);
-		handle.addListener(this);
 	}
 
 	private TypeInfoTreeNodeTable getTable(String name) {
@@ -61,8 +56,7 @@ public class TypeInfoTreeNodeManager implements DBListener {
 				rawTable = handle.createTable(
 					name,
 					TypeInfoTreeNodeSchema.SCHEMA,
-					TypeInfoTreeNodeSchema.INDEXED_COLUMNS
-				);
+					TypeInfoTreeNodeSchema.INDEXED_COLUMNS);
 				handler.end();
 			} catch (IOException e) {
 				dbError(e);
@@ -91,26 +85,13 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		return record;
 	}
 
-	TypeInfoTreeNodeRecord createRecord(List<String> paths, byte type) {
+	TypeInfoTreeNodeRecord createRecord(SymbolPath path, byte type) {
 		lock.acquire();
 		try {
-			SymbolPath path = new SymbolPath(paths);
 			TypeInfoTreeNodeRecord record = createRecord();
 			record.setStringValue(SYMBOL_PATH, path.getPath());
 			record.setStringValue(NAME, path.getName());
 			record.setByteValue(TYPE_ID, type);
-			SymbolPath parentPath = path.getParent();
-			if (parentPath != null) {
-				TypeInfoTreeNodeRecord parent = getRecord(parentPath);
-				if (parent == null) {
-					TypeInfoTreeNode node =
-						(TypeInfoTreeNode) createNamespaceNode(parentPath.asList());
-					parent = node.getRecord();
-				}
-				record.setLongValue(PARENT_KEY, parent.getKey());
-			} else {
-				record.setLongValue(PARENT_KEY, -1);
-			}
 			updateRecord(record);
 			return record;
 		} finally {
@@ -130,15 +111,11 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		return null;
 	}
 
-	public TypeInfoTreeNodeRecord getRecord(SymbolPath path) {
-		return getRecord(path.getPath());
-	}
-
 	private TypeInfoTreeNodeRecord getRecord(String path) {
 		lock.acquire();
 		try {
 			StringField field = new StringField(path);
-			long[] keys = table.getTable().findRecords(field, INDEXED_COLUMNS[0]);
+			long[] keys = table.getTable().findRecords(field, SYMBOL_PATH.ordinal());
 			if (keys.length == 1) {
 				return table.getRecord(keys[0]);
 			}
@@ -168,58 +145,22 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		return null;
 	}
 
-	GTreeNode createNamespaceNode(List<String> paths) {
+	GTreeNode createNamespaceNode(SymbolPath path) {
 		TypeInfoTreeNodeRecord record =
-			createRecord(paths, TypeInfoTreeNodeRecord.NAMESPACE_NODE);
+			createRecord(path, TypeInfoTreeNodeRecord.NAMESPACE_NODE);
 		return new NamespacePathNode(this, record);
 	}
 
-	GTreeNode createTypeNode(List<String> paths, ClassTypeInfoDB type) {
+	GTreeNode createTypeNode(ClassTypeInfoDB type) {
 		TypeInfoTreeNodeRecord record =
-			createRecord(paths, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
+			createRecord(type.getSymbolPath(), TypeInfoTreeNodeRecord.TYPEINFO_NODE);
 		record.setLongValue(TYPE_KEY, type.getKey());
 		updateRecord(record);
 		return new TypeInfoNode(type, record);
 	}
 
-	GTreeNode getNode(SymbolPath path) {
-		lock.acquire();
-		try {
-			TypeInfoTreeNodeRecord record = getRecord(path);
-			if (record != null) {
-				return getNode(record);
-			}
-		} finally {
-			lock.release();
-		}
-		return null;
-	}
-
 	private void dbError(IOException e) {
 		manager.dbError(e);
-	}
-
-	private GTreeNode fastGetNode(TypeInfoTreeNodeRecord record) {
-		if (root == null) {
-			// don't bother
-			return null;
-		}
-		long rootKey = root.getKey();
-		long key = record.getKey();
-		LinkedList<String> paths = new LinkedList<>();
-		while (key != rootKey) {
-			TypeInfoTreeNodeRecord parentRecord = getRecord(key);
-			paths.add(parentRecord.getStringValue(NAME));
-			key = parentRecord.getLongValue(PARENT_KEY);
-		}
-		GTreeNode node = (GTreeNode) root;
-		for (String path : (Iterable<String>) () -> paths.descendingIterator()) {
-			if (node == null) {
-				return null;
-			}
-			node = node.getChild(path);
-		}
-		return node != root ? node : null;
 	}
 
 	GTreeNode createNode(TypeInfoTreeNodeRecord record) {
@@ -232,14 +173,6 @@ public class TypeInfoTreeNodeManager implements DBListener {
 			default:
 				throw new AssertException("Unknown TypeInfoTreeNode ID");
 		}
-	}
-
-	public GTreeNode getNode(TypeInfoTreeNodeRecord record) {
-		GTreeNode node = fastGetNode(record);
-		if (node != null) {
-			return node;
-		}
-		return createNode(record);
 	}
 
 	public void updateRecord(TypeInfoTreeNodeRecord record) {
@@ -280,30 +213,6 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		}
 		children.sort(null);
 		return children;
-	}
-
-	private void refresh() {
-		this.root = root.rebuild();
-	}
-
-	@Override
-	public void dbRestored(DBHandle dbh) {
-		if (handle.equals(dbh)) {
-			SystemUtilities.runSwingLater(this::refresh);
-		}
-	}
-
-	@Override
-	public void dbClosed(DBHandle dbh) {
-		// let the plugin handle it
-	}
-
-	@Override
-	public void tableDeleted(DBHandle dbh, Table table) {
-	}
-
-	@Override
-	public void tableAdded(DBHandle dbh, Table table) {
 	}
 
 	// dbHandle transactions are different

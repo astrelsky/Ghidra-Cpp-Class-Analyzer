@@ -184,12 +184,6 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 		return type.getManager().getTreeNodeManager();
 	}
 
-	@Override
-	public void setParent(long key) {
-		record.setLongValue(PARENT_KEY, key);
-		getManager().updateRecord(record);
-	};
-
 	private static enum ModifierType {
 		NORMAL,
 		ABSTRACT,
