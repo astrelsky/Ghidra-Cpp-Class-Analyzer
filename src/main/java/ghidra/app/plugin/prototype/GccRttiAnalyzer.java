@@ -226,7 +226,6 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			}
 		}
 		locateVTT(vtable);
-		monitor.incrementProgress(1);
 	}
 
 	public final void markDataAsConstant(Address address) {
@@ -272,7 +271,6 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			createVtable((GnuVtable) vtable);
 			monitor.incrementProgress(1);
 		}
-		monitor.setMessage(null);
 	}
 
 	private Set<Address> getStaticReferences(String typeString) throws Exception {
