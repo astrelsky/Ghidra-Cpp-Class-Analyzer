@@ -1,5 +1,6 @@
 package cppclassanalyzer.decompiler;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -9,7 +10,10 @@ import ghidra.app.decompiler.ClangTokenGroup;
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileOptions;
 import ghidra.app.decompiler.DecompileResults;
+import ghidra.app.decompiler.component.DecompilerController;
+import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import ghidra.framework.options.ToolOptions;
+import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.OptionsService;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
@@ -20,10 +24,14 @@ import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
+import com.google.common.cache.Cache;
+
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import util.CollectionUtils;
 
 public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerUtils {
+
+	private static final Map<Program, Map<Function, DecompileResults>> caches = new HashMap<>();
 
 	private DecompilerUtils() {
 	}
@@ -54,6 +62,27 @@ public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerU
 		return decompInterface;
 	}
 
+	public static DecompileResults decompileFunction(Function f, TaskMonitor monitor, int timeout) {
+		Program program = f.getProgram();
+		Map<Function, DecompileResults> cache = getDecompilerCache(program);
+		if (cache.containsKey(f)) {
+			return cache.get(f);
+		}
+		DecompInterface decompInterface = setUpDecompiler(program);
+		try {
+			DecompileResults results;
+			if (timeout > 0) {
+				results = decompileFunction(f, decompInterface, monitor, timeout);
+			} else {
+				results = decompileFunction(f, decompInterface, monitor);
+			}
+			cache.put(f, results);
+			return results;
+		} finally {
+			decompInterface.dispose();
+		}
+	}
+
 	public static DecompileResults decompileFunction(Function f, DecompInterface decompInterface,
 			TaskMonitor monitor) {
 		return decompileFunction(f, decompInterface, monitor,
@@ -62,6 +91,12 @@ public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerU
 
 	public static DecompileResults decompileFunction(Function f, DecompInterface decompInterface,
 			TaskMonitor monitor, int timeout) {
+		if (caches.containsKey(f.getProgram())) {
+			Map<Function, DecompileResults> cache = caches.get(f.getProgram());
+			if (cache.containsKey(f)) {
+				return cache.get(f);
+			}
+		}
 		return decompInterface.decompileFunction(f, timeout, monitor);
 	}
 
@@ -72,28 +107,21 @@ public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerU
 
 	public static List<ClangStatement> getClangStatements(Function f, TaskMonitor monitor,
 			int timeout) throws CancelledException {
-		Program program = Objects.requireNonNull(f).getProgram();
-		DecompInterface decompInterface = setUpDecompiler(program);
-		try {
-			DecompileResults results;
-			if (timeout > 0) {
-				results = decompileFunction(f, decompInterface, monitor, timeout);
-			} else {
-				results = decompileFunction(f, decompInterface, monitor);
-			}
-			monitor.checkCanceled();
-			ClangNodeIterator it = new ClangNodeIterator(results.getCCodeMarkup());
-			return CollectionUtils.asStream(it)
-				.filter(ClangTokenGroup.class::isInstance)
-				.map(ClangTokenGroup.class::cast)
-				.map(ClangNodeIterator::new)
-				.flatMap(CollectionUtils::asStream)
-				.filter(ClangStatement.class::isInstance)
-				.map(ClangStatement.class::cast)
-				.collect(Collectors.toList());
-		} finally {
-			decompInterface.dispose();
-		}
+		DecompileResults results = decompileFunction(f, monitor, timeout);
+		monitor.checkCanceled();
+		return getClangStatements(results.getCCodeMarkup());
+	}
+
+	public static List<ClangStatement> getClangStatements(ClangTokenGroup group) {
+		ClangNodeIterator it = new ClangNodeIterator(group);
+		return CollectionUtils.asStream(it)
+			.filter(ClangTokenGroup.class::isInstance)
+			.map(ClangTokenGroup.class::cast)
+			.map(ClangNodeIterator::new)
+			.flatMap(CollectionUtils::asStream)
+			.filter(ClangStatement.class::isInstance)
+			.map(ClangStatement.class::cast)
+			.collect(Collectors.toList());
 	}
 
 	public static HighFunction getHighFunction(Function f, TaskMonitor monitor)
@@ -119,6 +147,48 @@ public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerU
 		return IntStream.range(0, locals.getNumParams())
 			.mapToObj(locals::getParam)
 			.collect(Collectors.toList());
+	}
+
+	public static Map<Function, DecompileResults> getDecompilerCache(Program program) {
+		// private DecompilerController controller;
+		if (caches.containsKey(program)) {
+			return caches.get(program);
+		}
+		return getDecompilerCache(CppClassAnalyzerUtils.getTool(program));
+	}
+
+	private static DecompilerController getController(DecompilerProvider provider)
+			throws Exception {
+		Field field = DecompilerProvider.class.getDeclaredField("controller");
+		field.setAccessible(true);
+		DecompilerController controller = (DecompilerController) field.get(provider);
+		field.setAccessible(false);
+		return controller;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<Function, DecompileResults> getCache(DecompilerController controller)
+			throws Exception {
+		Field field = DecompilerController.class.getDeclaredField("decompilerCache");
+		field.setAccessible(true);
+		Cache<Function, DecompileResults> cache =
+			(Cache<Function, DecompileResults>) field.get(controller);
+		field.setAccessible(false);
+		return cache.asMap();
+	}
+
+	public static Map<Function, DecompileResults> getDecompilerCache(PluginTool tool) {
+		DecompilerProvider provider =
+			(DecompilerProvider) tool.getComponentProvider("Decompiler");
+		if (provider == null) {
+			return null;
+		}
+		try {
+			DecompilerController controller = getController(provider);
+			return getCache(controller);
+		} catch (Exception e) {
+			throw new AssertException(e);
+		}
 	}
 
 }

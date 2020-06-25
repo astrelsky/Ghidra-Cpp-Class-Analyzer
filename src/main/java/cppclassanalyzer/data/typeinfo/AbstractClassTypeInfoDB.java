@@ -364,11 +364,16 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 				return struct;
 			}
 		}
+		refreshDataType();
+		return struct;
+	}
+
+	public void refreshDataType() {
+		ClassTypeInfoRecord record = getRecord();
 		AbstractCppClassBuilder builder = getClassBuilder();
 		struct = builder.getDataType();
 		record.setLongValue(DATATYPE_ID, struct.getUniversalID().getValue());
 		manager.updateRecord(record);
-		return struct;
 	}
 
 	public void setClassDataType(Structure struct) {

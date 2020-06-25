@@ -199,9 +199,13 @@ public abstract class AbstractCppClassBuilder {
 		if (struct.getNumComponents() == 0 || struct.isMachineAligned()) {
 			return struct;
 		}
-		StructurePackResult results = AlignedStructureInspector.packComponents(struct);
-		if (!results.componentsChanged) {
-			struct.setMinimumAlignment(results.alignment);
+		try {
+			StructurePackResult results = AlignedStructureInspector.packComponents(struct);
+			if (!results.componentsChanged) {
+				struct.setMinimumAlignment(results.alignment);
+			}
+		} catch (IndexOutOfBoundsException e) {
+			Msg.error(AlignedStructureInspector.class, e);
 		}
 		return struct;
 	}

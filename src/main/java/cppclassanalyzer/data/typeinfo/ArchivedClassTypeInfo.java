@@ -255,7 +255,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB implements Arch
 		return virtualKeys;
 	}
 
-		/**
+	/**
 	 * @return the baseOffsets
 	 */
 	public int[] getBaseOffsetValues() {

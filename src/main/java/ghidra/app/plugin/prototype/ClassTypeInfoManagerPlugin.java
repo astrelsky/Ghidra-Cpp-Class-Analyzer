@@ -15,6 +15,7 @@ import ghidra.app.plugin.core.datamgr.archive.ArchiveManagerListener;
 import ghidra.app.plugin.core.datamgr.archive.DataTypeManagerHandler;
 import ghidra.app.plugin.core.datamgr.archive.FileArchive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
+import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import ghidra.app.plugin.prototype.typemgr.TypeInfoTreeProvider;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoNode;
 import ghidra.app.services.ClassTypeInfoManagerService;
@@ -32,6 +33,8 @@ import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.vtable.ArchivedVtable;
+import cppclassanalyzer.decompiler.DecompilerAPI;
+import cppclassanalyzer.decompiler.action.FillOutClassAction;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 
 import ghidra.program.model.address.Address;
@@ -65,6 +68,7 @@ import docking.widgets.tree.GTree;
 public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		implements ClassTypeInfoManagerService, PopupActionProvider, ArchiveManagerListener {
 
+	private final DecompilerAPI api;
 	private final List<ClassTypeInfoManager> managers;
 	private final List<TypeInfoManagerListener> listeners;
 	private final TypeInfoTreeProvider provider;
@@ -73,6 +77,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	public ClassTypeInfoManagerPlugin(PluginTool tool) {
 		super(tool, true, true);
+		this.api = new DecompilerAPI(tool);
 		this.clipboard = new Clipboard(getName());
 		this.listeners = new ArrayList<>();
 		this.managers = new ArrayList<>();
@@ -84,17 +89,36 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		DataTypeManagerService service = tool.getService(DataTypeManagerService.class);
 		dtmPlugin = (DataTypeManagerPlugin) service;
 		dtmPlugin.getDataTypeManagerHandler().addArchiveManagerListener(this);
+		DecompilerProvider provider =
+			(DecompilerProvider) tool.getComponentProvider("Decompiler");
+		provider.addLocalAction(new FillOutClassAction(this));
+	}
+
+	@Override
+	protected void programOpened(Program program) {
+		managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
+	}
+
+	@Override
+	protected void programClosed(Program program) {
+		managers.remove(getManager(program));
+	}
+
+	@Override
+	protected void programActivated(Program program) {
+		ClassTypeInfoManager manager = getManager(program);
+		managerAdded(manager);
+	}
+
+	@Override
+	protected void programDeactivated(Program program) {
+		ClassTypeInfoManager manager = getManager(program);
+		listeners.forEach(l -> l.managerClosed(manager));
 	}
 
 	@Override
 	public List<ClassTypeInfoManager> getManagers() {
 		return Collections.unmodifiableList(managers);
-	}
-
-	public List<ClassTypeInfoManager> getManagersByName(List<String> names) {
-		return managers.stream()
-				.filter(m -> names.contains(m.getName()))
-				.collect(Collectors.toList());
 	}
 
 	@Override
@@ -132,6 +156,18 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		managerAdded(manager);
 	}
 
+	@Override
+	public DecompilerAPI getDecompilerAPI(Program program) {
+		api.setProgram(program);
+		return api;
+	}
+
+	public List<ClassTypeInfoManager> getManagersByName(List<String> names) {
+		return managers.stream()
+				.filter(m -> names.contains(m.getName()))
+				.collect(Collectors.toList());
+	}
+
 	public boolean hasManager(ProjectArchive archive) {
 		String name = archive.getName();
 		return managers.stream()
@@ -147,28 +183,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	private void projectManagerOpened(ClassTypeInfoManager manager) {
 		managerAdded(manager);
-	}
-
-	@Override
-	protected void programOpened(Program program) {
-		managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
-	}
-
-	@Override
-	protected void programClosed(Program program) {
-		managers.remove(getManager(program));
-	}
-
-	@Override
-	protected void programActivated(Program program) {
-		ClassTypeInfoManager manager = getManager(program);
-		managerAdded(manager);
-	}
-
-	@Override
-	protected void programDeactivated(Program program) {
-		ClassTypeInfoManager manager = getManager(program);
-		listeners.forEach(l -> l.managerClosed(manager));
 	}
 
 	public Clipboard getClipboard() {
@@ -214,6 +228,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	protected void dispose() {
 		tool.removeComponentProvider(provider);
 		provider.dispose();
+		api.dispose();
 	}
 
 	public TypeInfoTreeProvider getProvider() {

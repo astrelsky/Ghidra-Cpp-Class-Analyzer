@@ -20,6 +20,7 @@ import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.vtable.ArchivedVtable;
+import cppclassanalyzer.decompiler.DecompilerAPI;
 import docking.widgets.tree.GTree;
 
 import ghidra.program.model.listing.Program;
@@ -75,5 +76,7 @@ public interface ClassTypeInfoManagerService {
 
 	public ArchivedClassTypeInfo getArchivedClassTypeInfo(String symbolName);
 	public ArchivedVtable getArchivedVtable(String symbolName);
+
+	public DecompilerAPI getDecompilerAPI(Program program);
 
 }

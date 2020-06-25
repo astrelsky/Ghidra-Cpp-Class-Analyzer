@@ -38,8 +38,7 @@ import cppclassanalyzer.data.vtable.VtableModelDB;
 import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
-import ghidra.program.model.data.GenericCallingConvention;
-import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.*;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.ExternalLocation;
@@ -48,6 +47,7 @@ import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.Lock;
+import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongArrayList;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.datastruct.RedBlackLongKeySet;
@@ -76,7 +76,7 @@ import util.CollectionUtils;
 // man = cppclassanalyzer.data.ClassTypeInfoManagerDB(currentProgram)
 public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoManager {
 
-	private static final Icon[] ICONS = new Icon[]{
+	private static final Icon[] ICONS = new Icon[] {
 		ResourceManager.loadImage("images/openBookRed.png"),
 		ResourceManager.loadImage("images/closedBookRed.png")
 	};
@@ -441,19 +441,17 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		if (cc.equals(GenericCallingConvention.thiscall)) {
 			return getType((GhidraClass) fun.getParentNamespace());
 		}
-		throw new InvalidParameterException(
-			String.format("Ghidra-Cpp-Class-Analyzer: %s is not within a class namespace",
-				fun.getSignature(true)));
+		return null;
 	}
 
 	@Override
 	public ClassTypeInfoDB getType(String name) {
 		SymbolTable table = program.getSymbolTable();
 		return CollectionUtils.asStream(table.getSymbols(name))
-			.map(Symbol::getAddress)
-			.map(this::getType)
-			.findFirst()
-			.orElse(null);
+				.map(Symbol::getAddress)
+				.map(this::getType)
+				.findFirst()
+				.orElse(null);
 	}
 
 	@Override
@@ -567,8 +565,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	public Stream<Vtable> getVtableStream() {
 		// vtableTable is NOT sorted
 		return getTypeStream()
-			.map(ClassTypeInfo::getVtable)
-			.filter(Vtable::isValid);
+				.map(ClassTypeInfo::getVtable)
+				.filter(Vtable::isValid);
 	}
 
 	private ClassTypeInfoRecord[] getClassRecords() {
@@ -590,7 +588,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	private Stream<ClassTypeInfoRecord> getRecordStream(ClassTypeInfoRecord[] records) {
 		return Arrays.stream(records)
-			.parallel();
+				.parallel();
 	}
 
 	@Override
@@ -792,11 +790,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	@Override
 	public ClassTypeInfoDB getExternalClassTypeInfo(Address address) {
 		String mangled = Arrays.stream(program.getSymbolTable().getSymbols(address))
-			.map(Symbol::getName)
-			.filter(s -> s.startsWith("_ZTI"))
-			.filter(s -> !s.contains("@"))
-			.findFirst()
-			.orElse(null);
+				.map(Symbol::getName)
+				.filter(s -> s.startsWith("_ZTI"))
+				.filter(s -> !s.contains("@"))
+				.findFirst()
+				.orElse(null);
 		if (mangled != null) {
 			ArchivedClassTypeInfo type = plugin.getExternalClassTypeInfo(program, mangled);
 			if (type != null) {
@@ -819,6 +817,25 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	@Override
 	public ClassTypeInfoDB getType(long key) {
 		return worker.getType(key);
+	}
+
+	@Override
+	public AbstractClassTypeInfoDB getType(UniversalID id) {
+		lock.acquire();
+		try {
+			Table table = worker.getTables().getTypeTable();
+			LongField field = new LongField(id.getValue());
+			long[] keys =
+				table.findRecords(field, ClassTypeInfoSchemaFields.DATATYPE_ID.ordinal());
+			if (keys.length == 1) {
+				return worker.getType(keys[0]);
+			}
+		} catch (IOException e) {
+			dbError(e);
+		} finally {
+			lock.release();
+		}
+		return null;
 	}
 
 	private static class ReferenceCounter implements Comparable<ReferenceCounter> {
@@ -866,9 +883,9 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	private abstract class RttiRecordWorker
-		extends AbstractRttiRecordWorker<AbstractClassTypeInfoDB, AbstractVtableDB,
-			ClassTypeInfoRecord, VtableRecord, ProgramRttiTablePair>
-		implements ProgramRttiRecordManager {
+			extends
+			AbstractRttiRecordWorker<AbstractClassTypeInfoDB, AbstractVtableDB, ClassTypeInfoRecord, VtableRecord, ProgramRttiTablePair>
+			implements ProgramRttiRecordManager {
 
 		RttiRecordWorker(ProgramRttiTablePair tables, ProgramRttiCachePair caches) {
 			super(tables, caches, getHandler());

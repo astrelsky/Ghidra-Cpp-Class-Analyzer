@@ -170,36 +170,25 @@ public class ClassTypeInfoUtils {
 	 * @return the placeholder struct for a ClassTypeInfo in a specified DataTypeManager
 	 */
 	public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm) {
-		int id = dtm.startTransaction("getting placeholder struct for "+type.getName());
-		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
-		DataType struct = dtm.getDataType(path, type.getName());
+		ProgramClassTypeInfoManager manager =
+			getManager(type.getGhidraClass().getSymbol().getProgram());
 		DataType thiscallStruct =
 			VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
-		if (struct == null) {
-			if (isCorrectDataTypePath(thiscallStruct, type)) {
-				struct = thiscallStruct;
-			} else {
+		ClassTypeInfo otherType = manager.getType(thiscallStruct.getUniversalID());
+		if (otherType != null && !otherType.equals(type)) {
+			String msg = "Variable Utils returned wrong class structure! " + type.getName();
+			Msg.warn(ClassTypeInfoUtils.class, msg);
+			int id = dtm.startTransaction("getting placeholder struct for "+type.getName());
+			CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
+			DataType struct = dtm.getDataType(path, type.getName());
+			if (struct == null) {
 				struct = new StructureDataType(path, type.getName(), 0, dtm);
 				struct = dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
 			}
+			dtm.endTransaction(id, true);
+			return (Structure) struct;
 		}
-		if (!struct.equals(thiscallStruct)) {
-			String msg = "Variable Utils returned wrong class structure! " + type.getName();
-			Msg.info(ClassTypeInfoUtils.class, msg);
-		}
-		dtm.endTransaction(id, true);
-		return (Structure) struct;
-	}
-
-	private static boolean isCorrectDataTypePath(DataType struct, ClassTypeInfo type) {
-		if (struct.getCategoryPath().getPath().contains("DWARF")) {
-			// short circuit
-			return true;
-		}
-		CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
-		DataTypePath dtPath = struct.getDataTypePath();
-		return dtPath.getCategoryPath().equals(path)
-			&& dtPath.getDataTypeName().equals(type.getName());
+		return (Structure) thiscallStruct;
 	}
 
 	/**

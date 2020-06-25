@@ -10,8 +10,8 @@ public final class ArchivedClassTypeInfoSchema
 	public static final ArchivedClassTypeInfoSchema SCHEMA =
 		new ArchivedClassTypeInfoSchema(VERSION);
 	public static final int[] INDEXED_COLUMNS = new int[] {
-		ArchivedClassTypeInfoSchemaFields.TYPENAME.ordinal(),
-		ArchivedClassTypeInfoSchemaFields.MANGLED_SYMBOL.ordinal()
+		ArchivedClassTypeInfoSchemaFields.MANGLED_SYMBOL.ordinal(),
+		ArchivedClassTypeInfoSchemaFields.DATATYPE_ID.ordinal()
 	};
 
 	private ArchivedClassTypeInfoSchema(int version) {

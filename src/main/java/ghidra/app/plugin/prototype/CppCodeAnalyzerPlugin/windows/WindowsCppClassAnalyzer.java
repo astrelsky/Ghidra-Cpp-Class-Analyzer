@@ -9,7 +9,6 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractConstructorAnalysisCmd;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
@@ -54,7 +53,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 		}
 		return false;
 	}
-	
+
 	@Override
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
 			throws CancelledException {
@@ -158,9 +157,9 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	}
 
 	@Override
-	protected AbstractConstructorAnalysisCmd getConstructorAnalyzer() {
+	protected void init() {
 		this.vfTableAnalyzer = new WindowsVftableAnalysisCmd();
-		return new WindowsConstructorAnalysisCmd();
+		this.constructorAnalyzer = new WindowsConstructorAnalysisCmd();
 	}
 
 	@Override

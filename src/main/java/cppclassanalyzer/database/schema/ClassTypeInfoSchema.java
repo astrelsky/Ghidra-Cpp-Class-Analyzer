@@ -8,7 +8,8 @@ public final class ClassTypeInfoSchema extends AbstractSchema<ClassTypeInfoRecor
 	private static final int VERSION = 0;
 	public static final ClassTypeInfoSchema SCHEMA = new ClassTypeInfoSchema(VERSION);
 	public static final int[] INDEXED_COLUMNS = new int[] {
-		ClassTypeInfoSchemaFields.ADDRESS.ordinal()
+		ClassTypeInfoSchemaFields.ADDRESS.ordinal(),
+		ClassTypeInfoSchemaFields.DATATYPE_ID.ordinal()
 	};
 
 	private ClassTypeInfoSchema(int version) {

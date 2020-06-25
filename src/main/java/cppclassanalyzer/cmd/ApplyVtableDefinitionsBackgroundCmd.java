@@ -10,7 +10,6 @@ import ghidra.program.model.data.FunctionDefinition;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.SourceType;
-import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -70,9 +69,6 @@ public class ApplyVtableDefinitionsBackgroundCmd extends BackgroundCommand {
 			setStatusMsg(e.getLocalizedMessage());
 			return false;
 		}
-		String msg = "Vtable definitions for " + vtable.getTypeInfo().getFullName()
-			+ " applied";
-		Msg.info(this, msg);
 		return true;
 	}
 

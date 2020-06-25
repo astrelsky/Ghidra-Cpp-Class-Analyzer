@@ -262,8 +262,6 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	private void createVtables() throws Exception {
 		findAndCreatePureVirtualFunction();
 		manager.findVtables(monitor);
-		//ClassTypeInfoUtils.sortByMostDerived(program, classes, monitor);
-		//Collections.reverse(classes);
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Creating vtables");
 		for (Vtable vtable : manager.getVtables()) {

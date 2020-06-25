@@ -14,6 +14,7 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.symbol.Reference;
 import ghidra.util.exception.AssertException;
 
+import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import util.CollectionUtils;
 
@@ -22,12 +23,12 @@ public class GccDecompilerConstructorAnalysisCmd
 
 	private static final String NAME = GccDecompilerConstructorAnalysisCmd.class.getSimpleName();
 
-	GccDecompilerConstructorAnalysisCmd(int timeout) {
-		super(NAME, timeout);
+	GccDecompilerConstructorAnalysisCmd(DecompilerAPI api) {
+		super(NAME, api);
 	}
 
-	public GccDecompilerConstructorAnalysisCmd(ClassTypeInfo typeinfo, int timeout) {
-		super(NAME, timeout);
+	public GccDecompilerConstructorAnalysisCmd(ClassTypeInfo typeinfo, DecompilerAPI api) {
+		super(NAME, api);
 		this.type = typeinfo;
 	}
 

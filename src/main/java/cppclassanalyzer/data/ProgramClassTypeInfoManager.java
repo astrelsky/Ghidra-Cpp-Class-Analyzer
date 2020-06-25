@@ -10,6 +10,7 @@ import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
+import ghidra.util.UniversalID;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -145,5 +146,7 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 	 * @return the TypeInfo at the address
 	 */
 	TypeInfo getTypeInfo(Address address, boolean resolve);
+
+	ClassTypeInfoDB getType(UniversalID id);
 
 }

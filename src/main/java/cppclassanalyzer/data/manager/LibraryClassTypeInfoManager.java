@@ -131,7 +131,7 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 	public String toString() {
 		return name;
 	}
-	
+
 	DatabaseObject getArchivedData(String symbolName) {
 		return worker.getArchivedData(symbolName);
 	}

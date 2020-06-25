@@ -1,14 +1,11 @@
 package cppclassanalyzer.utils;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 import ghidra.app.cmd.function.AddFunctionTagCmd;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
-import ghidra.framework.main.AppInfo;
 import ghidra.framework.model.DomainObject;
-import ghidra.framework.model.Project;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
@@ -32,10 +29,10 @@ public final class CppClassAnalyzerUtils {
 	 * @return the first found PluginTool or null if none found
 	 */
 	public static PluginTool getTool(DomainObject obj) {
-		Project project = AppInfo.getActiveProject();
-		PluginTool[] tools = project.getToolManager().getRunningTools();
-		return Arrays.stream(tools)
-			.filter(obj::isUsedBy)
+		return obj.getConsumerList()
+			.stream()
+			.filter(PluginTool.class::isInstance)
+			.map(PluginTool.class::cast)
 			.findFirst()
 			.orElse(null);
 	}
