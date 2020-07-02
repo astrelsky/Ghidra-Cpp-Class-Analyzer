@@ -3,25 +3,24 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsClassTypeInfo;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
+import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.function.Consumer;
 
 public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 
 	private static final String NAME = WindowsVftableAnalysisCmd.class.getSimpleName();
 
 
-	private ClassTypeInfo typeinfo;
+	private ClassTypeInfo type;
+	private TaskMonitor monitor;
 
 	protected WindowsVftableAnalysisCmd() {
 		super(NAME, false, true, false);
@@ -29,11 +28,11 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 
 	public WindowsVftableAnalysisCmd(ClassTypeInfo type) {
 		this();
-		this.typeinfo = type;
+		this.type = type;
 	}
 
 	public void setTypeInfo(ClassTypeInfo type) {
-		this.typeinfo = type;
+		this.type = type;
 	}
 
 	@Override
@@ -43,8 +42,9 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 			Msg.error(this, message);
 			return false;
 		}
+		this.monitor = monitor;
 		try {
-			Vtable vtable = typeinfo.getVtable();
+			Vtable vtable = type.getVtable();
 			if (!Vtable.isValid(vtable)) {
 				return false;
 			}
@@ -56,16 +56,23 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 		return true;
 	}
 
-	private void setupFunctions(Vtable vftable) {
-		ClassTypeInfo type = vftable.getTypeInfo();
-		Consumer<Function> typeSetter = f -> ClassTypeInfoUtils.setClassFunction(type, f);
+	private static boolean isPureVirtual(Function f) {
+		return f.getName().equals(WindowsClassTypeInfo.PURE_VIRTUAL_FUNCTION_NAME);
+	}
+
+	private void setupFunctions(Vtable vftable) throws CancelledException {
 		Function[][] functionTables = vftable.getFunctionTables();
-		Arrays.stream(functionTables)
-			.flatMap(Arrays::stream)
-			.filter(Objects::nonNull)
-			.filter(CppClassAnalyzerUtils::isDefaultFunction)
-			.map(CppClassAnalyzerUtils::createThunkFunctions)
-			.forEach(typeSetter);
+		for (Function[] functionTable : functionTables) {
+			monitor.checkCanceled();
+			for (Function f : functionTable) {
+				monitor.checkCanceled();
+				if (!CppClassAnalyzerUtils.isDefaultFunction(f) || isPureVirtual(f)) {
+					continue;
+				}
+				CppClassAnalyzerUtils.createThunkFunctions(f);
+				ClassTypeInfoUtils.setClassFunction(type, f);
+			}
+		}
 	}
 
 }

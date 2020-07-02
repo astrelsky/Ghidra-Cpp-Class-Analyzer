@@ -3,6 +3,7 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
@@ -69,6 +70,10 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 		return true;
 	}
 
+	private static boolean isPureVirtual(Function f) {
+		return f.getName().equals(GnuUtils.PURE_VIRTUAL_FUNCTION_NAME);
+	}
+
 	private void setupFunctions(Vtable vftable) throws Exception {
 		ClassTypeInfo type = vftable.getTypeInfo();
 		Function[][] functionTables = vftable.getFunctionTables();
@@ -76,11 +81,12 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 		for (int i = 0; i < functionTables.length; i++) {
 			monitor.checkCanceled();
 			if (i == 0) {
-				for (Function function : functionTables[i]) {
+				for (Function f : functionTables[i]) {
 					monitor.checkCanceled();
-					if (!CppClassAnalyzerUtils.isDefaultFunction(function)) {
+					if (!CppClassAnalyzerUtils.isDefaultFunction(f) || isPureVirtual(f)) {
 						continue;
-					} getClassFunction(program, type, function.getEntryPoint());
+					}
+					getClassFunction(program, type, f.getEntryPoint());
 				}
 			} else {
 				setupThunkFunctions(type, vftable, functionTables[i], i);
