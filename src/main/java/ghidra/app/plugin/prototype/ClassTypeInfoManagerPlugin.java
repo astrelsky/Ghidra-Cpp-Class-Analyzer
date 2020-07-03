@@ -100,7 +100,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		try {
 			managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
 		} catch (SchemaMismatchException e) {
-			Msg.showInfo(this, null, "Outdated Schema", e.getMessage());
+			Msg.showInfo(this, null, "Ghidra C++ Class Analyzer", e.getMessage());
 		}
 	}
 
