@@ -5,6 +5,7 @@ import java.util.Objects;
 import ghidra.app.cmd.function.AddFunctionTagCmd;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
+import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.framework.model.DomainObject;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
@@ -13,6 +14,8 @@ import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.SymbolUtilities;
 import ghidra.util.Msg;
+
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 
 public final class CppClassAnalyzerUtils {
 
@@ -95,5 +98,19 @@ public final class CppClassAnalyzerUtils {
 			function = function.getThunkedFunction(true);
 		}
 		return function;
+	}
+
+	/**
+	 * Gets the ClassTypeInfoManager for the specified program
+	 *
+	 * @return the program's ClassTypeInfoManager
+	 */
+	public static ProgramClassTypeInfoManager getManager(Program program) {
+		PluginTool tool = getTool(program);
+		if (tool == null) {
+			return null;
+		}
+		ClassTypeInfoManagerService service = tool.getService(ClassTypeInfoManagerService.class);
+		return service.getManager(program);
 	}
 }

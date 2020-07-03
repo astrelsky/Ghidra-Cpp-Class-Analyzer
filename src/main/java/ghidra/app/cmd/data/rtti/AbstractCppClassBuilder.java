@@ -196,10 +196,14 @@ public abstract class AbstractCppClassBuilder {
 		DataTypeManager dtm = struct.getDataTypeManager();
 		struct =
 			(Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
-		if (struct.getNumComponents() == 0 || struct.isMachineAligned()) {
+		boolean isAligned = struct.isInternallyAligned() || struct.isDefaultAligned()
+			|| struct.isMachineAligned();
+		if (struct.getNumComponents() == 0 || isAligned) {
 			return struct;
 		}
 		try {
+			// TODO this seems to get stuck in inf loop somewhere.
+			// Find cause and report to ghidra devs if necessary
 			StructurePackResult results = AlignedStructureInspector.packComponents(struct);
 			if (!results.componentsChanged) {
 				struct.setMinimumAlignment(results.alignment);

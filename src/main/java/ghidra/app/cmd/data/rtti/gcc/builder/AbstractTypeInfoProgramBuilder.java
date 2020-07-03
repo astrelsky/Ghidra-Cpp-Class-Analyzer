@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.List;
 
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
@@ -22,6 +21,8 @@ import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.database.ProgramBuilder;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
@@ -53,7 +54,7 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 		PluginTool tool = env.launchDefaultTool();
 		tool.addPlugin(ClassTypeInfoManagerPlugin.class.getName());
 		env.open(program);
-		manager = ClassTypeInfoUtils.getManager(program);
+		manager = CppClassAnalyzerUtils.getManager(program);
 		startTransaction();
 		typeMap = getTypeInfoMap();
 		nameMap = getTypeNameMap();

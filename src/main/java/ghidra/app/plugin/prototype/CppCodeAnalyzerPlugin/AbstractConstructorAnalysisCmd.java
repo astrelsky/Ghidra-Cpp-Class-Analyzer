@@ -124,9 +124,6 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 		function.setParentNamespace(typeinfo.getGhidraClass());
 		function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
 		CppClassAnalyzerUtils.setConstructorDestructorTag(function, !destructor);
-		// necessary due to ghidra bug.
-		//function.setCustomVariableStorage(true);
-		//function.setCustomVariableStorage(false);
 	}
 
 	protected void createSubConstructors(ClassTypeInfo type, Function constructor,
@@ -201,7 +198,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 
 		protected List<Address> getCalledFunctionAddresses() {
 			AddressSetView body = function.getBody();
-			return function.getCalledFunctions(null)
+			return function.getCalledFunctions(TaskMonitor.DUMMY)
 				.stream()
 				.filter(CppClassAnalyzerUtils::isDefaultFunction)
 				.map(Function::getSymbol)

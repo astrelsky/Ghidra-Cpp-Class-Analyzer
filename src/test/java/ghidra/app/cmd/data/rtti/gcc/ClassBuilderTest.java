@@ -23,6 +23,7 @@ import ghidra.program.model.symbol.Namespace;
 import org.junit.Test;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import generic.json.JSONParser;
 import generic.json.JSONToken;
 import resources.ResourceManager;
@@ -65,7 +66,7 @@ public class ClassBuilderTest extends GenericGccRttiTest {
 	public void test() throws Exception {
         X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
         ProgramDB program = builder.getProgram();
-        ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(program);
+        ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
         List<SerializedNamespace> namespaces = parseData();
         runGccRttiAnalyzer(program);
         runClassAnalyzer(program);

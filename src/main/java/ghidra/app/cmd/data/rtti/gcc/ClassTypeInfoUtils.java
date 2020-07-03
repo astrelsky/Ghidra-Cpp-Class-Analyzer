@@ -18,6 +18,7 @@ import ghidra.app.util.XReferenceUtil;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB.TypeId;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.SpecialAddress;
@@ -53,7 +54,7 @@ public class ClassTypeInfoUtils {
 	 */
 	public static Vtable findVtable(Program program, Address address, TaskMonitor monitor)
 		throws CancelledException {
-			ProgramClassTypeInfoManager manager = getManager(program);
+			ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 			ClassTypeInfo type = manager.getType(address);
 			if (type != null) {
 				return findVtable(program, type, monitor);
@@ -171,7 +172,7 @@ public class ClassTypeInfoUtils {
 	 */
 	public static Structure getPlaceholderStruct(ClassTypeInfo type, DataTypeManager dtm) {
 		ProgramClassTypeInfoManager manager =
-			getManager(type.getGhidraClass().getSymbol().getProgram());
+			CppClassAnalyzerUtils.getManager(type.getGhidraClass().getSymbol().getProgram());
 		DataType thiscallStruct =
 			VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
 		ClassTypeInfo otherType = manager.getType(thiscallStruct.getUniversalID());
@@ -233,6 +234,9 @@ public class ClassTypeInfoUtils {
 			cmd.applyTo(program);
 		}
 		try {
+			if (function.isThunk()) {
+				function = function.getThunkedFunction(true);
+			}
 			function.setParentNamespace(type.getGhidraClass());
 			function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
 			// necessary due to ghidra bug.
@@ -258,6 +262,9 @@ public class ClassTypeInfoUtils {
 			DisassembleCommand cmd =
 				new DisassembleCommand(entry, null, true);
 			cmd.applyTo(function.getProgram());
+		}
+		if (function.isThunk()) {
+			function = function.getThunkedFunction(true);
 		}
 		boolean success = false;
 		int id = function.getProgram().startTransaction(
@@ -434,15 +441,6 @@ public class ClassTypeInfoUtils {
 		throw new AssertException(
 			"Ghidra-Cpp-Class-Analyzer: failed to get GhidraClass from typename "
 			+ typename);
-	}
-
-	/**
-	 * Gets the ClassTypeInfoManager for the specified program
-	 *
-	 * @return the program's ClassTypeInfoManager
-	 */
-	public static ProgramClassTypeInfoManager getManager(Program program) {
-		return (ProgramClassTypeInfoManager) TypeInfoUtils.getManager(program);
 	}
 
 	public static int getMaxVtableCount(ClassTypeInfo type) {

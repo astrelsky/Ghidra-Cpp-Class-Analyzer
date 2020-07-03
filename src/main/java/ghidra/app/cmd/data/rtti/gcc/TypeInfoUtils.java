@@ -30,13 +30,11 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
-import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.demangler.Demangled;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.docking.settings.Settings;
-import ghidra.framework.plugintool.PluginTool;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
@@ -114,7 +112,7 @@ public class TypeInfoUtils {
 	 */
 	public static TypeInfo findTypeInfo(Program program, AddressSetView set, String typename,
 		TaskMonitor monitor) throws CancelledException {
-			TypeInfoManager manager = getManager(program);
+			TypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 			int pointerAlignment =
 				program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
 			List<Address> stringAddress = findTypeString(program, set, typename, monitor);
@@ -245,7 +243,7 @@ public class TypeInfoUtils {
 	public static boolean isTypeInfo(Program program, Address address) {
 		/* Makes more sense to have it in this utility, but more convient to check
 		   if it is valid or not within the factory */
-		TypeInfoManager manager = getManager(program);
+		TypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 		return manager.isTypeInfo(address);
 	}
 
@@ -330,7 +328,7 @@ public class TypeInfoUtils {
 	 */
 	@Deprecated(since = "1.5", forRemoval = true)
 	public static Structure getDataType(Program program, String typename) {
-		TypeInfoManager manager = getManager(program);
+		TypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 		return manager.getDataType(typename);
 	}
 
@@ -405,20 +403,6 @@ public class TypeInfoUtils {
 			.filter(TypeInfoUtils::isMangled)
 			.findFirst()
 			.orElse("_ZTI" + type.getTypeName());
-	}
-
-	/**
-	 * Gets the TypeInfoManager for the specified program
-	 *
-	 * @return the program's TypeInfoManager
-	 */
-	public static TypeInfoManager getManager(Program program) {
-		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
-		if (tool == null) {
-			return null;
-		}
-		ClassTypeInfoManagerService service = tool.getService(ClassTypeInfoManagerService.class);
-		return service.getManager(program);
 	}
 
 }

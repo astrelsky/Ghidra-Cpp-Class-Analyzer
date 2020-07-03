@@ -5,11 +5,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import ghidra.app.decompiler.ClangStatement;
-import ghidra.app.decompiler.ClangTokenGroup;
-import ghidra.app.decompiler.DecompInterface;
-import ghidra.app.decompiler.DecompileOptions;
-import ghidra.app.decompiler.DecompileResults;
+import ghidra.app.decompiler.*;
 import ghidra.app.decompiler.component.DecompilerController;
 import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import ghidra.framework.options.ToolOptions;
@@ -17,17 +13,15 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.OptionsService;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.pcode.HighFunction;
-import ghidra.program.model.pcode.HighParam;
-import ghidra.program.model.pcode.LocalSymbolMap;
+import ghidra.program.model.pcode.*;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import com.google.common.cache.Cache;
 
+import cppclassanalyzer.decompiler.token.ClangNodeUtils;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import util.CollectionUtils;
 
 public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerUtils {
 
@@ -109,19 +103,7 @@ public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerU
 			int timeout) throws CancelledException {
 		DecompileResults results = decompileFunction(f, monitor, timeout);
 		monitor.checkCanceled();
-		return getClangStatements(results.getCCodeMarkup());
-	}
-
-	public static List<ClangStatement> getClangStatements(ClangTokenGroup group) {
-		ClangNodeIterator it = new ClangNodeIterator(group);
-		return CollectionUtils.asStream(it)
-			.filter(ClangTokenGroup.class::isInstance)
-			.map(ClangTokenGroup.class::cast)
-			.map(ClangNodeIterator::new)
-			.flatMap(CollectionUtils::asStream)
-			.filter(ClangStatement.class::isInstance)
-			.map(ClangStatement.class::cast)
-			.collect(Collectors.toList());
+		return ClangNodeUtils.getClangStatements(results.getCCodeMarkup());
 	}
 
 	public static HighFunction getHighFunction(Function f, TaskMonitor monitor)
@@ -190,5 +172,4 @@ public class DecompilerUtils extends ghidra.app.decompiler.component.DecompilerU
 			throw new AssertException(e);
 		}
 	}
-
 }

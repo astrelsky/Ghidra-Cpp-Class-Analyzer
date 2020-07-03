@@ -11,6 +11,8 @@ import ghidra.app.cmd.data.rtti.gcc.builder.Ppc64TypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.util.task.TaskMonitor;
 
@@ -23,7 +25,7 @@ public class VtableModelTest extends GenericGccRttiTest {
 		for (GnuVtable vtable : vtables) {
 			assert Vtable.isValid(vtable) : vtable.getTypeInfo().getNamespace().getName(true);
 		}
-		ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(builder.getProgram());
+		ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(builder.getProgram());
 		vtables.forEach(manager::resolve);
 	}
 
@@ -31,8 +33,8 @@ public class VtableModelTest extends GenericGccRttiTest {
 		ProgramClassTypeInfoManager manager = builder.getManager();
 		manager.findVtables(TaskMonitor.DUMMY);
 		Set<Address> addresses = builder.getVtableStream()
-										.map(Vtable::getAddress)
-										.collect(Collectors.toSet());
+			.map(Vtable::getAddress)
+			.collect(Collectors.toSet());
 		for (Vtable vtable : manager.getVtables()) {
 			assert addresses.remove(vtable.getAddress())
 				: String.format("Vtable for %s was incorrectly located. It should not be at %s",

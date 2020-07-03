@@ -1,7 +1,6 @@
 package cppclassanalyzer.data.manager;
 
 import java.io.IOException;
-import java.security.InvalidParameterException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToLongFunction;
@@ -26,26 +25,16 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.manager.caches.ProgramRttiCachePair;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import cppclassanalyzer.data.manager.tables.ProgramRttiTablePair;
-import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
-import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
-import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
-import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
-import cppclassanalyzer.data.typeinfo.WindowsClassTypeInfoDB;
-import cppclassanalyzer.data.vtable.AbstractVtableDB;
-import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
-import cppclassanalyzer.data.vtable.VftableDB;
-import cppclassanalyzer.data.vtable.VtableModelDB;
+import cppclassanalyzer.data.typeinfo.*;
+import cppclassanalyzer.data.vtable.*;
 import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
-import ghidra.program.model.symbol.ExternalLocation;
-import ghidra.program.model.symbol.ExternalManager;
-import ghidra.program.model.symbol.Namespace;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.listing.VariableUtilities;
+import ghidra.program.model.symbol.*;
 import ghidra.util.Lock;
 import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongArrayList;
@@ -432,12 +421,18 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		if (symbols.size() == 1) {
 			return getType(symbols.get(0).getAddress());
 		}
-		return null;
+		// this isn't reliable but now required for vs binaries
+		DataType dt =
+			VariableUtilities.findOrCreateClassStruct(gc, program.getDataTypeManager());
+		return getType(dt.getUniversalID());
 	}
 
 	@Override
 	public ClassTypeInfoDB getType(Function fun) {
-		GenericCallingConvention cc = fun.getCallingConvention().getGenericCallingConvention();
+		if (fun.getParentNamespace().isGlobal()) {
+			return null;
+		}
+		GenericCallingConvention cc = fun.getSignature().getGenericCallingConvention();
 		if (cc.equals(GenericCallingConvention.thiscall)) {
 			return getType((GhidraClass) fun.getParentNamespace());
 		}

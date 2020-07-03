@@ -3,6 +3,8 @@ package ghidra.app.cmd.data.rtti.gcc;
 import java.util.*;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.address.AddressRange;
@@ -189,7 +191,7 @@ public class VtableUtils {
 	 * @return the pointed to TypeInfo Model or null if not found
 	 */
 	public static ClassTypeInfo getTypeInfo(Program program, Address address) {
-		ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(program);
+		ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 		DataTypeManager dtm = program.getDataTypeManager();
 		int ptrDiffSize = GnuUtils.getPtrDiffSize(dtm);
 		int numPtrDiffs = getNumPtrDiffs(program, address);

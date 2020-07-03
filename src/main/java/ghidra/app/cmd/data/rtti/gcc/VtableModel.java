@@ -13,6 +13,7 @@ import ghidra.program.model.data.ArrayDataType;
 import ghidra.program.model.data.DataType;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
@@ -87,7 +88,7 @@ public final class VtableModel implements GnuVtable {
 			this.type = type;
 			this.arrayCount = arrayCount;
 			this.construction = construction;
-			ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(program);
+			ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 			if (TypeInfoUtils.isTypeInfoPointer(program, address)) {
 				if (this.type == null) {
 					Address typeAddress = getAbsoluteAddress(program, address);

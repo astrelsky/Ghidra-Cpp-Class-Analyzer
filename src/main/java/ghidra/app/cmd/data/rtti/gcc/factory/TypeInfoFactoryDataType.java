@@ -1,6 +1,8 @@
 package ghidra.app.cmd.data.rtti.gcc.factory;
 
 import cppclassanalyzer.data.TypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.BuiltInDataTypeManager;
 import ghidra.program.model.data.DataType;
@@ -10,7 +12,6 @@ import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.docking.settings.Settings;
 
 public class TypeInfoFactoryDataType extends FactoryStructureDataType {
@@ -52,7 +53,7 @@ public class TypeInfoFactoryDataType extends FactoryStructureDataType {
 	protected void populateDynamicStructure(MemBuffer buf, Structure struct) {}
 
 	public static DataType getDataType(Program program, Address address) {
-		TypeInfoManager manager = TypeInfoUtils.getManager(program);
+		TypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 		TypeInfo typeinfo = manager.getTypeInfo(address);
 		return typeinfo != null ? typeinfo.getDataType() : null;
 	}

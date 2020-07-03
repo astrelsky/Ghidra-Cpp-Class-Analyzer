@@ -100,6 +100,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 			Address parentAddress = model.getRtti0Address();
 			return Arrays.stream(baseKeys)
 				.mapToObj(manager::getType)
+				.filter(Objects::nonNull)
 				.filter(t -> t.getAddress().equals(parentAddress))
 				.findFirst()
 				.orElseThrow(e);

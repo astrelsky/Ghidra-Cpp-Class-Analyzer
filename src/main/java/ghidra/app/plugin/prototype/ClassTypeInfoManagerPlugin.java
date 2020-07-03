@@ -33,6 +33,7 @@ import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.vtable.ArchivedVtable;
+import cppclassanalyzer.database.SchemaMismatchException;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.decompiler.action.FillOutClassAction;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
@@ -96,24 +97,35 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	protected void programOpened(Program program) {
-		managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
+		try {
+			managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
+		} catch (SchemaMismatchException e) {
+			Msg.showInfo(this, null, "Outdated Schema", e.getMessage());
+		}
 	}
 
 	@Override
 	protected void programClosed(Program program) {
-		managers.remove(getManager(program));
+		ClassTypeInfoManager man = getManager(program);
+		if (man != null) {
+			managers.remove(getManager(program));
+		}
 	}
 
 	@Override
 	protected void programActivated(Program program) {
 		ClassTypeInfoManager manager = getManager(program);
-		managerAdded(manager);
+		if (manager != null) {
+			managerAdded(manager);
+		}
 	}
 
 	@Override
 	protected void programDeactivated(Program program) {
 		ClassTypeInfoManager manager = getManager(program);
-		listeners.forEach(l -> l.managerClosed(manager));
+		if (manager != null) {
+			listeners.forEach(l -> l.managerClosed(manager));
+		}
 	}
 
 	@Override
@@ -221,7 +233,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 				.map(ProgramClassTypeInfoManager.class::cast)
 				.filter(m -> m.getProgram().equals(program))
 				.findAny()
-				.orElseThrow();
+				.orElse(null);
 	}
 
 	@Override

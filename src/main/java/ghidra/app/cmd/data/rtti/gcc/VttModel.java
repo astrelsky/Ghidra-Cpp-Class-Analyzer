@@ -6,6 +6,8 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSet;
@@ -44,7 +46,7 @@ public class VttModel {
 	 * @param address the address of the VttModel
 	 */
 	public VttModel(Program program, Address address) {
-		this.manager = ClassTypeInfoUtils.getManager(program);
+		this.manager = CppClassAnalyzerUtils.getManager(program);
 		this.address = address;
 		this.pointerSize = program.getDefaultPointerSize();
 		if (GnuUtils.isValidPointer(program, address)) {

@@ -1,6 +1,8 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.DataType;
@@ -24,7 +26,6 @@ import java.util.stream.Collectors;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 
 /**
@@ -42,7 +43,7 @@ public final class BaseClassTypeInfoModel {
 	private DataTypeManager dtm;
 
 	BaseClassTypeInfoModel(Program program, Address address) {
-		this.manager = ClassTypeInfoUtils.getManager(program);
+		this.manager = CppClassAnalyzerUtils.getManager(program);
 		this.buf = new MemoryBufferImpl(program.getMemory(), address);
 		this.dtm = program.getDataTypeManager();
 	}

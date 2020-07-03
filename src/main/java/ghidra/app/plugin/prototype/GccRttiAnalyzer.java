@@ -15,6 +15,8 @@ import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.symbol.Namespace;
@@ -108,7 +110,10 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			this.program = program;
 			this.monitor = monitor;
 
-			this.manager = ClassTypeInfoUtils.getManager(program);
+			this.manager = CppClassAnalyzerUtils.getManager(program);
+			if (this.manager == null) {
+				return false;
+			}
 
 			this.relocatable = program.getRelocationTable().isRelocatable();
 

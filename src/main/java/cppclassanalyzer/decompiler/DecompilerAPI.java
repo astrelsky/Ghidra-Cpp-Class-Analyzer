@@ -1,8 +1,6 @@
 package cppclassanalyzer.decompiler;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import ghidra.app.decompiler.*;
 import ghidra.app.decompiler.component.DecompilerUtils;
@@ -12,8 +10,6 @@ import ghidra.framework.plugintool.util.OptionsService;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.pcode.HighFunction;
-import ghidra.program.model.pcode.HighParam;
-import ghidra.program.model.pcode.LocalSymbolMap;
 import ghidra.util.Disposable;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
@@ -23,8 +19,9 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 
+import cppclassanalyzer.decompiler.function.HighFunctionCall;
+import cppclassanalyzer.decompiler.token.ClangNodeUtils;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import util.CollectionUtils;
 
 public final class DecompilerAPI implements Disposable {
 
@@ -144,15 +141,7 @@ public final class DecompilerAPI implements Disposable {
 
 	public List<ClangStatement> getClangStatements(Function function) throws CancelledException {
 		DecompileResults results = decompileFunction(Objects.requireNonNull(function));
-		ClangNodeIterator it = new ClangNodeIterator(results.getCCodeMarkup());
-		return CollectionUtils.asStream(it)
-				.filter(ClangTokenGroup.class::isInstance)
-				.map(ClangTokenGroup.class::cast)
-				.map(ClangNodeIterator::new)
-				.flatMap(CollectionUtils::asStream)
-				.filter(ClangStatement.class::isInstance)
-				.map(ClangStatement.class::cast)
-				.collect(Collectors.toList());
+		return ClangNodeUtils.getClangStatements(results.getCCodeMarkup());
 	}
 
 	public HighFunction getHighFunction(Function function) throws CancelledException {
@@ -160,15 +149,9 @@ public final class DecompilerAPI implements Disposable {
 		return results.getHighFunction();
 	}
 
-	public List<HighParam> getParameters(Function function) throws CancelledException {
-		HighFunction hf = getHighFunction(Objects.requireNonNull(function));
-		LocalSymbolMap locals = hf.getLocalSymbolMap();
-		if (locals.getNumParams() == 0) {
-			return Collections.emptyList();
-		}
-		return IntStream.range(0, locals.getNumParams())
-				.mapToObj(locals::getParam)
-				.collect(Collectors.toList());
+	public List<HighFunctionCall> getFunctionCalls(Function function) throws CancelledException {
+		DecompileResults results = decompileFunction(Objects.requireNonNull(function));
+		return ClangNodeUtils.getClangFunctionCalls(results.getCCodeMarkup());
 	}
 
 	public Function getFunction(ClangFuncNameToken token) {

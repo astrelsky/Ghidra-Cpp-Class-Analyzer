@@ -4,8 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import ghidra.app.decompiler.ClangFuncNameToken;
-import ghidra.app.decompiler.ClangStatement;
 import ghidra.app.plugin.core.decompile.DecompilerActionContext;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.framework.cmd.BackgroundCommand;
@@ -14,13 +12,15 @@ import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.pcode.HighVariable;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
-import cppclassanalyzer.decompiler.DecompilerUtils;
-import cppclassanalyzer.decompiler.HighThisParameterValue;
+import cppclassanalyzer.decompiler.function.HighFunctionCall;
+import cppclassanalyzer.decompiler.function.HighFunctionCallParameter;
+import cppclassanalyzer.decompiler.token.ClangNodeUtils;
 
 public final class FillOutClassCmd extends BackgroundCommand {
 
@@ -53,41 +53,65 @@ public final class FillOutClassCmd extends BackgroundCommand {
 	}
 
 	private void doApplyTo(TaskMonitor monitor) throws CancelledException {
-		List<ClangStatement> statements =
-			DecompilerUtils.getClangStatements(context.getCCodeModel());
+		List<HighFunctionCall> calls =
+			ClangNodeUtils.getClangFunctionCalls(context.getCCodeModel());
 		monitor.setMessage("Analyzing "+type.getName()+" member usage");
-		monitor.initialize(statements.size());
-		for (ClangStatement statement : statements) {
+		monitor.initialize(calls.size());
+		for (HighFunctionCall call : calls) {
 			monitor.checkCanceled();
-			HighThisParameterValue value = new HighThisParameterValue(statement);
-			if (value.getParam() != null && value.getOffset() >= 0) {
-				Function fun = DecompilerUtils.getFunction(
-					context.getProgram(), (ClangFuncNameToken) statement.Child(0));
-				if (fun != null) {
-					setMember(fun, value);
-				}
-			}
+			analyzeCall(call);
 			monitor.incrementProgress(1);
 		}
+		// TODO do _vptr assignments too
 	}
 
-	private void setMember(Function fun, HighThisParameterValue value) {
+	private void analyzeCall(HighFunctionCall call) {
+		List<HighFunctionCallParameter> params = call.getParameters();
+		if (params.isEmpty()) {
+			return;
+		}
+		HighFunctionCallParameter self = params.get(0);
+		if (!self.hasLocalRef()) {
+			return;
+		}
+		HighVariable var = self.getVariableToken().getHighVariable();
+		if (var == null || !var.getName().equals("this")) {
+			return;
+		}
+		final int offset;
+		if (self.hasFieldToken()) {
+			offset = self.getOffset() + self.getFieldToken().getOffset();
+		} else {
+			offset = self.getOffset();
+		}
+		setMember(call.getFunction(), offset);
+	}
+
+	private void setMember(Function fun, int offset) {
 		ClassTypeInfoDB member = getManager().getType(fun);
 		if (member == null) {
 			return;
 		}
-		int offset = value.getOffset();
+		MemberValidator validator = new MemberValidator(member);
 		Structure struct = type.getClassDataType();
 		DataTypeComponent comp = struct.getComponentAt(offset);
 		while (comp != null) {
 			DataType dt = comp.getDataType();
 			if (!(dt instanceof Structure)) {
-				// don't replace user defined components
+				break;
+			}
+			if (validator.isInvalidMember(dt)) {
 				return;
 			}
 			offset -= comp.getOffset();
 			struct = (Structure) dt;
+			if (struct.getNumComponents() == 0 || offset >= struct.getLength()) {
+				break;
+			}
 			comp = struct.getComponent(offset);
+		}
+		if (comp.getFieldName().startsWith("super_") && offset == 0) {
+			return;
 		}
 		DataType memberDt = member.getClassDataType();
 		String name = createMemberName(memberDt, struct, offset);
@@ -109,6 +133,24 @@ public final class FillOutClassCmd extends BackgroundCommand {
 			name += "_" + Integer.toString(offset);
 		}
 		return name;
+	}
+
+	private static class MemberValidator {
+
+		private final ClassTypeInfoDB type;
+
+		MemberValidator(ClassTypeInfoDB type) {
+			this.type = type;
+		}
+
+		boolean isInvalidMember(DataType dt) {
+			Structure struct = type.getClassDataType();
+			if (dt.isEquivalent(struct)) {
+				return true;
+			}
+			struct = type.getSuperClassDataType();
+			return dt.isEquivalent(struct);
+		}
 	}
 
 }

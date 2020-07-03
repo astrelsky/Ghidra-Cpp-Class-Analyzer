@@ -2,7 +2,6 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
@@ -93,8 +92,10 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		this.program = program;
 		this.monitor = monitor;
 		this.log = log;
-		this.manager = ClassTypeInfoUtils.getManager(program);
-
+		this.manager = CppClassAnalyzerUtils.getManager(program);
+		if (manager == null) {
+			return false;
+		}
 		init();
 
 		try {

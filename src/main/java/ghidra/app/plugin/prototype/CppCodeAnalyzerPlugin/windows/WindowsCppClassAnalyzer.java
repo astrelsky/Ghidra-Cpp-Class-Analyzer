@@ -7,16 +7,20 @@ import java.util.stream.StreamSupport;
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.AbstractCppClassAnalyzer;
 import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
+import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.app.util.importer.MessageLog;
+import ghidra.framework.plugintool.PluginTool;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.decompiler.DecompilerAPI;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;
@@ -40,6 +44,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 	private WindowsVftableAnalysisCmd vfTableAnalyzer;
+	private DecompilerAPI api;
 
 	public WindowsCppClassAnalyzer() {
 		super(NAME);
@@ -57,6 +62,9 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	@Override
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
 			throws CancelledException {
+		if (CppClassAnalyzerUtils.getManager(program) == null) {
+			return false;
+		}
 		buildClassTypeInfoDatabase(program, monitor);
 		return super.added(program, set, monitor, log);
 	}
@@ -84,7 +92,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	@Deprecated
 	public static List<ClassTypeInfo> getClassTypeInfoList(Program program, TaskMonitor monitor)
 			throws CancelledException {
-		ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(program);
+		ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
 		if (manager.getTypeCount() == 0) {
 			buildClassTypeInfoDatabase(program, monitor);
 		}
@@ -94,7 +102,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	public static void buildClassTypeInfoDatabase(Program program, TaskMonitor monitor)
 			throws CancelledException {
 		ProgramClassTypeInfoManager manager = null;
-		manager = ClassTypeInfoUtils.getManager(program);
+		manager = CppClassAnalyzerUtils.getManager(program);
 		final SymbolTable table = program.getSymbolTable();
 		final AddressSet addrSet = new AddressSet();
 		GnuUtils.getAllDataBlocks(program).forEach(
@@ -158,8 +166,11 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	@Override
 	protected void init() {
+		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
 		this.vfTableAnalyzer = new WindowsVftableAnalysisCmd();
-		this.constructorAnalyzer = new WindowsConstructorAnalysisCmd();
+		this.api = tool.getService(ClassTypeInfoManagerService.class).getDecompilerAPI(program);
+		api.setMonitor(monitor);
+		this.constructorAnalyzer = new VsDecompilerConstructorAnalysisCmd(api);
 	}
 
 	@Override

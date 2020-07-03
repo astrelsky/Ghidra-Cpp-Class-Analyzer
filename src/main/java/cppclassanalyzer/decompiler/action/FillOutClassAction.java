@@ -6,15 +6,21 @@ import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 
 import cppclassanalyzer.cmd.FillOutClassCmd;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import docking.action.MenuData;
 
 public class FillOutClassAction extends AbstractNonPackageDecompilerAction {
 
 	private static final String NAME = FillOutClassAction.class.getSimpleName();
+	private static final MenuData MENU_ENTRY =
+		new MenuData(new String[] { "Fill Out Class" }, "Decompile");
+
 	private final ClassTypeInfoManagerPlugin plugin;
 
 	public FillOutClassAction(ClassTypeInfoManagerPlugin plugin) {
 		super(NAME);
 		this.plugin = plugin;
+		setPopupMenuData(MENU_ENTRY);
+		setDescription("Automatically fill out class members");
 	}
 
 	@Override

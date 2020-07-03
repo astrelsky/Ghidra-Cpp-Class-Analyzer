@@ -80,6 +80,7 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 	@Override
 	public void typeAdded(ClassTypeInfoDB type) {
 		getManagerNode(type).addNode(type);
+		repaint();
 	}
 
 	@Override
@@ -89,12 +90,14 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 			GTreeNode root = (GTreeNode) getManagerNode(type);
 			root.removeNode(node);
 		}
+		repaint();
 	}
 
 	@Override
 	public void typeUpdated(ClassTypeInfoDB type) {
 		TypeInfoNode node = getNode(type);
 		node.typeUpdated(type);
+		repaint();
 	}
 
 	TypeInfoNode getNode(ClassTypeInfoDB type) {
@@ -142,14 +145,12 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 				addNode(new TypeInfoRootNode(manager));
 			}
 			children().sort(null);
-			doFireNodeStructureChanged();
 		}
 
 		void removeNode(ClassTypeInfoManager manager) {
 			GTreeNode node = getNode(manager).getNode();
 			removeNode(node);
 			node.dispose();
-			doFireNodeStructureChanged();
 		}
 
 		TypeInfoArchiveNode getNode(ClassTypeInfoManager manager) {

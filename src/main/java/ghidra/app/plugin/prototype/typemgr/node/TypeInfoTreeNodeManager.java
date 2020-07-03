@@ -8,6 +8,7 @@ import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.database.SchemaMismatchException;
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 import cppclassanalyzer.database.schema.TypeInfoTreeNodeSchema;
 import cppclassanalyzer.database.tables.TypeInfoTreeNodeTable;
@@ -62,7 +63,11 @@ public class TypeInfoTreeNodeManager {
 				dbError(e);
 			}
 		}
-		return new TypeInfoTreeNodeTable(rawTable);
+		try {
+			return new TypeInfoTreeNodeTable(rawTable);
+		} catch (AssertException e) {
+			throw new SchemaMismatchException(TypeInfoTreeNodeTable.class);
+		}
 	}
 
 	TypeInfoTreeNodeRecord getRootRecord() {
