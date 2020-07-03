@@ -138,6 +138,7 @@ javadoc.destinationDir = new File(projectDir, 'docs')
 buildExtension {
 	exclude '.vscode'
 	exclude 'gradle*'
+	exclude '.editorconfig'
 }
 
 buildExtension.dependsOn(javadoc)
