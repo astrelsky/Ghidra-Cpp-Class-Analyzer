@@ -27,7 +27,7 @@ public class GccCppClassBuilder extends AbstractCppClassBuilder {
 
 	@Override
 	protected void addVptr(Structure struct) {
-		if (getType().getVtable() == Vtable.NO_VTABLE) {
+		if (!Vtable.isValid(getType().getVtable())) {
 			return;
 		}
 		DataType vptr = ClassTypeInfoUtils.getVptrDataType(getProgram(), getType(), getPath());
@@ -35,11 +35,11 @@ public class GccCppClassBuilder extends AbstractCppClassBuilder {
 		if (comp == null || isUndefined(comp.getDataType())) {
 			if (vptr != null) {
 				clearComponent(struct, getProgram().getDefaultPointerSize(), 0);
-				struct.insertAtOffset(0, vptr, getProgram().getDefaultPointerSize(), VPTR, null);
+				struct.insertAtOffset(0, vptr, vptr.getLength(), VPTR, null);
 			}
 		} else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
 			clearComponent(struct, getProgram().getDefaultPointerSize(), 0);
-			struct.insertAtOffset(0, vptr, getProgram().getDefaultPointerSize(), VPTR, null);
+			struct.insertAtOffset(0, vptr, vptr.getLength(), VPTR, null);
 		}
 	}
 

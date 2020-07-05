@@ -347,13 +347,12 @@ public class ClassTypeInfoUtils {
 			DataTypeManager dtm = program.getDataTypeManager();
 			Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);
 			Function[][] functionTable = vtable.getFunctionTables();
-			int pointerSize = program.getDefaultPointerSize();
 			if (functionTable.length > 0 && functionTable[0].length > 0) {
 				for (Function function : functionTable[0]) {
 					if (function != null) {
 						if (function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
-							struct.add(dtm.getPointer(VoidDataType.dataType), pointerSize,
-									   PURE_VIRTUAL_FUNCTION_NAME, null);
+							DataType dt = dtm.getPointer(VoidDataType.dataType);
+							struct.add(dt, dt.getLength(), PURE_VIRTUAL_FUNCTION_NAME, null);
 							continue;
 						}
 						DataType dt = new FunctionDefinitionDataType(function, false);
@@ -363,15 +362,15 @@ public class ClassTypeInfoUtils {
 						} else {
 							dt = dtm.resolve(dt, DataTypeConflictHandler.KEEP_HANDLER);
 						}
-						struct.add(dtm.getPointer(dt), pointerSize, function.getName(), null);
+						dt = dtm.getPointer(dt);
+						struct.add(dt, dt.getLength(), function.getName(), null);
 					} else {
-						DataType dt = new PointerDataType(null, pointerSize, dtm);
-						struct.add(dt);
+						struct.add(PointerDataType.dataType);
 					}
 				}
 			}
 			struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
-			return dtm.getPointer(struct, program.getDefaultPointerSize());
+			return dtm.getPointer(struct);
 		} catch (DuplicateNameException e) {
 			throw new AssertException("Ghidra-Cpp-Class-Analyzer: "+e.getMessage(), e);
 		}
