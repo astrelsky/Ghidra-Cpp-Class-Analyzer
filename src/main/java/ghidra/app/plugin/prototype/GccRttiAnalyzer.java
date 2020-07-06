@@ -294,7 +294,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 
 	private AddressSetView getDataAddressSet() {
 		AddressSet set = new AddressSet();
-		for (MemoryBlock block : GnuUtils.getAllDataBlocks(program)) {
+		for (MemoryBlock block : CppClassAnalyzerUtils.getAllDataBlocks(program)) {
 			set.add(block.getStart(), block.getEnd());
 		}
 		return set;

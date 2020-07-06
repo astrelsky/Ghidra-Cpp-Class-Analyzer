@@ -6,39 +6,24 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 
 import docking.Tool;
 import ghidra.program.model.data.DataType;
-import ghidra.app.util.demangler.Demangled;
-import ghidra.app.util.demangler.DemangledAddressTable;
-import ghidra.app.util.demangler.DemangledFunction;
-import ghidra.app.util.demangler.DemangledObject;
+import ghidra.app.util.demangler.*;
 import ghidra.app.util.demangler.gnu.GnuDemanglerNativeProcess;
 import ghidra.framework.main.AppInfo;
 import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.Project;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.mem.MemBuffer;
-import ghidra.program.model.mem.Memory;
-import ghidra.program.model.mem.MemoryAccessException;
-import ghidra.program.model.mem.MemoryBlock;
-import ghidra.program.model.mem.MemoryBufferImpl;
+import ghidra.program.model.mem.*;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
-import ghidra.program.model.symbol.ExternalManager;
-import ghidra.program.model.symbol.Namespace;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.symbol.*;
 import ghidra.program.model.listing.Library;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.data.AbstractIntegerDataType;
-import ghidra.program.model.data.CategoryPath;
-import ghidra.program.model.data.DataOrganization;
-import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.TypedefDataType;
+import ghidra.program.model.data.*;
 import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.util.datastruct.IntSet;
@@ -47,6 +32,7 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.DummyCancellableTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import cppclassanalyzer.utils.LanguageIdHandler;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
@@ -133,32 +119,22 @@ public final class GnuUtils {
 	 * Gets all MemoryBlocks in a Program which hold non-volatile data
 	 * @param program the program to be searched
 	 * @return A list of all memory blocks whose name contains "data" with non-volatile data
+	 * @deprecated use {@link CppClassAnalyzerUtils#getAllDataBlocks(Program)}
 	 */
+	@Deprecated(forRemoval = true)
 	public static List<MemoryBlock> getAllDataBlocks(Program program) {
-		MemoryBlock[] blocks = program.getMemory().getBlocks();
-		List<MemoryBlock> dataBlocks = new ArrayList<MemoryBlock>();
-		for (MemoryBlock block : blocks) {
-			if (isDataBlock(block) && isDataBlockName(block)) {
-				if (!block.isVolatile()) {
-					dataBlocks.add(block);
-				}
-			}
-		}
-		return dataBlocks;
-	}
-
-	private static boolean isDataBlockName(MemoryBlock block) {
-		String name = block.getName();
-		return name.contains("data") || name.equals(".bss");
+		return CppClassAnalyzerUtils.getAllDataBlocks(program);
 	}
 
 	/**
 	 * Returns true if this MemoryBlock has non-volatile data
 	 * @param block the memory block to test
 	 * @return true if this MemoryBlock has non-volatile data
+	 * @deprecated use {@link CppClassAnalyzerUtils#isDataBlock(MemoryBlock)}
 	 */
+	@Deprecated(forRemoval = true)
 	public static boolean isDataBlock(MemoryBlock block) {
-		return block != null ? block.isRead() || block.isWrite() : false;
+		return CppClassAnalyzerUtils.isDataBlock(block);
 	}
 
 	/**

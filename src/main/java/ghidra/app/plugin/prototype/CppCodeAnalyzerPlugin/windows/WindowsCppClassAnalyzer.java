@@ -2,7 +2,6 @@ package ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.windows;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -20,12 +19,12 @@ import ghidra.framework.plugintool.PluginTool;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+import util.CollectionUtils;
 
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;
 import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
@@ -70,13 +69,10 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	}
 
 	private boolean hasGuardedVftables() {
-		FunctionManager manager = program.getFunctionManager();
-		for (Function function : manager.getFunctions(true)) {
-			if (function.getName().equals(GUARD_FUNCTION)) {
-				return true;
-			}
-		}
-		return false;
+		Iterable<Function> functions = program.getFunctionManager().getFunctions(true);
+		return CollectionUtils.asStream(functions)
+			.map(Function::getName)
+			.anyMatch(GUARD_FUNCTION::equals);
 	}
 
 	@Override
@@ -104,43 +100,32 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 		return manager.getTypeStream().collect(Collectors.toList());
 	}
 
+	/**
+	 * Locates known Run Time Type Information and adds them to the
+	 * program's {@link ProgramClassTypeInfoManager}.
+	 * @param program the program
+	 * @param monitor the monitor
+	 * @throws CancelledException if the operation is cancelled
+	 */
 	public static void buildClassTypeInfoDatabase(Program program, TaskMonitor monitor)
 			throws CancelledException {
-		ProgramClassTypeInfoManager manager = null;
-		manager = CppClassAnalyzerUtils.getManager(program);
-		final SymbolTable table = program.getSymbolTable();
-		final AddressSet addrSet = new AddressSet();
-		GnuUtils.getAllDataBlocks(program).forEach(
-			(b)->addrSet.addRange(b.getStart(), b.getEnd()));
-		List<Symbol> symbols = StreamSupport.stream(
-			table.getSymbols(addrSet, SymbolType.LABEL, true)
-				 .spliterator(), false)
-				 .filter((s)->s.getName().contains(SYMBOL_NAME))
-				 .collect(Collectors.toList());
+		ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
+		DescriptorProcessor processor = new DescriptorProcessor(manager, monitor);
+		SymbolTable table = program.getSymbolTable();
+		AddressSet addrSet = new AddressSet();
+		CppClassAnalyzerUtils.getAllDataBlocks(program)
+			.forEach((b)->addrSet.addRange(b.getStart(), b.getEnd()));
+		Iterable<Symbol> rawSymbols = table.getSymbols(addrSet, SymbolType.LABEL, true);
+		List<Symbol> symbols = CollectionUtils.asStream(rawSymbols)
+			 .filter((s)->s.getName().contains(SYMBOL_NAME))
+			 .collect(Collectors.toList());
 		monitor.initialize(symbols.size());
 		monitor.setMessage("Locating Type Information");
 		for (Symbol symbol : symbols) {
 			monitor.checkCanceled();
 			TypeDescriptorModel descriptor = new TypeDescriptorModel(
 				program, symbol.getAddress(), DEFAULT_OPTIONS);
-			try {
-				if (!descriptor.getRefType().equals(CLASS)) {
-					monitor.incrementProgress(1);
-					continue;
-				}
-				descriptor.validate();
-			} catch (InvalidDataTypeException | NullPointerException e) {
-				monitor.incrementProgress(1);
-				continue;
-			}
-			ClassTypeInfo type = RttiModelWrapper.getWrapper(descriptor);
-			if (type.getNamespace() != null) {
-				type = manager.resolve(type);
-				Vtable vtable = type.findVtable(monitor);
-				if (Vtable.isValid(vtable)) {
-					manager.resolve(vtable);
-				}
-			}
+			processor.process(descriptor);
 			monitor.incrementProgress(1);
 		}
 	}
@@ -183,4 +168,33 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 		return function.getName().contains("destructor");
 	}
 
+	private static final class DescriptorProcessor {
+
+		private final ProgramClassTypeInfoManager manager;
+		private final TaskMonitor monitor;
+
+		DescriptorProcessor(ProgramClassTypeInfoManager manager, TaskMonitor monitor) {
+			this.manager = manager;
+			this.monitor = monitor;
+		}
+
+		void process(TypeDescriptorModel descriptor) throws CancelledException {
+			try {
+				if (!descriptor.getRefType().equals(CLASS)) {
+					return;
+				}
+				descriptor.validate();
+			} catch (InvalidDataTypeException | NullPointerException e) {
+				return;
+			}
+			ClassTypeInfo type = RttiModelWrapper.getWrapper(descriptor);
+			if (type.getNamespace() != null) {
+				type = manager.resolve(type);
+				Vtable vtable = type.findVtable(monitor);
+				if (Vtable.isValid(vtable)) {
+					manager.resolve(vtable);
+				}
+			}
+		}
+	}
 }

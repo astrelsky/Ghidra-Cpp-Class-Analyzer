@@ -1,5 +1,7 @@
 package cppclassanalyzer.utils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import ghidra.app.cmd.function.AddFunctionTagCmd;
@@ -12,6 +14,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.SymbolUtilities;
 import ghidra.util.Msg;
 
@@ -122,5 +125,38 @@ public final class CppClassAnalyzerUtils {
 		}
 		ClassTypeInfoManagerService service = tool.getService(ClassTypeInfoManagerService.class);
 		return service.getManager(program);
+	}
+
+	/**
+	 * Gets all MemoryBlocks in a Program which hold non-volatile data
+	 * @param program the program to be searched
+	 * @return A list of all memory blocks whose name contains "data" with non-volatile data
+	 */
+	public static List<MemoryBlock> getAllDataBlocks(Program program) {
+		MemoryBlock[] blocks = program.getMemory().getBlocks();
+		ArrayList<MemoryBlock> dataBlocks = new ArrayList<>(blocks.length);
+		for (MemoryBlock block : blocks) {
+			if (isDataBlock(block) && isDataBlockName(block)) {
+				if (!block.isVolatile()) {
+					dataBlocks.add(block);
+				}
+			}
+		}
+		dataBlocks.trimToSize();
+		return dataBlocks;
+	}
+
+	private static boolean isDataBlockName(MemoryBlock block) {
+		String name = block.getName();
+		return name.contains("data") || name.equals(".bss");
+	}
+
+	/**
+	 * Returns true if this MemoryBlock has non-volatile data
+	 * @param block the memory block to test
+	 * @return true if this MemoryBlock has non-volatile data
+	 */
+	public static boolean isDataBlock(MemoryBlock block) {
+		return block != null ? block.isRead() || block.isWrite() : false;
 	}
 }

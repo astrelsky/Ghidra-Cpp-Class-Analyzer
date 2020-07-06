@@ -138,7 +138,7 @@ public class TypeInfoUtils {
 
 	private static List<Address> findTypeString(Program program, AddressSetView set,
 		String typename, TaskMonitor monitor) throws CancelledException {
-			List<MemoryBlock> dataBlocks = GnuUtils.getAllDataBlocks(program);
+			List<MemoryBlock> dataBlocks = CppClassAnalyzerUtils.getAllDataBlocks(program);
 			List<Address> typeInfoAddresses =
 				ProgramMemoryUtil.findString(typename, program, dataBlocks, set, monitor);
 			return typeInfoAddresses;
