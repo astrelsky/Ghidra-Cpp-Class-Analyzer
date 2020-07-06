@@ -98,7 +98,7 @@ public final class RttiModelWrapper implements WindowsClassTypeInfo {
 		} catch (InvalidDataTypeException e) {
 			try {
 				throw new AssertException(
-					"Ghidra-Cpp-Class-Analyzer: failed to wrap "+typeModel.getTypeName());
+					"Ghidra-Cpp-Class-Analyzer: failed to wrap "+typeModel.getTypeName(), e);
 			} catch (InvalidDataTypeException e2) {
 					// Whether an exception is a checked exception or not is important
 					throw new AssertException(e2);
