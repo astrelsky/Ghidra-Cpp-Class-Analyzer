@@ -34,7 +34,7 @@ public interface ClassTypeInfoManager extends ErrorHandler {
 	/**
 	 * Gets the icon for this manager to be used in the
 	 * {@link ghidra.app.plugin.prototype.typemgr.TypeInfoArchiveGTree TypeInfoArchiveGTree}
-	 * @param expanded
+	 * @param expanded true if the manager tree node is expanded
 	 * @return the icon to be used in the tree
 	 */
 	Icon getIcon(boolean expanded);

@@ -15,11 +15,20 @@ import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.vtable.ArchivedVtable;
 
+/**
+ * BackgroundCommand to apply virtual function definitions to the functions
+ * pointed to in the provided vtable.
+ */
 public class ApplyVtableDefinitionsBackgroundCmd extends BackgroundCommand {
 
 	private final Vtable vtable;
 	private final ArchivedVtable archived;
 
+	/**
+	 * Constructs a new ApplyVtableDefinitionsBackgroundCmd
+	 * @param vtable the vtable to apply the definitions to
+	 * @param archived the archived vtable
+	 */
 	public ApplyVtableDefinitionsBackgroundCmd(Vtable vtable, ArchivedVtable archived) {
 		this.vtable = Objects.requireNonNull(vtable);
 		this.archived = Objects.requireNonNull(archived);

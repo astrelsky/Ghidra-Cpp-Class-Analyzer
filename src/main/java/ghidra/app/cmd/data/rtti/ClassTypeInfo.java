@@ -94,7 +94,11 @@ public interface ClassTypeInfo extends TypeInfo {
 	 */
 	@Deprecated(since = "1.5", forRemoval = true)
 	default String getUniqueTypeName() {
-		return "";
+		StringBuilder builder = new StringBuilder(getTypeName());
+		for (ClassTypeInfo parent : getParentModels()) {
+			builder.append(parent.getTypeName());
+		}
+		return builder.toString();
 	}
 
 	default boolean isExternal() {

@@ -16,7 +16,7 @@ final class SaveAction extends AbstractFileArchivePopupAction {
 	@Override
 	public boolean isAddToPopup(ActionContext context) {
 		if (super.isAddToPopup(context)) {
-			return getManager(context).canUpdate();
+			return getManager(context).isModifiable();
 		}
 		return false;
 	}

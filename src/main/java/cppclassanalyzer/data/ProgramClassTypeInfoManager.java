@@ -147,6 +147,11 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 	 */
 	TypeInfo getTypeInfo(Address address, boolean resolve);
 
+	/**
+	 * Gets the type with a class data type that has the provided id
+	 * @param id the universal id
+	 * @return the type with the corresponding data type id or null
+	 */
 	ClassTypeInfoDB getType(UniversalID id);
 
 }

@@ -56,7 +56,7 @@ import docking.widgets.tree.GTree;
 //@formatter:off
 @PluginInfo(
 	status = PluginStatus.UNSTABLE,
-	packageName = "Ghidra C++ Class Analyzer",
+	packageName = CppClassAnalyzerPluginPackage.NAME,
 	category = PluginCategoryNames.CODE_VIEWER,
 	shortDescription = "Window for managing rtti",
 	description = "Provides the window for managing rtti " +

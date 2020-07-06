@@ -2,7 +2,6 @@ package cppclassanalyzer.data;
 
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
-import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.Structure;
 
@@ -31,7 +30,7 @@ public interface TypeInfoManager {
 	 * Reflectively invokes getDataType on the TypeInfo containing the specified typename
 	 * @param typename the type_info class's typename
 	 * @return the TypeInfo structure for the typename
-	 * @see TypeInfoModel#getDataType()
+	 * @see TypeInfo#getDataType()
 	 */
 	Structure getDataType(String typename);
 

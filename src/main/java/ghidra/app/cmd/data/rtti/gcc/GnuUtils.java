@@ -375,7 +375,8 @@ public final class GnuUtils {
 	/**
 	 * Checks if the provided address is located within the {@value MemoryBlock#EXTERNAL_BLOCK_NAME}
 	 * memory block.
-	 *
+	 * @param program the program containing the address
+	 * @param address the address to check
 	 * @return true if it is an external address
 	 */
 	public static boolean isExternal(Program program, Address address) {

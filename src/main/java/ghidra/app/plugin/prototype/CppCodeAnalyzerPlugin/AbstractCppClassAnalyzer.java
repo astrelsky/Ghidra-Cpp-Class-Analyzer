@@ -193,7 +193,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	private void clearCache() {
 		ClassTypeInfoManagerService service =
 			CppClassAnalyzerUtils.getTool(program).getService(ClassTypeInfoManagerService.class);
-		service.getDecompilerAPI(program).invalidateCache();
+		service.getDecompilerAPI(program).clearCache();
 	}
 
 	protected int getTimeout() {

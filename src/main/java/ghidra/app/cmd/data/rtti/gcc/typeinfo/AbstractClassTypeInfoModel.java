@@ -39,19 +39,6 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel
 		builder = new GccCppClassBuilder(this);
 	}
 
-	private static String getUniqueTypeName(ClassTypeInfo type) {
-		StringBuilder builder = new StringBuilder(type.getTypeName());
-		for (ClassTypeInfo parent : type.getParentModels()) {
-			builder.append(parent.getTypeName());
-		}
-		return builder.toString();
-	}
-
-	@Override
-	public String getUniqueTypeName() {
-		return getUniqueTypeName(this);
-	}
-
 	@Override
 	public final Structure getClassDataType() {
 		if (getTypeName().contains(TypeInfoModel.STRUCTURE_NAME)) {

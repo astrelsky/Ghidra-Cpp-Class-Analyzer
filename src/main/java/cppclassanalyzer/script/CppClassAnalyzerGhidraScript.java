@@ -25,6 +25,11 @@ public abstract class CppClassAnalyzerGhidraScript extends GhidraScript {
 		this.currentManager = service.getManager(currentProgram);
 	}
 
+	/**
+	 * A convience method for demangling the provided label
+	 * @param mangled the mangled label
+	 * @return the demangled object or null if it was not mangled
+	 */
 	protected final DemangledObject demangle(String mangled) {
 		return DemanglerUtil.demangle(currentProgram, mangled);
 	}

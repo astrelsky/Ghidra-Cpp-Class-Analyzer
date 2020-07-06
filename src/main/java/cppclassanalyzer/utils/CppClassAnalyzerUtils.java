@@ -53,10 +53,20 @@ public final class CppClassAnalyzerUtils {
 		return defaultName.equals(function.getName());
 	}
 
+	/**
+	 * Checks if the function is a destructor
+	 * @param function the function to check
+	 * @return true if the function is a desructor
+	 */
 	public static boolean isDestructor(Function function) {
 		return function.getName().contains(DESTRUCTOR_CHAR);
 	}
 
+	/**
+	 * Sets the Constructor/Destructor tags for the function
+	 * @param function the function
+	 * @param isConstructor true if the function is a constructor
+	 */
 	public static void setConstructorDestructorTag(Function function, boolean isConstructor) {
 		Objects.requireNonNull(function);
 		String tag = isConstructor ? CONSTRUCTOR : DESTRUCTOR;
@@ -102,7 +112,7 @@ public final class CppClassAnalyzerUtils {
 
 	/**
 	 * Gets the ClassTypeInfoManager for the specified program
-	 *
+	 * @param program the program
 	 * @return the program's ClassTypeInfoManager
 	 */
 	public static ProgramClassTypeInfoManager getManager(Program program) {

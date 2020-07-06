@@ -17,15 +17,27 @@ import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 
+/**
+ * BackgroundCommand to create an ExternalLocation
+ */
 public class CreateExternalSymbolBackgroundCmd extends BackgroundCommand {
 
 	private final SymbolInfoProvider provider;
 	private ExternalLocation location;
 
+	/**
+	 * Constructs a new CreateExternalSymbolBackgroundCmd
+	 * @param type the archived type providing the symbol information
+	 */
 	public CreateExternalSymbolBackgroundCmd(ArchivedClassTypeInfo type) {
 		this.provider = new TypeSymbolInfoProvider(type);
 	}
 
+	/**
+	 * Constructs a new CreateExternalSymbolBackgroundCmd
+	 * @param libName the library name
+	 * @param symbol the symbol name
+	 */
 	public CreateExternalSymbolBackgroundCmd(String libName, String symbol) {
 		this.provider = new RawSymbolInfoProvider(libName, symbol);
 	}
@@ -58,6 +70,10 @@ public class CreateExternalSymbolBackgroundCmd extends BackgroundCommand {
 		return this.location != null;
 	}
 
+	/**
+	 * Gets the created external location
+	 * @return the created external location
+	 */
 	public ExternalLocation getExternalLocation() {
 		return location;
 	}

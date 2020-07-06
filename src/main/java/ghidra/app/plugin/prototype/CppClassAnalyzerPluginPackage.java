@@ -4,6 +4,9 @@ import ghidra.framework.plugintool.util.PluginPackage;
 
 import resources.ResourceManager;
 
+/**
+ * The {@link PluginPackage} for the {@value #NAME}
+ */
 public class CppClassAnalyzerPluginPackage extends PluginPackage {
 
 	public static final String NAME = "Ghidra C++ Class Analyzer";

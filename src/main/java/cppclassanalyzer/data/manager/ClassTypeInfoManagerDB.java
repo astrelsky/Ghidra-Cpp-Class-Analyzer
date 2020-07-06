@@ -62,7 +62,6 @@ import db.Table;
 import resources.ResourceManager;
 import util.CollectionUtils;
 
-// man = cppclassanalyzer.data.ClassTypeInfoManagerDB(currentProgram)
 public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoManager {
 
 	private static final Icon[] ICONS = new Icon[] {

@@ -387,18 +387,10 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		manager.updateRecord(record);
 	}
 
+	@Override
 	public long getClassDataTypeId() {
 		ClassTypeInfoRecord record = getRecord();
 		return record.getLongValue(DATATYPE_ID);
-	}
-
-	@Override
-	public String getUniqueTypeName() {
-		StringBuilder builder = new StringBuilder(getTypeName());
-		for (ClassTypeInfo parent : getParentModels()) {
-			builder.append(parent.getTypeName());
-		}
-		return builder.toString();
 	}
 
 	@Override

@@ -88,6 +88,11 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	 * @deprecated use {@link ProgramClassTypeInfoManager#getTypes()}
 	 * after invoking {@link #buildClassTypeInfoDatabase(Program, TaskMonitor)} or having run
 	 * the WindowsCppClassAnalyzer.
+	 *
+	 * @param program the program
+	 * @param monitor the monitor
+	 * @return the typeinfo list
+	 * @throws CancelledException if the operation is cancelled
 	 */
 	@Deprecated
 	public static List<ClassTypeInfo> getClassTypeInfoList(Program program, TaskMonitor monitor)

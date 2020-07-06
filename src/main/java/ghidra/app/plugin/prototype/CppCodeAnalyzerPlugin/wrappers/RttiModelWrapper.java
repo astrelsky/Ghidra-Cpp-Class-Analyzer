@@ -227,14 +227,14 @@ public final class RttiModelWrapper implements WindowsClassTypeInfo {
 	@Override
 	public boolean equals(Object o) {
 		if (o instanceof RttiModelWrapper) {
-			return getUniqueTypeName().equals(((RttiModelWrapper) o).getUniqueTypeName());
+			return type.equals(((RttiModelWrapper) o).type);
 		}
 		return false;
 	}
 
 	@Override
 	public int hashCode() {
-		return getUniqueTypeName().hashCode();
+		return getAddress().hashCode();
 	}
 
 	@Override
@@ -411,16 +411,6 @@ public final class RttiModelWrapper implements WindowsClassTypeInfo {
 			Msg.error(this, e);
 			return true;
 		}
-	}
-
-	@Override
-	public String getUniqueTypeName() {
-
-		StringBuilder builder = new StringBuilder();
-		for (String name : baseTypes) {
-			builder.append(name);
-		}
-		return builder.toString();
 	}
 
 	@Override

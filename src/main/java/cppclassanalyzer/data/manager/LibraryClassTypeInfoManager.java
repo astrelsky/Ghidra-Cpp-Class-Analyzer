@@ -26,6 +26,9 @@ import ghidra.program.model.symbol.Namespace;
 import ghidra.util.InvalidNameException;
 import ghidra.util.exception.DuplicateNameException;
 
+/**
+ * A ClassTypeInfoManager representing an external library
+ */
 public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 
 	private final ProjectClassTypeInfoManager manager;
@@ -109,6 +112,10 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 		return worker.getType(key);
 	}
 
+	/**
+	 * Gets the project manager containing this library
+	 * @return the project manager
+	 */
 	public ProjectClassTypeInfoManager getProjectManager() {
 		return manager;
 	}
@@ -122,6 +129,13 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 		return manager.getHandler();
 	}
 
+	/**
+	 * Renames this library
+	 * @param name the new library name
+	 * @throws InvalidNameException if the new name is invalid
+	 * @throws DuplicateNameException if a library with this name already exists
+	 * in the project manager.
+	 */
 	public void rename(String name) throws InvalidNameException, DuplicateNameException {
 		manager.getLibMap().rename(this.name, name);
 		this.name = name;

@@ -22,11 +22,18 @@ import cppclassanalyzer.decompiler.function.HighFunctionCall;
 import cppclassanalyzer.decompiler.function.HighFunctionCallParameter;
 import cppclassanalyzer.decompiler.token.ClangNodeUtils;
 
+/**
+ * BackgroundCommand to fill out a ClassTypeInfo's Structure
+ */
 public final class FillOutClassCmd extends BackgroundCommand {
 
 	private final DecompilerActionContext context;
 	private final ClassTypeInfoDB type;
 
+	/**
+	 * Constructs a new FillOutClassCmd
+	 * @param context the decompiler context
+	 */
 	public FillOutClassCmd(DecompilerActionContext context) {
 		this.context = context;
 		ClassTypeInfoManagerService service =

@@ -357,7 +357,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB implements Arch
 		if (manager instanceof LibraryClassTypeInfoManager) {
 			manager = ((LibraryClassTypeInfoManager) manager).getProjectManager();
 		}
-		return ((FileArchiveClassTypeInfoManager) manager).canUpdate();
+		return ((FileArchiveClassTypeInfoManager) manager).isModifiable();
 	}
 
 }

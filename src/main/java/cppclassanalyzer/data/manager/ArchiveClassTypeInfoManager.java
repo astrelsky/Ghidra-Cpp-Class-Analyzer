@@ -128,7 +128,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	}
 
 	@Override
-	public boolean canUpdate() {
+	public boolean isModifiable() {
 		return dbHandle.canUpdate();
 	}
 

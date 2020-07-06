@@ -52,7 +52,7 @@ final class PasteArchiveAction extends AbstractArchiveClipboardAction {
 				.collect(Collectors.toList());
 		PasteArchiveBackgroundCommand cmd =
 			new PasteArchiveBackgroundCommand(manager, srcManagers);
-		tool.executeBackgroundCommand(cmd, manager.getDomainObject());
+		manager.executeCommand(tool, cmd);
 	}
 
 	private static final class PasteArchiveBackgroundCommand extends BackgroundCommand {

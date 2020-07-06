@@ -12,7 +12,8 @@ import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
-import ghidra.framework.model.UndoableDomainObject;
+import ghidra.framework.cmd.BackgroundCommand;
+import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.database.DataTypeArchiveDB;
 import ghidra.program.database.data.ProjectDataTypeManager;
 
@@ -49,6 +50,9 @@ import db.StringField;
 import db.Table;
 import resources.ResourceManager;
 
+/**
+ * A ClassTypeInfoManager representing a project containing external libraries
+ */
 public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		implements FileArchiveClassTypeInfoManager {
 
@@ -103,8 +107,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			throw new AssertException(e);
 		}
 	}
-
-
 
 	private ArchivedClassTypeInfoDatabaseTable getClassTable(String name)
 			throws IOException {
@@ -287,7 +289,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	}
 
 	@Override
-	public boolean canUpdate() {
+	public boolean isModifiable() {
 		return archive.isModifiable();
 	}
 
@@ -296,10 +298,19 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		plugin.getDataTypeManagerHandler().save(getDB(archive));
 	}
 
+	/**
+	 * Gets a collection of libraries contained within this project manager
+	 * @return the collection of libraries
+	 */
 	public Collection<LibraryClassTypeInfoManager> getLibraries() {
 		return Collections.unmodifiableCollection(libMap.values());
 	}
 
+	/**
+	 * Gets the library in this project with the specified name
+	 * @param name the name of the library
+	 * @return the library manager or null if none exists
+	 */
 	public LibraryClassTypeInfoManager getLibrary(String name) {
 		return libMap.get(name);
 	}
@@ -314,11 +325,23 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		throw new UnsupportedOperationException("Cannot get type from project archive by key");
 	}
 
+	/**
+	 * Inserts a ClassTypeInfoManager into this project
+	 * @param manager the manager to insert
+	 * @param monitor the current task monitor
+	 * @throws CancelledException if the operation is cancelled
+	 */
 	public void insert(ClassTypeInfoManager manager, TaskMonitor monitor)
 			throws CancelledException {
 		insert(List.of(manager), monitor);
 	}
 
+	/**
+	 * Inserts the collection of managers into this project
+	 * @param managers the collection of managers to insert
+	 * @param monitor the current task monitor
+	 * @throws CancelledException if the operation is cancelled
+	 */
 	public void insert(Collection<? extends ClassTypeInfoManager> managers, TaskMonitor monitor)
 			throws CancelledException {
 		String format = "Inserting %s (%d/%d)";
@@ -355,8 +378,14 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		}
 	}
 
-	public UndoableDomainObject getDomainObject() {
-		return archive.getDomainObject();
+	/**
+	 * Executes the provided background command in the provided tool
+	 * on this manager.
+	 * @param tool the plugin tool
+	 * @param cmd the background command
+	 */
+	public void executeCommand(PluginTool tool, BackgroundCommand cmd) {
+		tool.executeBackgroundCommand(cmd, archive.getDomainObject());
 	}
 
 	LibraryMap getLibMap() {
@@ -368,6 +397,11 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		archive.close();
 	}
 
+	/**
+	 * Initialize the {@link ProjectArchive} as a ClassTypeInfoManager
+	 * @param archive the project archive
+	 * @throws IOException if an error occurs initializing the archive
+	 */
 	public static void init(ProjectArchive archive) throws IOException {
 		Lock lock = getDB(archive).getLock();
 		lock.acquire();
@@ -405,6 +439,13 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			.orElse(null);
 	}
 
+	/**
+	 * Opens the Archive iff it contains a ProjectClassTypeInfoManager
+	 * @param plugin the plugin
+	 * @param archive the archive to open
+	 * @return the manager or null if it did not contain one
+	 * @throws IOException if an error occurs opening the archive
+	 */
 	public static FileArchiveClassTypeInfoManager openIfManagerArchive(
 			ClassTypeInfoManagerPlugin plugin, Archive archive) throws IOException {
 		if (archive instanceof ProjectArchive) {
@@ -416,7 +457,12 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		return null;
 	}
 
-	public Stream<LibraryClassTypeInfoManager> getAvailableManagers(String[] names) {
+	/**
+	 * Gets a stream of all available managers with the provided names
+	 * @param names the names of the libraries to get
+	 * @return a stream of all available specified libraries
+	 */
+	public Stream<LibraryClassTypeInfoManager> getAvailableManagers(Collection<String> names) {
 		Stream.Builder<LibraryClassTypeInfoManager> builder = Stream.builder();
 		for (String name : names) {
 			if (libMap.containsKey(name)) {
@@ -426,13 +472,23 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		return builder.build();
 	}
 
+	/**
+	 * Gets a stream of all available managers with the provided names
+	 * @param names the names of the libraries to get
+	 * @return a stream of all available specified libraries
+	 * @see #getAvailableManagers(Collection)
+	 */
+	public Stream<LibraryClassTypeInfoManager> getAvailableManagers(String[] names) {
+		return getAvailableManagers(List.of(names));
+	}
+
 	private void endTransaction(long id, boolean commit) {
 		endTransaction((int) id, commit);
 	}
 
-TransactionHandler getHandler() {
-	return new TransactionHandler(this::startTransaction, this::endTransaction);
-}
+	TransactionHandler getHandler() {
+		return new TransactionHandler(this::startTransaction, this::endTransaction);
+	}
 
 	class LibraryMap {
 
