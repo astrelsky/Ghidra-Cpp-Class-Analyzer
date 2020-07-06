@@ -142,7 +142,8 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	protected static byte[] getClassData(ClassTypeInfoRecord record) {
-		return record.getBinaryData(MODEL_DATA);
+		byte[] data = record.getBinaryData(MODEL_DATA);
+		return data != null ? data : new byte[0];
 	}
 
 	protected static String getIdentifier(byte id) {
