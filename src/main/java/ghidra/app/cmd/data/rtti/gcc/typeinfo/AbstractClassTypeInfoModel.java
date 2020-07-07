@@ -25,6 +25,10 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
+import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
+
 /**
  * Base Model for __class_type_info and its derivatives.
  */
@@ -86,8 +90,8 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel
 	}
 
 	@Override
-	public boolean isAbstract() {
-		return ClassTypeInfoUtils.isAbstract(this);
+	public final boolean isAbstract() {
+		return CppClassAnalyzerUtils.isAbstract(this, PURE_VIRTUAL_FUNCTION_NAME);
 	}
 
 	@Override

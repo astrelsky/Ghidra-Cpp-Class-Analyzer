@@ -322,18 +322,6 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 		return (model.getAttributes() >> 4 & 1) == 1;
 	}
 
-	@Override
-	public boolean isAbstract() {
-		for (Function[] table : getVtable().getFunctionTables()) {
-			for (Function function : table) {
-				if (function.getName().contains(PURE_VIRTUAL_FUNCTION_NAME)) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
 	private Vtable doGetVtable() {
 		final List<Address> addresses = getVftableAddresses();
 		if (!addresses.isEmpty()) {

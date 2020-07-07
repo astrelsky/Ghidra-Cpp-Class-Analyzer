@@ -1,9 +1,9 @@
 package cppclassanalyzer.utils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
+import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.function.AddFunctionTagCmd;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
@@ -158,5 +158,16 @@ public final class CppClassAnalyzerUtils {
 	 */
 	public static boolean isDataBlock(MemoryBlock block) {
 		return block != null ? block.isRead() || block.isWrite() : false;
+	}
+
+	public static boolean isAbstract(ClassTypeInfo type, String pureVirtualFunctionName) {
+		Vtable vtable = type.getVtable();
+		if (!Vtable.isValid(vtable)) {
+			return false;
+		}
+		return Arrays.stream(vtable.getFunctionTables())
+			.flatMap(Arrays::stream)
+			.map(Function::getName)
+			.anyMatch(pureVirtualFunctionName::equals);
 	}
 }

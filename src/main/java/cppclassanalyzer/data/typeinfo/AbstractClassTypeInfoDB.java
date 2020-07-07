@@ -2,6 +2,13 @@ package cppclassanalyzer.data.typeinfo;
 
 import java.util.*;
 
+import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
+import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
+import cppclassanalyzer.data.vtable.AbstractVtableDB;
+import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
+import cppclassanalyzer.database.record.ClassTypeInfoRecord;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+import cppclassanalyzer.wrapper.RttiModelWrapper;
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -10,15 +17,10 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.database.DatabaseObject;
-import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
-import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
-import cppclassanalyzer.data.vtable.AbstractVtableDB;
-import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
@@ -26,9 +28,6 @@ import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.NoValueException;
-
-import cppclassanalyzer.database.record.ClassTypeInfoRecord;
-import cppclassanalyzer.wrapper.RttiModelWrapper;
 
 import static cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields.*;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
@@ -395,16 +394,8 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	@Override
-	public boolean isAbstract() {
-		if (vtableSearched && Vtable.isValid(getVtable())) {
-			String virtualFunctionName = getPureVirtualFunctionName();
-			return Arrays.stream(getVtable().getFunctionTables())
-				.flatMap(Arrays::stream)
-				.filter(Objects::nonNull)
-				.map(Function::getName)
-				.anyMatch(virtualFunctionName::equals);
-		}
-		return false;
+	public final boolean isAbstract() {
+		return CppClassAnalyzerUtils.isAbstract(this, getPureVirtualFunctionName());
 	}
 
 	@Override

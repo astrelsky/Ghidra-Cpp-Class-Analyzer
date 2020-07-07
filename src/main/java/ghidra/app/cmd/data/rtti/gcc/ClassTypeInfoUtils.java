@@ -1,11 +1,13 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
-import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
-
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
+import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB.TypeId;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -15,11 +17,6 @@ import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.XReferenceUtil;
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
-import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB.TypeId;
-import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.SpecialAddress;
 import ghidra.program.model.data.*;
@@ -34,6 +31,8 @@ import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.Msg;
 import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
+
+import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
 
 public class ClassTypeInfoUtils {
 
@@ -374,27 +373,6 @@ public class ClassTypeInfoUtils {
 		} catch (DuplicateNameException e) {
 			throw new AssertException("Ghidra-Cpp-Class-Analyzer: "+e.getMessage(), e);
 		}
-	}
-
-	/**
-	 * Determines if the class is an abstract base
-	 *
-	 * @param type the __class_type_info to check
-	 * @return true if abstract
-	 */
-	public static boolean isAbstract(ClassTypeInfo type) {
-		Vtable vtable = type.getVtable();
-		if (!Vtable.isValid(vtable)) {
-			return false;
-		}
-		for (Function[] functionTable : vtable.getFunctionTables()) {
-			for (Function function : functionTable) {
-				if (function == null || function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	public static Map<ClassTypeInfo, Integer> getBaseOffsets(ClassTypeInfo type) {
