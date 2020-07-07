@@ -8,13 +8,13 @@ import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 import ghidra.framework.options.Options;
 import ghidra.app.services.AnalyzerType;
-import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.docking.settings.SettingsDefinition;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.address.Address;

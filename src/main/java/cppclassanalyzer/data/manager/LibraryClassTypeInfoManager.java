@@ -7,8 +7,7 @@ import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.plugin.core.datamgr.util.DataTypeUtils;
-import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
-import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.caches.ArchivedRttiCachePair;
@@ -16,6 +15,7 @@ import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.database.utils.TransactionHandler;
+import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import db.DBHandle;
 
 import ghidra.program.database.DatabaseObject;

@@ -5,7 +5,6 @@ import static cppclassanalyzer.database.schema.fields.VtableSchemaFields.*;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsVtableModel;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
@@ -14,6 +13,7 @@ import ghidra.program.model.listing.Listing;
 
 import cppclassanalyzer.database.record.VtableRecord;
 import cppclassanalyzer.database.record.DatabaseRecord.ByteConvertable;
+import cppclassanalyzer.wrapper.VsVtableModel;
 
 public class VftableDB extends AbstractVtableDB {
 
@@ -28,7 +28,7 @@ public class VftableDB extends AbstractVtableDB {
 		}
 	}
 
-	public VftableDB(ProgramRttiRecordManager worker, WindowsVtableModel vtable, VtableRecord record) {
+	public VftableDB(ProgramRttiRecordManager worker, VsVtableModel vtable, VtableRecord record) {
 		super(worker, vtable, record);
 		Address[] addresses = vtable.getTableAddresses();
 		Function[][] functions = vtable.getFunctionTables();

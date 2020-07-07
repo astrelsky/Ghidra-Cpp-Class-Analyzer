@@ -2,10 +2,10 @@ package cppclassanalyzer.decompiler.action;
 
 import ghidra.app.plugin.core.decompile.DecompilerActionContext;
 import ghidra.app.plugin.core.decompile.actions.AbstractNonPackageDecompilerAction;
-import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 
-import cppclassanalyzer.cmd.FillOutClassCmd;
+import cppclassanalyzer.cmd.FillOutClassBackgroundCmd;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import docking.action.MenuData;
 
 public class FillOutClassAction extends AbstractNonPackageDecompilerAction {
@@ -37,7 +37,7 @@ public class FillOutClassAction extends AbstractNonPackageDecompilerAction {
 
 	@Override
 	protected void decompilerActionPerformed(DecompilerActionContext context) {
-		FillOutClassCmd cmd = new FillOutClassCmd(context);
+		FillOutClassBackgroundCmd cmd = new FillOutClassBackgroundCmd(context);
 		context.getTool().executeBackgroundCommand(cmd, context.getProgram());
 	}
 

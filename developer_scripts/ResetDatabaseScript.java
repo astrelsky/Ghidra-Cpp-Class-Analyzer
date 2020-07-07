@@ -1,6 +1,6 @@
 //@category CppClassAnalyzer
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 import ghidra.app.script.GhidraScript;
 import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.program.database.ProgramDB;

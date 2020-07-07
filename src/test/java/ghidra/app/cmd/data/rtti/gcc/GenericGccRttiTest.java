@@ -3,10 +3,11 @@ package ghidra.app.cmd.data.rtti.gcc;
 import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.plugin.core.analysis.OneShotAnalysisCommand;
 import ghidra.app.plugin.prototype.GccRttiAnalyzer;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.gcc.GccCppClassAnalyzer;
 import ghidra.app.services.Analyzer;
 import ghidra.program.model.listing.Program;
 import ghidra.test.AbstractGhidraHeadedIntegrationTest;
+
+import cppclassanalyzer.analysis.gcc.GccCppClassAnalyzer;
 
 public class GenericGccRttiTest extends AbstractGhidraHeadedIntegrationTest {
 

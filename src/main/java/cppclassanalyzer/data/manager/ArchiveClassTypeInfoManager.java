@@ -10,8 +10,7 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.FileArchive;
-import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
-import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 import ghidra.framework.store.db.PackedDBHandle;
 import ghidra.framework.store.db.PackedDatabase;
 
@@ -39,6 +38,7 @@ import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.tables.ArchivedClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.ArchivedGnuVtableDatabaseTable;
 import cppclassanalyzer.database.utils.TransactionHandler;
+import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import db.DBConstants;
 import db.DBHandle;
 import db.Table;

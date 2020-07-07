@@ -14,9 +14,6 @@ import ghidra.app.cmd.data.rtti.Rtti1Model;
 import ghidra.app.cmd.data.rtti.Rtti2Model;
 import ghidra.app.cmd.data.rtti.Rtti3Model;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.VsCppClassBuilder;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsClassTypeInfo;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
@@ -28,9 +25,12 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
+import cppclassanalyzer.wrapper.RttiModelWrapper;
+import cppclassanalyzer.wrapper.VsClassTypeInfo;
+import cppclassanalyzer.wrapper.VsCppClassBuilder;
 
 public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
-		implements WindowsClassTypeInfo {
+		implements VsClassTypeInfo {
 
 	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
 
@@ -51,7 +51,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	public WindowsClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfo type,
 			ClassTypeInfoRecord record) {
 		super(worker, type, record);
-		WindowsClassTypeInfo model = (WindowsClassTypeInfo) type;
+		VsClassTypeInfo model = (VsClassTypeInfo) type;
 		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
 			model.getBaseOffsets().entrySet().stream().collect(Collectors.toList());
 		baseKeys = new long[baseEntries.size()];

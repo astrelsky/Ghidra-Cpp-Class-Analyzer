@@ -12,12 +12,8 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
-import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
-import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.WindowsVtableModel;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
-import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord.ChangeType;
-import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.program.database.ManagerDB;
 import ghidra.program.database.ProgramDB;
@@ -55,6 +51,10 @@ import cppclassanalyzer.database.tables.ClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.VtableDatabaseTable;
 import cppclassanalyzer.database.utils.LongStack;
 import cppclassanalyzer.database.utils.TransactionHandler;
+import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
+import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord;
+import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord.ChangeType;
+import cppclassanalyzer.wrapper.VsVtableModel;
 import db.DBHandle;
 import db.LongField;
 import db.RecordIterator;
@@ -977,7 +977,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 		@Override
 		VftableDB buildVtable(Vtable vtable, VtableRecord record) {
-			return new VftableDB(this, (WindowsVtableModel) vtable, record);
+			return new VftableDB(this, (VsVtableModel) vtable, record);
 		}
 
 	}

@@ -17,10 +17,10 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
-import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.database.ProgramBuilder;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.data.StringDataType;

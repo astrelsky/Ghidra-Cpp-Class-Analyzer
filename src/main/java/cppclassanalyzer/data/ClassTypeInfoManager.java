@@ -6,7 +6,7 @@ import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
-import ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import db.util.ErrorHandler;
@@ -33,7 +33,7 @@ public interface ClassTypeInfoManager extends ErrorHandler {
 
 	/**
 	 * Gets the icon for this manager to be used in the
-	 * {@link ghidra.app.plugin.prototype.typemgr.TypeInfoArchiveGTree TypeInfoArchiveGTree}
+	 * {@link cppclassanalyzer.plugin.typemgr.TypeInfoArchiveGTree TypeInfoArchiveGTree}
 	 * @param expanded true if the manager tree node is expanded
 	 * @return the icon to be used in the tree
 	 */

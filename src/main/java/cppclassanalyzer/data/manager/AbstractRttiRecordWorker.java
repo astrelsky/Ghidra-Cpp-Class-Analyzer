@@ -6,9 +6,6 @@ import java.util.stream.Stream;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.plugin.prototype.ClassTypeInfoManagerPlugin;
-import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord;
-import ghidra.app.plugin.prototype.TypeInfoArchiveChangeRecord.ChangeType;
 import ghidra.program.database.DBObjectCache;
 import ghidra.program.database.DatabaseObject;
 import cppclassanalyzer.data.manager.caches.RttiCachePair;
@@ -19,6 +16,9 @@ import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.database.record.DatabaseRecord;
 import cppclassanalyzer.database.schema.AbstractSchema;
 import cppclassanalyzer.database.utils.TransactionHandler;
+import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
+import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord;
+import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord.ChangeType;
 import db.util.ErrorHandler;
 
 public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,

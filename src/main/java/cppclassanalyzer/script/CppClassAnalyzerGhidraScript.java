@@ -3,11 +3,11 @@ package cppclassanalyzer.script;
 import java.io.IOException;
 
 import ghidra.app.script.GhidraScript;
-import ghidra.app.services.ClassTypeInfoManagerService;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemanglerUtil;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 
 /**
  * A GhidraScript extension providing convenient access to the current

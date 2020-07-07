@@ -9,7 +9,6 @@ import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
-import ghidra.app.plugin.prototype.CppCodeAnalyzerPlugin.wrappers.RttiModelWrapper;
 import ghidra.program.database.DatabaseObject;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
@@ -29,6 +28,7 @@ import ghidra.util.exception.AssertException;
 import ghidra.util.exception.NoValueException;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
+import cppclassanalyzer.wrapper.RttiModelWrapper;
 
 import static cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields.*;
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;

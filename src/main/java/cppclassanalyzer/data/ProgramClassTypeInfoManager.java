@@ -105,7 +105,7 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 	 * The provided address must be the address of a copy relocation or within the
 	 * {@code <EXTERNAL>} AddressSpace. In order for the ClassTypeInfo to be retreived
 	 * a ProjectClassTypeInfoManager containing the symbol at the address must be open
-	 * in the {@link ghidra.app.plugin.prototype.typemgr.node.TypeInfoTreeNodeManager
+	 * in the {@link cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager
 	 * TypeInfoTreeNodeManager}
 	 * @param address the address of the external ClassTypeInfo symbol
 	 * @return the ClassTypeInfo at the specified address or null if the data was not found
