@@ -3,6 +3,7 @@ package cppclassanalyzer.data.manager;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
@@ -163,6 +164,19 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			VtableSchema.SCHEMA,
 			VtableSchema.INDEXED_COLUMNS);
 		return new VtableDatabaseTable(vtableTable);
+	}
+
+	public <T> T lockAndRun(Supplier<T> supplier, T defaultResult) {
+		Thread lockOwner = lock.getOwner();
+		if (lockOwner == null || lockOwner == Thread.currentThread()) {
+			lock.acquire();
+			try {
+				return supplier.get();
+			} finally {
+				lock.release();
+			}
+		}
+		return defaultResult;
 	}
 
 	@Override

@@ -4,7 +4,7 @@ import ghidra.app.plugin.core.decompile.DecompilerActionContext;
 import ghidra.app.plugin.core.decompile.actions.AbstractNonPackageDecompilerAction;
 
 import cppclassanalyzer.cmd.FillOutClassBackgroundCmd;
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import docking.action.MenuData;
 
@@ -28,11 +28,12 @@ public class FillOutClassAction extends AbstractNonPackageDecompilerAction {
 		if (!context.hasRealFunction()) {
 			return false;
 		}
-		ProgramClassTypeInfoManager manager = plugin.getManager(context.getProgram());
+		ClassTypeInfoManagerDB manager =
+			(ClassTypeInfoManagerDB) plugin.getManager(context.getProgram());
 		if (manager == null) {
 			return false;
 		}
-		return manager.getType(context.getFunction()) != null;
+		return manager.lockAndRun(() -> manager.getType(context.getFunction()) != null, false);
 	}
 
 	@Override
