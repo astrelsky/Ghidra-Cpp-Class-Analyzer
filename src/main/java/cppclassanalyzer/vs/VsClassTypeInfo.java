@@ -5,18 +5,8 @@ import java.util.Map;
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.*;
 import ghidra.app.util.datatype.microsoft.DataValidationOptions;
-import ghidra.program.model.address.Address;
-import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.listing.GhidraClass;
-import ghidra.program.model.listing.Program;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolIterator;
-import ghidra.util.exception.AssertException;
-import ghidra.util.exception.CancelledException;
-import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import util.CollectionUtils;
 
 public interface VsClassTypeInfo extends ClassTypeInfo {
 
@@ -28,43 +18,9 @@ public interface VsClassTypeInfo extends ClassTypeInfo {
 
 	public Map<ClassTypeInfo, Integer> getBaseOffsets();
 	public Rtti1Model getBaseModel();
-	default Rtti2Model getBaseClassArray() {
-		try {
-			return getHierarchyDescriptor().getRtti2Model();
-		} catch (InvalidDataTypeException e) {
-			throw new AssertException(e);
-		}
-	}
+	public Rtti2Model getBaseClassArray();
 	public Rtti3Model getHierarchyDescriptor();
 	public TypeDescriptorModel getTypeDescriptor();
-
-	default public Rtti4Model getCompleteObjectLocator() {
-		GhidraClass gc = getGhidraClass();
-		Program program = gc.getSymbol().getProgram();
-		SymbolIterator it = program.getSymbolTable().getChildren(gc.getSymbol());
-		for (Symbol symbol : CollectionUtils.asIterable(it)) {
-			if (symbol.getName().contains(LOCATOR_SYMBOL_NAME)) {
-				Rtti4Model locatorModel = new Rtti4Model(
-					program, symbol.getAddress(), DEFAULT_OPTIONS);
-				try {
-					locatorModel.validate();
-					return locatorModel;
-				} catch (InvalidDataTypeException e) {
-					// continue searching
-				}
-			}
-		}
-		return null;
-	}
-
-	static Rtti4Model findRtti4Model(Program program, Address address, TaskMonitor monitor)
-			throws CancelledException {
-		return RttiModelSearcher.findRtti4Model(program, address, monitor);
-	}
-
-	static boolean symbolFilter(Symbol symbol) {
-		return symbol.getName().contains(LOCATOR_SYMBOL_NAME);
-	}
 
 	@Override
 	default public boolean isAbstract() {

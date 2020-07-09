@@ -35,8 +35,8 @@ public abstract class AbstractCppClassBuilder {
 		this.type = type;
 		GhidraClass gc = type.getGhidraClass();
 		this.program = gc.getSymbol().getProgram();
-		this.struct = ClassTypeInfoUtils.getPlaceholderStruct(
-			type, program.getDataTypeManager());
+		this.struct = ClassTypeInfoUtils.getPlaceholderStruct(type, program.getDataTypeManager());
+		this.struct = resolveStruct(struct);
 		this.path = new CategoryPath(struct.getCategoryPath(), type.getName());
 	}
 
@@ -77,7 +77,6 @@ public abstract class AbstractCppClassBuilder {
 			struct = ClassTypeInfoUtils.getPlaceholderStruct(
 				type, program.getDataTypeManager());
 		}
-		struct = resolveStruct(struct);
 		Integer id = null;
 		if (program.getCurrentTransaction() == null) {
 			id = program.startTransaction("creating datatype for "+type.getName());

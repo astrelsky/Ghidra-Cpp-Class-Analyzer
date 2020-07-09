@@ -30,7 +30,6 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 	private final TypeDescriptorModel type;
 	private final Rtti2Model baseArray;
 	private final Rtti3Model hierarchyDescriptor;
-	private final Rtti4Model completeObjectLocator;
 	private final Vtable vtable;
 	private final ClassTypeInfo[] parents;
 	private final Rtti1Model baseModel;
@@ -39,6 +38,19 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 	private final Set<ClassTypeInfo> virtualParents;
 	private final Map<ClassTypeInfo, Integer> baseOffsets;
 
+	private RttiModelWrapper(TypeDescriptorModel model) throws InvalidDataTypeException {
+		this.type = model;
+		this.baseArray = null;
+		this.hierarchyDescriptor = null;
+		this.vtable = Vtable.NO_VTABLE;
+		this.parents = new ClassTypeInfo[0];
+		this.baseModel = null;
+		this.builder = new VsCppClassBuilder(this);
+		this.typeName = type.getTypeName();
+		this.virtualParents = Collections.emptySet();
+		this.baseOffsets = Collections.emptyMap();
+	}
+
 	private RttiModelWrapper(Rtti1Model model) throws InvalidDataTypeException {
 		Program program = model.getProgram();
 		this.baseModel = model;
@@ -46,7 +58,6 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 		this.hierarchyDescriptor =
 			new Rtti3Model(program, model.getRtti3Address(), DEFAULT_OPTIONS);
 		this.baseArray = hierarchyDescriptor.getRtti2Model();
-		this.completeObjectLocator = null;
 		this.parents = doGetParentModels();
 		this.vtable = doGetVtable();
 		this.builder = new VsCppClassBuilder(this);
@@ -57,7 +68,6 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 
 	private RttiModelWrapper(Rtti4Model model) throws InvalidDataTypeException {
 		model.validate();
-		this.completeObjectLocator = model;
 		this.type = model.getRtti0Model();
 		type.validate();
 		this.hierarchyDescriptor = model.getRtti3Model();
@@ -83,7 +93,6 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 		baseArray.validate();
 		this.baseModel = baseArray.getRtti1Model(0);
 		baseModel.validate();
-		this.completeObjectLocator = null;
 		this.parents = doGetParentModels();
 		this.vtable = doGetVtable();
 		this.builder = new VsCppClassBuilder(this);
@@ -114,6 +123,11 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 
 	public static RttiModelWrapper getWrapper(TypeDescriptorModel typeModel, TaskMonitor monitor)
 			throws CancelledException {
+		try {
+			typeModel.validate();
+		} catch (InvalidDataTypeException e) {
+			throw new IllegalArgumentException(e);
+		}
 		RttiModelSearcher searcher = new RttiModelSearcher(typeModel);
 		searcher.search(monitor);
 		AnyRttiModel any = searcher.getSearchResult();
@@ -124,12 +138,12 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 			if (any.isRtti3Model()) {
 				return new RttiModelWrapper(any.getRtti3Model());
 			}
+			// This is just a lone class and is common for exceptions, lambdas, std::bind, etc
+			return new RttiModelWrapper(typeModel);
 		} catch (InvalidDataTypeException e) {
 			// impossible
 			throw new AssertException(e);
 		}
-		// Not enough information to wrap. This is valid
-		return null;
 	}
 
 	public Rtti1Model getBaseModel() {
@@ -139,6 +153,11 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 	@Override
 	public TypeDescriptorModel getTypeDescriptor() {
 		return type;
+	}
+
+	@Override
+	public Rtti2Model getBaseClassArray() {
+		return baseArray;
 	}
 
 	@Override
@@ -373,11 +392,6 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 	@Override
 	public Rtti3Model getHierarchyDescriptor() {
 		return hierarchyDescriptor;
-	}
-
-	@Override
-	public Rtti4Model getCompleteObjectLocator() {
-		return completeObjectLocator;
 	}
 
 	public List<Rtti4Model> getCompleteObjectLocators() {

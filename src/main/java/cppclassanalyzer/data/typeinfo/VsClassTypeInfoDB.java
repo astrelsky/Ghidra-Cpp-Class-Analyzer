@@ -87,6 +87,9 @@ public class VsClassTypeInfoDB extends AbstractClassTypeInfoDB implements VsClas
 		try {
 			Set<ClassTypeInfo> result = new LinkedHashSet<>();
 			Rtti3Model rtti3 = getHierarchyDescriptor();
+			if (rtti3 == null) {
+				return Collections.emptySet();
+			}
 			Rtti2Model baseArray = rtti3.getRtti2Model();
 			for (int i = 1; i < rtti3.getRtti1Count(); i++) {
 				Rtti1Model model = baseArray.getRtti1Model(i);
@@ -123,15 +126,34 @@ public class VsClassTypeInfoDB extends AbstractClassTypeInfoDB implements VsClas
 		return ClassTypeInfoRecord.getLongArray(buf);
 	}
 
+	@Override
 	public Rtti1Model getBaseModel() {
-		return new Rtti1Model(
-			getProgram(), decodeAddress(baseModelAddress), DEFAULT_OPTIONS);
+		if (baseModelAddress != INVALID_KEY) {
+			return new Rtti1Model(getProgram(), decodeAddress(baseModelAddress), DEFAULT_OPTIONS);
+		}
+		return null;
+	}
+
+	@Override
+	public Rtti2Model getBaseClassArray() {
+		Rtti3Model model = getHierarchyDescriptor();
+		if (model != null) {
+			try {
+				return model.getRtti2Model();
+			} catch (InvalidDataTypeException e) {
+				throw new AssertException(e);
+			}
+		}
+		return null;
 	}
 
 	@Override
 	public Rtti3Model getHierarchyDescriptor() {
-		Address rtti3Address = decodeAddress(hierarchyDescriptorAddress);
-		return new Rtti3Model(getProgram(), rtti3Address, DEFAULT_OPTIONS);
+		if (hierarchyDescriptorAddress != INVALID_KEY) {
+			Address rtti3Address = decodeAddress(hierarchyDescriptorAddress);
+			return new Rtti3Model(getProgram(), rtti3Address, DEFAULT_OPTIONS);
+		}
+		return null;
 	}
 
 	public static int getBaseCount(ClassTypeInfoRecord record) {
@@ -231,9 +253,11 @@ public class VsClassTypeInfoDB extends AbstractClassTypeInfoDB implements VsClas
 			baseKeys[i] = manager.resolve(entry.getKey()).getKey();
 			baseOffsets[i] = entry.getValue();
 		}
-		baseModelAddress = encodeAddress(vsType.getBaseModel().getAddress());
-		hierarchyDescriptorAddress = encodeAddress(
-			vsType.getHierarchyDescriptor().getAddress());
+		Rtti1Model base = vsType.getBaseModel();
+		baseModelAddress = base != null ? encodeAddress(base.getAddress()) : INVALID_KEY;
+		Rtti3Model model = vsType.getHierarchyDescriptor();
+		hierarchyDescriptorAddress = model != null
+			? encodeAddress(model.getAddress()) : INVALID_KEY;
 		fillRecord(record);
 	}
 }

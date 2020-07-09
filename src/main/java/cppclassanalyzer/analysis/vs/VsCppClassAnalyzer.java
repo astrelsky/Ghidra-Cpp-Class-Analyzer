@@ -1,6 +1,5 @@
 package cppclassanalyzer.analysis.vs;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -214,19 +213,12 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 		private void fixMissingMarkup(VsClassTypeInfo type) throws CancelledException {
 			// Only create the slow Rtti#Models if necessary
-			if (needsRtti4Markup(type)) {
-				markupRtti4(type);
-			}
 			if (needsRtti3Markup(type)) {
 				markupRtti3(type);
 			}
 			if (needsRtti2Markup(type)) {
 				markupRtti2(type);
 			}
-		}
-
-		private boolean needsRtti4Markup(VsClassTypeInfo type) {
-			return needsRttiMarkup(type, VsClassTypeInfo.LOCATOR_SYMBOL_NAME);
 		}
 
 		private boolean needsRtti3Markup(VsClassTypeInfo type) {
@@ -246,21 +238,11 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 				.noneMatch(s -> s.contains(symbolName));
 		}
 
-		private void markupRtti4(VsClassTypeInfo type) throws CancelledException {
-			Program program = manager.getProgram();
-			Rtti4Model rtti4 =
-					VsClassTypeInfo.findRtti4Model(program, type.getAddress(), monitor);
-			if (rtti4 != null) {
-				CreateRtti4BackgroundCmd cmd =
-				new CreateRtti4BackgroundCmd(
-					rtti4.getAddress(), Collections.emptyList(),
-					VsClassTypeInfo.DEFAULT_OPTIONS, DEFAULT_APPLY_OPTIONS);
-				cmd.applyTo(program);
-			}
-		}
-
 		private void markupRtti3(VsClassTypeInfo type) {
 			Rtti3Model rtti3 = type.getHierarchyDescriptor();
+			if (rtti3 == null) {
+				return;
+			}
 			CreateRtti3BackgroundCmd cmd =
 				new CreateRtti3BackgroundCmd(
 					rtti3.getAddress(), VsClassTypeInfo.DEFAULT_OPTIONS,
@@ -270,6 +252,9 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 		private void markupRtti2(VsClassTypeInfo type) {
 			Rtti2Model rtti2 = type.getBaseClassArray();
+			if (rtti2 == null) {
+				return;
+			}
 			CreateRtti2BackgroundCmd cmd =
 				new CreateRtti2BackgroundCmd(
 					rtti2.getAddress(), rtti2.getCount(),
