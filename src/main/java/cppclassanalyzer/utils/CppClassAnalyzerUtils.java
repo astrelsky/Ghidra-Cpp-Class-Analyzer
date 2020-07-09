@@ -35,12 +35,12 @@ public final class CppClassAnalyzerUtils {
 	 * @return the first found PluginTool or null if none found
 	 */
 	public static PluginTool getTool(DomainObject obj) {
-		return obj.getConsumerList()
-			.stream()
-			.filter(PluginTool.class::isInstance)
-			.map(PluginTool.class::cast)
-			.findFirst()
-			.orElse(null);
+		for (Object o : obj.getConsumerList()) {
+			if (o instanceof PluginTool) {
+				return (PluginTool) o;
+			}
+		}
+		return null;
 	}
 
 	/**

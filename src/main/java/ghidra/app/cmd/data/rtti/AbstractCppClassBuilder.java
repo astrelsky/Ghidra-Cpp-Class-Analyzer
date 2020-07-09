@@ -5,7 +5,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
-import ghidra.program.model.data.AlignedStructureInspector;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
@@ -13,7 +12,6 @@ import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.Structure;
-import ghidra.program.model.data.AlignedStructurePacker.StructurePackResult;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.util.CompositeDataTypeElementInfo;
@@ -30,9 +28,6 @@ public abstract class AbstractCppClassBuilder {
 	protected Structure struct;
 	private CategoryPath path;
 	private ClassTypeInfo type;
-
-	// this is lazyness
-	private boolean built = false;
 
 	private Map<CompositeDataTypeElementInfo, String> dtComps = Collections.emptyMap();
 
@@ -78,13 +73,11 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	public Structure getDataType() {
-		if (built) {
-			return struct;
-		}
 		if (struct.isDeleted()) {
 			struct = ClassTypeInfoUtils.getPlaceholderStruct(
 				type, program.getDataTypeManager());
 		}
+		struct = resolveStruct(struct);
 		Integer id = null;
 		if (program.getCurrentTransaction() == null) {
 			id = program.startTransaction("creating datatype for "+type.getName());
@@ -124,9 +117,7 @@ public abstract class AbstractCppClassBuilder {
 		}
 		addVptr();
 		fixComponents();
-		built = true;
-		struct = resolveStruct(struct);
-		resolveStruct(getSuperClassDataType());
+		getSuperClassDataType();
 		if (id != null) {
 			program.endTransaction(id, true);
 		}
@@ -153,12 +144,13 @@ public abstract class AbstractCppClassBuilder {
 		if (dt == null) {
 			Structure superStruct = (Structure) struct.copy(dtm);
 			setSuperStructureCategoryPath(superStruct);
+			superStruct = resolveStruct(superStruct);
 			deleteVirtualComponents(superStruct);
 			addVptr(superStruct);
 			if (!superStruct.isMachineAligned()) {
 				trimStructure(superStruct);
 			}
-			return resolveStruct(superStruct);
+			return superStruct;
 		}
 		return (Structure) dt;
 	}
@@ -197,24 +189,7 @@ public abstract class AbstractCppClassBuilder {
 
 	protected static Structure resolveStruct(Structure struct) {
 		DataTypeManager dtm = struct.getDataTypeManager();
-		struct =
-			(Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
-		boolean isAligned = struct.isInternallyAligned() || struct.isDefaultAligned()
-			|| struct.isMachineAligned();
-		if (struct.getNumComponents() == 0 || isAligned) {
-			return struct;
-		}
-		try {
-			// TODO this seems to get stuck in inf loop somewhere.
-			// Find cause and report to ghidra devs if necessary
-			StructurePackResult results = AlignedStructureInspector.packComponents(struct);
-			if (!results.componentsChanged) {
-				struct.setMinimumAlignment(results.alignment);
-			}
-		} catch (IndexOutOfBoundsException e) {
-			Msg.error(AlignedStructureInspector.class, e);
-		}
-		return struct;
+		return (Structure) dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
 	}
 
 	protected void deleteVirtualComponents(Structure superStruct) {
@@ -243,6 +218,9 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	private void stashComponents() {
+		if (struct.isInternallyAligned()) {
+			struct.setInternallyAligned(false);
+		}
 		if(dtComps.isEmpty()) {
 			dtComps = new HashMap<>(struct.getNumDefinedComponents());
 			for (DataTypeComponent comp : struct.getDefinedComponents()) {

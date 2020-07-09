@@ -19,6 +19,7 @@ import ghidra.util.task.TaskMonitor;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import cppclassanalyzer.vs.RttiModelSearcher.AnyRttiModel;
+import util.CollectionUtils;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getReferencedAddress;
 
@@ -339,8 +340,26 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 		Map<ClassTypeInfo, Integer> map = new HashMap<>();
 		for (int i = 1; i < baseArray.getCount(); i++) {
 			Rtti1Model base = baseArray.getRtti1Model(i);
-			if (!shouldIgnore(base)) {
+			if (!shouldIgnore(base) && !isVirtual(base)) {
 				map.put(wrapNoExcept(base), getOffset(base));
+			}
+		}
+		Set<ClassTypeInfo> vParents = getVirtualParents();
+		if (!vParents.isEmpty()) {
+			List<Rtti4Model> models = getCompleteObjectLocators();
+			if (models.size() >= vParents.size()) {
+				models = models.subList(models.size() - vParents.size(), models.size());
+				int i = 0;
+				for (ClassTypeInfo parent : vParents) {
+					map.put(parent, models.get(i++).getVbTableOffset());
+				}
+			} else {
+				for (int i = 1; i < baseArray.getCount(); i++) {
+					Rtti1Model base = baseArray.getRtti1Model(i);
+					if (!shouldIgnore(base) && isVirtual(base)) {
+						map.put(wrapNoExcept(base), getOffset(base));
+					}
+				}
 			}
 		}
 		return map;
@@ -359,5 +378,20 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 	@Override
 	public Rtti4Model getCompleteObjectLocator() {
 		return completeObjectLocator;
+	}
+
+	public List<Rtti4Model> getCompleteObjectLocators() {
+		String dtName = "RTTICompleteObjectLocator";
+		Listing listing = type.getProgram().getListing();
+		Data data = listing.getDataAt(getAddress());
+		Iterable<Reference> it = data.getReferenceIteratorTo();
+		return CollectionUtils.asStream(it)
+			.map(Reference::getFromAddress)
+			.map(listing::getDataContaining)
+			.filter(Objects::nonNull)
+			.filter(d -> d.getMnemonicString().equals(dtName))
+			.sorted((a, b) -> a.getAddress().compareTo(b.getAddress()))
+			.map(d -> new Rtti4Model(d.getProgram(), d.getAddress(), DEFAULT_OPTIONS))
+			.collect(Collectors.toList());
 	}
 }
