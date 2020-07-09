@@ -17,7 +17,7 @@ import ghidra.util.Msg;
 import cppclassanalyzer.analysis.cmd.AbstractDecompilerBasedConstructorAnalysisCmd;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import cppclassanalyzer.wrapper.VsClassTypeInfo;
+import cppclassanalyzer.vs.VsClassTypeInfo;
 import util.CollectionUtils;
 
 public class VsDecompilerConstructorAnalysisCmd

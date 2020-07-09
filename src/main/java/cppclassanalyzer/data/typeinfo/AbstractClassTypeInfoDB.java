@@ -8,14 +8,15 @@ import cppclassanalyzer.data.vtable.AbstractVtableDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import cppclassanalyzer.wrapper.RttiModelWrapper;
-import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vtable;
+import cppclassanalyzer.vs.RttiModelWrapper;
+
+import ghidra.app.cmd.data.rtti.*;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.ClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.SiClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
+import ghidra.app.util.demangler.DemangledObject;
+import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.program.database.DatabaseObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
@@ -52,6 +53,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		this.vtableSearched = record.getBooleanValue(VTABLE_SEARCHED);
 		this.vtableKey = record.getLongValue(VTABLE_KEY);
 		this.struct = fetchDataType(record);
+		fillModelData(record);
 	}
 
 	protected AbstractClassTypeInfoDB(ProgramRttiRecordManager manager, ClassTypeInfo type,
@@ -61,6 +63,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		this.address = type.getAddress();
 		this.typename = type.getTypeName();
 		setRecord(type, record);
+		fillModelData(type, record);
 	}
 
 	protected AbstractClassTypeInfoDB(ProgramRttiRecordManager manager, ArchivedClassTypeInfo type,
@@ -85,7 +88,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 		this.struct = (Structure) dtm.resolve(type.getDataType(), REPLACE_HANDLER);
 		dtm.resolve(type.getSuperDataType(), REPLACE_HANDLER);
 		record.setStringValue(TYPENAME, typename);
-		record.setLongValue(ADDRESS, getManager().encodeAddress(address));
+		record.setLongValue(ADDRESS, encodeAddress(address));
 		manager.updateRecord(record);
 		record.setByteValue(TYPEINFO_ID, type.getClassId());
 		record.setLongValue(DATATYPE_ID, struct.getUniversalID().getValue());
@@ -98,12 +101,14 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	private void setRecord(ClassTypeInfo type, ClassTypeInfoRecord record) {
 		record.setStringValue(TYPENAME, type.getTypeName());
 		record.setByteValue(TYPEINFO_ID, TypeId.encode(type));
-		record.setLongValue(ADDRESS, getManager().encodeAddress(type.getAddress()));
+		record.setLongValue(ADDRESS, encodeAddress(type.getAddress()));
 		record.setLongValue(DATATYPE_ID, INVALID_KEY);
 		Vtable vtable = type.getVtable();
 		if (Vtable.isValid(vtable)) {
-			setVtableSearched();
-			setVtable(vtable);
+			this.vtableSearched = true;
+			vtable = manager.resolve(vtable);
+			((AbstractVtableDB) vtable).setClassKey(key);
+			vtableKey = ((DatabaseObject) vtable).getKey();
 		} else {
 			this.vtableSearched = false;
 			this.vtableKey = -1;
@@ -117,7 +122,21 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	protected abstract int[] getOffsets();
 	protected abstract String getPureVirtualFunctionName();
 	protected abstract AbstractCppClassBuilder getClassBuilder();
-	protected abstract void fillOffsets(ClassTypeInfoRecord record);
+	protected abstract void fillModelData(ClassTypeInfoRecord record);
+	protected abstract void fillModelData(ClassTypeInfo type, ClassTypeInfoRecord record);
+
+	protected long encodeAddress(Address addr) {
+		return getManager().encodeAddress(addr);
+	}
+
+	protected Address decodeAddress(long addr) {
+		return getManager().decodeAddress(addr);
+	}
+
+	protected ClassTypeInfo getRawType() {
+		TypeInfo type = manager.getManager().getTypeInfo(getAddress(), false);
+		return (ClassTypeInfo) type;
+	}
 
 	@Override
 	public ClassTypeInfoManagerDB getManager() {
@@ -142,7 +161,17 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 
 	protected static byte[] getClassData(ClassTypeInfoRecord record) {
 		byte[] data = record.getBinaryData(MODEL_DATA);
-		return data != null ? data : new byte[0];
+		if (data == null) {
+			DemangledObject o = DemanglerUtil.demangle("_ZTI"+record.getStringValue(TYPENAME));
+			String name;
+			if (o != null) {
+				name = o.getNamespace().getOriginalDemangled();
+			} else {
+				name = record.getStringValue(TYPENAME);
+			}
+			Msg.warn(AbstractClassTypeInfoDB.class, "Model data for "+name+" was null");
+		}
+		return data;
 	}
 
 	protected static String getIdentifier(byte id) {
@@ -162,7 +191,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			case VMI_CLASS:
 				return GnuClassTypeInfoDB.getBaseCount(record);
 			case RTTI_MODEL_WRAPPER:
-				return WindowsClassTypeInfoDB.getBaseCount(record);
+				return VsClassTypeInfoDB.getBaseCount(record);
 			default:
 				// impossible but javac complains for some reason
 				throw new AssertException("Ghidra-Cpp-Class-Analyzer: invalid database record");
@@ -189,7 +218,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			case VMI_CLASS:
 				return GnuClassTypeInfoDB.getBaseKeys(record);
 			case RTTI_MODEL_WRAPPER:
-				return WindowsClassTypeInfoDB.getBaseKeys(record);
+				return VsClassTypeInfoDB.getBaseKeys(record);
 			default:
 				// impossible but javac complains for some reason
 				throw new AssertException("Ghidra-Cpp-Class-Analyzer: invalid database record");
@@ -219,7 +248,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 				GnuClassTypeInfoDB.updateRecord(record, keyMap);
 				break;
 			case RTTI_MODEL_WRAPPER:
-				WindowsClassTypeInfoDB.updateRecord(record, keyMap);
+				VsClassTypeInfoDB.updateRecord(record, keyMap);
 				break;
 		}
 	}
@@ -238,7 +267,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	@Override
-	protected boolean refresh() {
+	protected final boolean refresh() {
 		return refresh(getRecord());
 	}
 
@@ -347,7 +376,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			vtableKey = -1;
 		}
 		record.setLongValue(VTABLE_KEY, vtableKey);
-		fillOffsets(record);
+		fillModelData(record);
 		manager.updateRecord(record);
 	}
 

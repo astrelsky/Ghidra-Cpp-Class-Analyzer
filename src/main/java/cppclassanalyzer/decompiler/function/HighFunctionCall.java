@@ -7,9 +7,10 @@ import java.util.stream.IntStream;
 import ghidra.app.decompiler.*;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSpace;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Listing;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.pcode.*;
+import ghidra.program.model.symbol.ExternalLocationIterator;
+import ghidra.program.model.symbol.ExternalManager;
 
 public final class HighFunctionCall implements Comparable<HighFunctionCall> {
 
@@ -17,17 +18,21 @@ public final class HighFunctionCall implements Comparable<HighFunctionCall> {
 	private final ClangFuncNameToken name;
 	private final List<HighFunctionCallParameter> parameters;
 
-	public HighFunctionCall(ClangStatement statement) {
-		FunctionNameParamSupplier supplier = new FunctionNameParamSupplier(statement);
-		if (supplier.getFunctionName() == null) {
-			throw new IllegalArgumentException("statement is not a valid HighFunctionCall");
-		}
+	private HighFunctionCall(ClangStatement statement, FunctionNameParamSupplier supplier) {
 		this.hf = statement.getClangFunction().getHighFunction();
 		this.name = supplier.getFunctionName();
 		this.parameters = supplier.getParameterGroups()
 			.stream()
 			.map(group -> new HighFunctionCallParameter(hf, group))
 			.collect(Collectors.toList());
+	}
+
+	public static HighFunctionCall getHighFunctionCall(ClangStatement statement) {
+		FunctionNameParamSupplier supplier = new FunctionNameParamSupplier(statement);
+		if (supplier.getFunctionName() == null) {
+			return null;
+		}
+		return new HighFunctionCall(statement, supplier);
 	}
 
 	private VarnodeAST getVarnode() {
@@ -38,8 +43,27 @@ public final class HighFunctionCall implements Comparable<HighFunctionCall> {
 		VarnodeAST varnode = getVarnode();
 		long offset = varnode.getOffset();
 		AddressSpace space = hf.getAddressFactory().getAddressSpace(varnode.getSpace());
-		Listing listing = hf.getFunction().getProgram().getListing();
-		return listing.getFunctionAt(space.getAddress(offset));
+		Listing listing = getProgram().getListing();
+		Function f = listing.getFunctionAt(space.getAddress(offset));
+		return f != null ? f : getExternalFunction(space.getAddress(offset));
+	}
+
+	private Function getExternalFunction(Address address) {
+		Program program = getProgram();
+		Listing listing = getProgram().getListing();
+		Data data = listing.getDataAt(address);
+		if (data != null && data.isPointer()) {
+			ExternalManager man = program.getExternalManager();
+			ExternalLocationIterator it = man.getExternalLocations((Address) data.getValue());
+			if (it.hasNext()) {
+				return it.next().getFunction();
+			}
+		}
+		return null;
+	}
+
+	private Program getProgram() {
+		return hf.getFunction().getProgram();
 	}
 
 	public Address getAddress() {

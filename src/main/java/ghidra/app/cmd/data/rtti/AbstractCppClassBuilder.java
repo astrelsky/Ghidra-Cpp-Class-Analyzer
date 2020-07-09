@@ -101,13 +101,16 @@ public abstract class AbstractCppClassBuilder {
 			if (offset == 0 && parentStruct.getLength() > pointerSize) {
 				// it is an empty class, interface or essentially a namespace.
 				if (primaryBaseCount++ > 0) {
-					Structure comp = (Structure) struct.getComponent(0).getDataType();
-					if (containsMember(comp, memberName)) {
-						continue;
-					}
-					if (containsMember(parentStruct, struct.getComponent(0).getFieldName())) {
-						replaceComponent(struct, parentStruct, memberName, 0);
-						continue;
+					DataTypeComponent dtComp = struct.getComponent(0);
+					if (dtComp.getDataType() instanceof Structure) {
+						Structure comp = (Structure) dtComp.getDataType();
+						if (containsMember(comp, memberName)) {
+							continue;
+						}
+						if (containsMember(parentStruct, struct.getComponent(0).getFieldName())) {
+							replaceComponent(struct, parentStruct, memberName, 0);
+							continue;
+						}
 					}
 				}
 				replaceComponent(struct, parentStruct, memberName, 0);

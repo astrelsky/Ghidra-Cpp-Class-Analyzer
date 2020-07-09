@@ -41,6 +41,7 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 		this.vtableAnalyzer = new GccVtableAnalysisCmd();
 		this.api = tool.getService(ClassTypeInfoManagerService.class).getDecompilerAPI(program);
 		api.setMonitor(monitor);
+		api.setTimeout(getTimeout());
 		this.constructorAnalyzer = new GccDecompilerConstructorAnalysisCmd(api);
 	}
 

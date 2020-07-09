@@ -1,4 +1,4 @@
-package cppclassanalyzer.wrapper;
+package cppclassanalyzer.vs;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -11,10 +11,7 @@ import ghidra.app.util.datatype.microsoft.DataValidationOptions;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.Array;
 import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.listing.Data;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.FunctionManager;
-import ghidra.program.model.listing.Program;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
@@ -49,6 +46,9 @@ public class VsVtableModel implements Vtable {
 		}
 		VfTableModel vtable = vftables.get(vftables.size() - 1);
 		Array array = (Array) vtable.getDataType();
+		if (array == null) {
+			return null;
+		}
 		final Address addr = vtable.getAddress().add(array.getLength()+array.getElementLength());
 		return new MemoryBufferImpl(program.getMemory(), addr);
 	}
@@ -68,12 +68,16 @@ public class VsVtableModel implements Vtable {
 	}
 
 	private Function[] getFunctions(VfTableModel vftable) {
-		Function[] functions = new Function[vftable.getCount()];
+		List<Function> functions = new ArrayList<>(vftable.getCount());
 		FunctionManager manager = program.getFunctionManager();
 		for (int i = 0; i < vftable.getCount(); i++) {
-			functions[i] = manager.getFunctionAt(vftable.getVirtualFunctionPointer(i));
+			Function f = manager.getFunctionAt(vftable.getVirtualFunctionPointer(i));
+			if (f == null) {
+				break;
+			}
+			functions.add(f);
 		}
-		return functions;
+		return functions.toArray(Function[]::new);
 	}
 
 	@Override

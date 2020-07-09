@@ -33,7 +33,7 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 
 	public VtableModelDB(ProgramRttiRecordManager worker, VtableRecord record) {
 		super(worker, record);
-		ByteBuffer buf = ByteBuffer.wrap(getModelData());
+		ByteBuffer buf = ByteBuffer.wrap(getModelData(record));
 		this.records = new VtableModelPrefixRecord[buf.getInt()];
 		for (int i = 0; i < records.length; i++) {
 			records[i] = new VtableModelPrefixRecord(buf);

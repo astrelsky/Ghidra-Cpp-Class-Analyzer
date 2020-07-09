@@ -8,12 +8,17 @@ import java.util.stream.Stream;
 
 import javax.swing.Icon;
 
+import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.vs.RttiModelWrapper;
+import cppclassanalyzer.vs.VsClassTypeInfo;
+import cppclassanalyzer.vs.VsVtableModel;
+
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.program.database.ManagerDB;
 import ghidra.program.database.ProgramDB;
@@ -54,7 +59,6 @@ import cppclassanalyzer.database.utils.TransactionHandler;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord.ChangeType;
-import cppclassanalyzer.wrapper.VsVtableModel;
 import db.DBHandle;
 import db.LongField;
 import db.RecordIterator;
@@ -761,7 +765,19 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			if (!isTypeInfo(address)) {
 				return null;
 			}
-			TypeInfo type = TypeInfoFactory.getTypeInfo(program, address);
+			TypeInfo type = null;
+			if (isGnu()) {
+				type = TypeInfoFactory.getTypeInfo(program, address);
+			}
+			if (isVs()) {
+				TypeDescriptorModel model =
+					new TypeDescriptorModel(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);
+				try {
+					type = RttiModelWrapper.getWrapper(model, TaskMonitor.DUMMY);
+				} catch (CancelledException e) {
+					throw new AssertException(e);
+				}
+			}
 			if (type instanceof ClassTypeInfo && resolve) {
 				type = resolve((ClassTypeInfo) type);
 			}
@@ -773,7 +789,20 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	@Override
 	public boolean isTypeInfo(Address address) {
-		return TypeInfoFactory.isTypeInfo(program, address);
+		if (isGnu()) {
+			return TypeInfoFactory.isTypeInfo(program, address);
+		}
+		if (isVs()) {
+			try {
+				TypeDescriptorModel model =
+					new TypeDescriptorModel(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);
+				model.validate();
+				return true;
+			} catch (InvalidDataTypeException e) {
+				// do nothing
+			}
+		}
+		return false;
 	}
 
 	@Override
@@ -877,8 +906,9 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	private abstract class RttiRecordWorker
-			extends
-			AbstractRttiRecordWorker<AbstractClassTypeInfoDB, AbstractVtableDB, ClassTypeInfoRecord, VtableRecord, ProgramRttiTablePair>
+			extends AbstractRttiRecordWorker<
+				AbstractClassTypeInfoDB, AbstractVtableDB,
+				ClassTypeInfoRecord, VtableRecord, ProgramRttiTablePair>
 			implements ProgramRttiRecordManager {
 
 		RttiRecordWorker(ProgramRttiTablePair tables, ProgramRttiCachePair caches) {
@@ -961,13 +991,13 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		}
 
 		@Override
-		WindowsClassTypeInfoDB buildType(ClassTypeInfoRecord record) {
-			return new WindowsClassTypeInfoDB(this, record);
+		VsClassTypeInfoDB buildType(ClassTypeInfoRecord record) {
+			return new VsClassTypeInfoDB(this, record);
 		}
 
 		@Override
-		WindowsClassTypeInfoDB buildType(ClassTypeInfo type, ClassTypeInfoRecord record) {
-			return new WindowsClassTypeInfoDB(this, type, record);
+		VsClassTypeInfoDB buildType(ClassTypeInfo type, ClassTypeInfoRecord record) {
+			return new VsClassTypeInfoDB(this, (VsClassTypeInfo) type, record);
 		}
 
 		@Override

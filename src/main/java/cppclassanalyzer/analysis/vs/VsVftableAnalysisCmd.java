@@ -12,21 +12,18 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import cppclassanalyzer.wrapper.VsClassTypeInfo;
+import cppclassanalyzer.vs.VsClassTypeInfo;
 
-public class WindowsVftableAnalysisCmd extends BackgroundCommand {
-
-	private static final String NAME = WindowsVftableAnalysisCmd.class.getSimpleName();
-
+public class VsVftableAnalysisCmd extends BackgroundCommand {
 
 	private ClassTypeInfo type;
 	private TaskMonitor monitor;
 
-	protected WindowsVftableAnalysisCmd() {
-		super(NAME, false, true, false);
+	protected VsVftableAnalysisCmd() {
+		super(VsVftableAnalysisCmd.class.getSimpleName(), false, true, false);
 	}
 
-	public WindowsVftableAnalysisCmd(ClassTypeInfo type) {
+	public VsVftableAnalysisCmd(ClassTypeInfo type) {
 		this();
 		this.type = type;
 	}
@@ -52,6 +49,7 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 			return true;
 		} catch (Exception e) {
 			Msg.error(this, e);
+			e.printStackTrace();
 		}
 		return true;
 	}
@@ -66,6 +64,12 @@ public class WindowsVftableAnalysisCmd extends BackgroundCommand {
 			monitor.checkCanceled();
 			for (Function f : functionTable) {
 				monitor.checkCanceled();
+				if (f.isThunk()) {
+					f = f.getThunkedFunction(true);
+				}
+				if (f.isExternal()) {
+					continue;
+				}
 				if (!CppClassAnalyzerUtils.isDefaultFunction(f) || isPureVirtual(f)) {
 					continue;
 				}

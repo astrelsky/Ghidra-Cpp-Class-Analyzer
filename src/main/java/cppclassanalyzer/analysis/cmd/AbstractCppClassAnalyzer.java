@@ -24,8 +24,6 @@ import cppclassanalyzer.data.vtable.ArchivedVtable;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
-import static ghidra.app.plugin.core.analysis.DecompilerFunctionAnalyzer.OPTION_DEFAULT_DECOMPILER_TIMEOUT_SECS;
-
 public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
 	private static final String DESCRIPTION =
@@ -48,6 +46,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		"Analysis Decompiler Timeout (sec)";
 	private static final String OPTION_DESCRIPTION_DECOMPILER_TIMEOUT_SECS =
 		"Set timeout in seconds for analyzer decompiler calls.";
+	private static final int OPTION_DEFAULT_DECOMPILER_TIMEOUT_SECS = 30;
 
 	private boolean constructorAnalysisOption;
 	private boolean useArchivedData;
@@ -97,7 +96,6 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			return false;
 		}
 		init();
-
 		try {
 			repairInheritance();
 			analyzeVftables();

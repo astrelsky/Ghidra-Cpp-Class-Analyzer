@@ -75,8 +75,8 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 
 	public static void putObjectArray(ByteBuffer buf, ByteConvertable[] obj) {
 		byte[][] data = Arrays.stream(obj)
-							  .map(ByteConvertable::toBytes)
-							  .toArray(byte[][]::new);
+			.map(ByteConvertable::toBytes)
+			.toArray(byte[][]::new);
 		buf.putInt(data.length);
 		for (byte[] bytes : data) {
 			buf.put(bytes);

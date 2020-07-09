@@ -2,7 +2,7 @@
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 import ghidra.app.script.GhidraScript;
-import ghidra.app.services.ClassTypeInfoManagerService;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import ghidra.program.database.ProgramDB;
 import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;

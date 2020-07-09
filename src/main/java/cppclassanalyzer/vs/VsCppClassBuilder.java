@@ -1,12 +1,10 @@
-package cppclassanalyzer.wrapper;
+package cppclassanalyzer.vs;
 
 import static ghidra.program.model.data.Undefined.isUndefined;
 
 import java.util.Map;
 
-import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.*;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.util.datatype.microsoft.MSDataTypeUtils;
 import ghidra.program.model.data.DataType;
@@ -40,9 +38,9 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 	}
 
 	private void addVfptr(Structure struct, int offset) {
-		final ClassTypeInfo type = getType();
-		final Program program = getProgram();
-		final DataType vfptr = ClassTypeInfoUtils.getVptrDataType(program, type);
+		ClassTypeInfo type = getType();
+		Program program = getProgram();
+		DataType vfptr = ClassTypeInfoUtils.getVptrDataType(program, type);
 		DataTypeComponent comp = struct.getComponentAt(offset);
 		if (comp == null || isUndefined(comp.getDataType())) {
 			replaceComponent(struct, vfptr, VFPTR, offset);
@@ -51,11 +49,13 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 		}
 	}
 
+
+	/**  {@link Rtti4Model#getVbTableOffset} */
 	private void addVbptr(Structure struct, int offset) throws InvalidDataTypeException {
-		final Program program = getProgram();
-		final DataTypeManager dtm = program.getDataTypeManager();
-		final int ptrSize = program.getDefaultPointerSize();
-		final DataType vbptr = dtm.getPointer(
+		Program program = getProgram();
+		DataTypeManager dtm = program.getDataTypeManager();
+		int ptrSize = program.getDefaultPointerSize();
+		DataType vbptr = dtm.getPointer(
 			MSDataTypeUtils.getPointerDisplacementDataType(program), ptrSize);
 		DataTypeComponent comp = struct.getComponentAt(offset);
 		if (comp == null || isUndefined(comp.getDataType())) {

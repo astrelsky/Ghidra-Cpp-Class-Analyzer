@@ -167,6 +167,7 @@ public final class CppClassAnalyzerUtils {
 		}
 		return Arrays.stream(vtable.getFunctionTables())
 			.flatMap(Arrays::stream)
+			.filter(Objects::nonNull)
 			.map(Function::getName)
 			.anyMatch(pureVirtualFunctionName::equals);
 	}

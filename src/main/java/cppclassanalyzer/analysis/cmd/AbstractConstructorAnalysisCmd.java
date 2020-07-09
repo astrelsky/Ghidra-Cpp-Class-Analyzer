@@ -54,6 +54,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 		this.fManager = program.getFunctionManager();
 		this.manager = program.getReferenceManager();
 		try {
+			// TODO follow calls to new to pick up simpler constructors first
 			return analyze();
 		} catch (CancelledException e) {
 			return false;

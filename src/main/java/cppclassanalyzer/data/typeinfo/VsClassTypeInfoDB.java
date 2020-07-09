@@ -4,20 +4,14 @@ import static cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields.
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Rtti1Model;
-import ghidra.app.cmd.data.rtti.Rtti2Model;
-import ghidra.app.cmd.data.rtti.Rtti3Model;
-import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.util.datatype.microsoft.DataValidationOptions;
+import ghidra.app.cmd.data.rtti.*;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.InvalidDataTypeException;
+import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
@@ -25,56 +19,42 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
-import cppclassanalyzer.wrapper.RttiModelWrapper;
-import cppclassanalyzer.wrapper.VsClassTypeInfo;
-import cppclassanalyzer.wrapper.VsCppClassBuilder;
+import cppclassanalyzer.vs.RttiModelWrapper;
+import cppclassanalyzer.vs.VsClassTypeInfo;
+import cppclassanalyzer.vs.VsCppClassBuilder;
 
-public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
-		implements VsClassTypeInfo {
+public class VsClassTypeInfoDB extends AbstractClassTypeInfoDB implements VsClassTypeInfo {
 
-	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
+	private long[] baseKeys;
+	private int[] baseOffsets;
+	private long baseModelAddress;
+	private long hierarchyDescriptorAddress;
+	private final GhidraClass gc;
 
-	private final long[] baseKeys;
-	private final int[] baseOffsets;
-	private final long baseModelAddress;
-	private final long hierarchyDescriptorAddress;
-
-	public WindowsClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfoRecord record) {
+	public VsClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfoRecord record) {
 		super(worker, record);
-		ByteBuffer buf = ByteBuffer.wrap(getClassData(record));
-		baseKeys = ClassTypeInfoRecord.getLongArray(buf);
-		baseOffsets = ClassTypeInfoRecord.getIntArray(buf);
-		baseModelAddress = buf.getLong();
-		hierarchyDescriptorAddress = buf.getLong();
+		this.gc = (GhidraClass) getTypeDescriptor().getDescriptorAsNamespace();
 	}
 
-	public WindowsClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfo type,
+	public VsClassTypeInfoDB(ProgramRttiRecordManager worker, VsClassTypeInfo type,
 			ClassTypeInfoRecord record) {
 		super(worker, type, record);
-		VsClassTypeInfo model = (VsClassTypeInfo) type;
-		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
-			model.getBaseOffsets().entrySet().stream().collect(Collectors.toList());
-		baseKeys = new long[baseEntries.size()];
-		baseOffsets = new int[baseEntries.size()];
-		for (int i = 0; i < baseKeys.length; i++) {
-			Map.Entry<ClassTypeInfo, Integer> entry = baseEntries.get(i);
-			baseKeys[i] = manager.resolve(entry.getKey()).getKey();
-			baseOffsets[i] = entry.getValue();
-		}
-		baseModelAddress = getManager().encodeAddress(model.getBaseModel().getAddress());
-		hierarchyDescriptorAddress = getManager().encodeAddress(
-			model.getHierarchyDescriptor().getAddress());
+		this.gc = type.getGhidraClass();
+	}
+
+	private void fillRecord(ClassTypeInfoRecord record) {
 		ByteBuffer buf = ByteBuffer.allocate(getSize());
 		ClassTypeInfoRecord.setLongArray(buf, baseKeys);
 		ClassTypeInfoRecord.setIntArray(buf, baseOffsets);
 		buf.putLong(baseModelAddress);
 		buf.putLong(hierarchyDescriptorAddress);
 		record.setBinaryData(MODEL_DATA, buf.array());
+		manager.updateRecord(record);
 	}
 
 	private int getSize() {
 		return ClassTypeInfoRecord.getArraySize(baseKeys) +
-			ClassTypeInfoRecord.getArraySize(baseOffsets) + Long.BYTES * 2;
+			ClassTypeInfoRecord.getArraySize(baseOffsets) + Long.BYTES * 3;
 	}
 
 	@Override
@@ -85,8 +65,8 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	@Override
 	public ClassTypeInfoDB[] getParentModels() {
 		return LongStream.of(baseKeys)
-				.mapToObj(manager::getType)
-				.toArray(ClassTypeInfoDB[]::new);
+			.mapToObj(manager::getType)
+			.toArray(ClassTypeInfoDB[]::new);
 	}
 
 	static boolean isVirtual(Rtti1Model model) throws InvalidDataTypeException {
@@ -95,15 +75,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 
 	private ClassTypeInfo getParent(Rtti1Model model) {
 		try {
-			Supplier<AssertException> e = () -> new AssertException(
-				"Parent for " + model.toString() + " not found");
-			Address parentAddress = model.getRtti0Address();
-			return Arrays.stream(baseKeys)
-				.mapToObj(manager::getType)
-				.filter(Objects::nonNull)
-				.filter(t -> t.getAddress().equals(parentAddress))
-				.findFirst()
-				.orElseThrow(e);
+			return manager.getManager().getType(model.getRtti0Address());
 		} catch (InvalidDataTypeException e) {
 			invalidError(e);
 		}
@@ -136,7 +108,7 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 		if (isVtableSearched()) {
 			return getVtable();
 		}
-		RttiModelWrapper wrapper = RttiModelWrapper.getWrapper(getTypeDescriptorModel());
+		RttiModelWrapper wrapper = RttiModelWrapper.getWrapper(getTypeDescriptorModel(), monitor);
 		Vtable vtable = wrapper.findVtable(monitor);
 		setVtableSearched();
 		if (Vtable.isValid(vtable)) {
@@ -153,12 +125,12 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 
 	public Rtti1Model getBaseModel() {
 		return new Rtti1Model(
-			getProgram(), getManager().decodeAddress(baseModelAddress), DEFAULT_OPTIONS);
+			getProgram(), decodeAddress(baseModelAddress), DEFAULT_OPTIONS);
 	}
 
 	@Override
 	public Rtti3Model getHierarchyDescriptor() {
-		Address rtti3Address = getManager().decodeAddress(hierarchyDescriptorAddress);
+		Address rtti3Address = decodeAddress(hierarchyDescriptorAddress);
 		return new Rtti3Model(getProgram(), rtti3Address, DEFAULT_OPTIONS);
 	}
 
@@ -193,14 +165,17 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	}
 
 	@Override
-	protected boolean refresh() {
-		// no refresh required
-		return true;
+	protected boolean refresh(ClassTypeInfoRecord record) {
+		if (super.refresh(record)) {
+			fillModelData(record);
+			return true;
+		}
+		return false;
 	}
 
 	@Override
 	public Namespace getNamespace() {
-		return getBaseModel().getRtti0Model().getDescriptorAsNamespace();
+		return gc;
 	}
 
 	private void invalidError(InvalidDataTypeException e) {
@@ -223,6 +198,42 @@ public class WindowsClassTypeInfoDB extends AbstractClassTypeInfoDB
 	}
 
 	@Override
-	protected void fillOffsets(ClassTypeInfoRecord record) {
+	protected void fillModelData(ClassTypeInfoRecord record) {
+		byte[] data = getClassData(record);
+		if (data != null) {
+			ByteBuffer buf = ByteBuffer.wrap(data);
+			this.baseKeys = ClassTypeInfoRecord.getLongArray(buf);
+			this.baseOffsets = ClassTypeInfoRecord.getIntArray(buf);
+			this.baseModelAddress = buf.getLong();
+			this.hierarchyDescriptorAddress = buf.getLong();
+		} else {
+			fillModelData(getRawType(), record);
+		}
+	}
+
+	@Override
+	public TypeDescriptorModel getTypeDescriptor() {
+		return new TypeDescriptorModel(getProgram(), getAddress(), DEFAULT_OPTIONS);
+	}
+
+	@Override
+	protected void fillModelData(ClassTypeInfo type, ClassTypeInfoRecord record) {
+		VsClassTypeInfo vsType = (VsClassTypeInfo) type;
+		List<Map.Entry<ClassTypeInfo, Integer>> baseEntries =
+			new ArrayList<>(
+				vsType.getBaseOffsets()
+				.entrySet()
+			);
+		baseKeys = new long[baseEntries.size()];
+		baseOffsets = new int[baseEntries.size()];
+		for (int i = 0; i < baseKeys.length; i++) {
+			Map.Entry<ClassTypeInfo, Integer> entry = baseEntries.get(i);
+			baseKeys[i] = manager.resolve(entry.getKey()).getKey();
+			baseOffsets[i] = entry.getValue();
+		}
+		baseModelAddress = encodeAddress(vsType.getBaseModel().getAddress());
+		hierarchyDescriptorAddress = encodeAddress(
+			vsType.getHierarchyDescriptor().getAddress());
+		fillRecord(record);
 	}
 }

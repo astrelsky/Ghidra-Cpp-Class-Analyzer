@@ -10,10 +10,11 @@ import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Listing;
+import ghidra.util.Msg;
 
 import cppclassanalyzer.database.record.VtableRecord;
 import cppclassanalyzer.database.record.DatabaseRecord.ByteConvertable;
-import cppclassanalyzer.wrapper.VsVtableModel;
+import cppclassanalyzer.vs.VsVtableModel;
 
 public class VftableDB extends AbstractVtableDB {
 
@@ -21,7 +22,7 @@ public class VftableDB extends AbstractVtableDB {
 
 	public VftableDB(ProgramRttiRecordManager worker, VtableRecord record) {
 		super(worker, record);
-		ByteBuffer buf = ByteBuffer.wrap(getModelData());
+		ByteBuffer buf = ByteBuffer.wrap(getModelData(record));
 		this.records = new VftableRecord[buf.getInt()];
 		for (int i = 0; i < records.length; i++) {
 			records[i] = new VftableRecord(buf);
@@ -48,8 +49,8 @@ public class VftableDB extends AbstractVtableDB {
 	@Override
 	public Address[] getTableAddresses() {
 		return Arrays.stream(records)
-					 .map(VftableRecord::getAddress)
-					 .toArray(Address[]::new);
+			 .map(VftableRecord::getAddress)
+			 .toArray(Address[]::new);
 	}
 
 	@Override
@@ -72,10 +73,16 @@ public class VftableDB extends AbstractVtableDB {
 		VftableRecord(Address address, Function[] functions) {
 			ClassTypeInfoManagerDB typeManager = getManager();
 			this.address = typeManager.encodeAddress(address);
-			this.functions = Arrays.stream(functions)
-								   .map(Function::getEntryPoint)
-								   .mapToLong(typeManager::encodeAddress)
-								   .toArray();
+			long[] fKeys = null;
+			try {
+				fKeys = Arrays.stream(functions)
+				   .map(Function::getEntryPoint)
+				   .mapToLong(typeManager::encodeAddress)
+				   .toArray();
+			} catch (NullPointerException e) {
+				Msg.error(this, e);
+			}
+			this.functions = fKeys;
 		}
 
 		public int getSize() {

@@ -21,17 +21,17 @@ import ghidra.util.Msg;
 import cppclassanalyzer.analysis.cmd.AbstractConstructorAnalysisCmd;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
-public class WindowsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
+public class VsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 
-	private static final String NAME = WindowsConstructorAnalysisCmd.class.getSimpleName();
+	private static final String NAME = VsConstructorAnalysisCmd.class.getSimpleName();
 	private static final String VECTOR_DESTRUCTOR = "vector_deleting_destructor";
 	private static final String VBASE_DESTRUCTOR = "vbase_destructor";
 
-	WindowsConstructorAnalysisCmd() {
+	VsConstructorAnalysisCmd() {
 		super(NAME);
 	}
 
-	public WindowsConstructorAnalysisCmd(ClassTypeInfo typeinfo) {
+	public VsConstructorAnalysisCmd(ClassTypeInfo typeinfo) {
 		super(NAME, typeinfo);
 	}
 

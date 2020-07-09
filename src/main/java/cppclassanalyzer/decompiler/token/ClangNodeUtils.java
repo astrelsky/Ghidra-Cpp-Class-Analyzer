@@ -61,7 +61,8 @@ public final class ClangNodeUtils {
 	public static List<HighFunctionCall> getClangFunctionCalls(ClangTokenGroup group) {
 		return getStatementStream(group)
 			.filter(ClangNodeUtils::isCallStatement)
-			.map(HighFunctionCall::new)
+			.map(HighFunctionCall::getHighFunctionCall)
+			.filter(Objects::nonNull)
 			.sorted()
 			.collect(Collectors.toList());
 	}
@@ -99,7 +100,8 @@ public final class ClangNodeUtils {
 	}
 
 	private static boolean isCallStatement(ClangStatement statement) {
-		return statement.getPcodeOp().getOpcode() == PcodeOp.CALL;
+		PcodeOp op = statement.getPcodeOp();
+		return op != null ? op.getOpcode() == PcodeOp.CALL : false;
 	}
 
 	///////////////////////////////////////////////////////////////////////////

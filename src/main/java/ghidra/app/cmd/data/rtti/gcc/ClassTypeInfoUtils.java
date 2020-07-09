@@ -252,10 +252,14 @@ public class ClassTypeInfoUtils {
 	 * Sets the provided function to be a class function for the provided type
 	 * @param type the class type
 	 * @param function the function
+	 * @throws IllegalArgumentException if the function is external
 	 */
 	public static void setClassFunction(ClassTypeInfo type, Function function) {
 		Objects.requireNonNull(type);
 		Objects.requireNonNull(function);
+		if (function.isExternal()) {
+			throw new IllegalArgumentException(function.getName(true)+" is an external function");
+		}
 		Address entry = function.getEntryPoint();
 		if (function.getBody().getNumAddresses() <= 1) {
 			DisassembleCommand cmd =

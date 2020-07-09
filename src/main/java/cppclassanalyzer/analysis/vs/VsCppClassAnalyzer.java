@@ -1,5 +1,6 @@
 package cppclassanalyzer.analysis.vs;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -8,29 +9,29 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import cppclassanalyzer.wrapper.RttiModelWrapper;
+import cppclassanalyzer.vs.RttiModelWrapper;
+import cppclassanalyzer.vs.VsClassTypeInfo;
+
 import ghidra.app.cmd.data.TypeDescriptorModel;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vtable;
+import ghidra.app.cmd.data.rtti.*;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
-import ghidra.app.util.datatype.microsoft.DataValidationOptions;
+import ghidra.app.util.datatype.microsoft.DataApplyOptions;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Program;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
-import ghidra.program.model.symbol.SymbolType;
+import ghidra.program.model.listing.*;
+import ghidra.program.model.symbol.*;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 import util.CollectionUtils;
 
-public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
+public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	private static final String NAME = "Windows C++ Class Analyzer";
 	private static final String SYMBOL_NAME = "RTTI_Type_Descriptor";
@@ -39,11 +40,17 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	private static final String CFG_WARNING =
 		"Control Flow Guard (CFG) detected. Vftables not analyzed.";
 
-	private static final DataValidationOptions DEFAULT_OPTIONS = new DataValidationOptions();
-	private WindowsVftableAnalysisCmd vfTableAnalyzer;
+	private static final DataApplyOptions DEFAULT_APPLY_OPTIONS = new DataApplyOptions();
+
+	static {
+		DEFAULT_APPLY_OPTIONS.setClearInstructions(true);
+		DEFAULT_APPLY_OPTIONS.setFollowData(false);
+	}
+
+	private VsVftableAnalysisCmd vfTableAnalyzer;
 	private DecompilerAPI api;
 
-	public WindowsCppClassAnalyzer() {
+	public VsCppClassAnalyzer() {
 		super(NAME);
 		setPriority(new RttiAnalyzer().getPriority().after());
 	}
@@ -122,7 +129,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 		for (Symbol symbol : symbols) {
 			monitor.checkCanceled();
 			TypeDescriptorModel descriptor = new TypeDescriptorModel(
-				program, symbol.getAddress(), DEFAULT_OPTIONS);
+				program, symbol.getAddress(), VsClassTypeInfo.DEFAULT_OPTIONS);
 			processor.process(descriptor);
 			monitor.incrementProgress(1);
 		}
@@ -155,9 +162,10 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	@Override
 	protected void init() {
 		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
-		this.vfTableAnalyzer = new WindowsVftableAnalysisCmd();
+		this.vfTableAnalyzer = new VsVftableAnalysisCmd();
 		this.api = tool.getService(ClassTypeInfoManagerService.class).getDecompilerAPI(program);
 		api.setMonitor(monitor);
+		api.setTimeout(getTimeout());
 		this.constructorAnalyzer = new VsDecompilerConstructorAnalysisCmd(api);
 	}
 
@@ -173,7 +181,7 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 		DescriptorProcessor(ProgramClassTypeInfoManager manager, TaskMonitor monitor) {
 			this.manager = manager;
-			this.monitor = monitor;
+			this.monitor = new CancelOnlyWrappingTaskMonitor(monitor);
 		}
 
 		void process(TypeDescriptorModel descriptor) throws CancelledException {
@@ -185,14 +193,88 @@ public class WindowsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 			} catch (InvalidDataTypeException | NullPointerException e) {
 				return;
 			}
-			ClassTypeInfo type = RttiModelWrapper.getWrapper(descriptor);
-			if (type.getNamespace() != null) {
-				type = manager.resolve(type);
+			VsClassTypeInfo type = (VsClassTypeInfo) manager.getType(descriptor.getAddress());
+			if (type == null) {
+				type = RttiModelWrapper.getWrapper(descriptor, monitor);
+			}
+			if (type != null) {
+				fixMissingMarkup(type);
+				type = (VsClassTypeInfo) manager.resolve(type);
 				Vtable vtable = type.findVtable(monitor);
 				if (Vtable.isValid(vtable)) {
 					manager.resolve(vtable);
 				}
+			} else {
+				String msg = String.format(
+					"Unable to process %s at %s due to lack of information",
+					descriptor.getDescriptorAsNamespace().getName(true), descriptor.getAddress());
+				Msg.info(this, msg);
 			}
+		}
+
+		private void fixMissingMarkup(VsClassTypeInfo type) throws CancelledException {
+			// Only create the slow Rtti#Models if necessary
+			if (needsRtti4Markup(type)) {
+				markupRtti4(type);
+			}
+			if (needsRtti3Markup(type)) {
+				markupRtti3(type);
+			}
+			if (needsRtti2Markup(type)) {
+				markupRtti2(type);
+			}
+		}
+
+		private boolean needsRtti4Markup(VsClassTypeInfo type) {
+			return needsRttiMarkup(type, VsClassTypeInfo.LOCATOR_SYMBOL_NAME);
+		}
+
+		private boolean needsRtti3Markup(VsClassTypeInfo type) {
+			return needsRttiMarkup(type, VsClassTypeInfo.HIERARCHY_SYMBOL_NAME);
+		}
+
+		private boolean needsRtti2Markup(VsClassTypeInfo type) {
+			return needsRttiMarkup(type, VsClassTypeInfo.BASE_ARRAY_SYMBOL_NAME);
+		}
+
+		private boolean needsRttiMarkup(VsClassTypeInfo type, String symbolName) {
+			GhidraClass gc = type.getGhidraClass();
+			Program program = gc.getSymbol().getProgram();
+			SymbolIterator it = program.getSymbolTable().getChildren(gc.getSymbol());
+			return CollectionUtils.asStream(it)
+				.map(Symbol::getName)
+				.noneMatch(s -> s.contains(symbolName));
+		}
+
+		private void markupRtti4(VsClassTypeInfo type) throws CancelledException {
+			Program program = manager.getProgram();
+			Rtti4Model rtti4 =
+					VsClassTypeInfo.findRtti4Model(program, type.getAddress(), monitor);
+			if (rtti4 != null) {
+				CreateRtti4BackgroundCmd cmd =
+				new CreateRtti4BackgroundCmd(
+					rtti4.getAddress(), Collections.emptyList(),
+					VsClassTypeInfo.DEFAULT_OPTIONS, DEFAULT_APPLY_OPTIONS);
+				cmd.applyTo(program);
+			}
+		}
+
+		private void markupRtti3(VsClassTypeInfo type) {
+			Rtti3Model rtti3 = type.getHierarchyDescriptor();
+			CreateRtti3BackgroundCmd cmd =
+				new CreateRtti3BackgroundCmd(
+					rtti3.getAddress(), VsClassTypeInfo.DEFAULT_OPTIONS,
+					DEFAULT_APPLY_OPTIONS);
+			cmd.applyTo(rtti3.getProgram());
+		}
+
+		private void markupRtti2(VsClassTypeInfo type) {
+			Rtti2Model rtti2 = type.getBaseClassArray();
+			CreateRtti2BackgroundCmd cmd =
+				new CreateRtti2BackgroundCmd(
+					rtti2.getAddress(), rtti2.getCount(),
+					VsClassTypeInfo.DEFAULT_OPTIONS, DEFAULT_APPLY_OPTIONS);
+			cmd.applyTo(rtti2.getProgram());
 		}
 	}
 }

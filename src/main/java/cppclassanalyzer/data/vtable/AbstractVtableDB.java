@@ -2,6 +2,7 @@ package cppclassanalyzer.data.vtable;
 
 import static cppclassanalyzer.database.schema.fields.VtableSchemaFields.*;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -13,6 +14,7 @@ import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
 
 import cppclassanalyzer.database.record.VtableRecord;
@@ -76,22 +78,35 @@ public abstract class AbstractVtableDB extends DatabaseObject implements Vtable 
 		return record;
 	}
 
-	protected byte[] getModelData() {
-		return getRecord().getBinaryData(RECORDS);
+	protected byte[] getModelData(VtableRecord record) {
+		byte[] data = getRecord().getBinaryData(RECORDS);
+		if (data == null) {
+			String msg = "Vftable record data for "+getTypeInfo(record).getFullName()+" was null";
+			Msg.warn(this, msg);
+			ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES);
+			buf.putInt(0);
+			data = buf.array();
+			record.setBinaryData(RECORDS, data);
+			manager.updateRecord(record);
+		}
+		return data;
 	}
 
 	@Override
 	public ClassTypeInfo getTypeInfo() {
-		VtableRecord record = getRecord();
+		return getTypeInfo(getRecord());
+	}
+
+	private ClassTypeInfo getTypeInfo(VtableRecord record) {
 		return manager.getType(record.getLongValue(CLASS));
 	}
 
 	@Override
 	public boolean containsFunction(Function function) {
 		return Arrays.stream(getFunctionTables()).flatMap((a) -> Arrays.stream(a))
-					 .filter(function::equals)
-					 .findAny()
-					 .isPresent();
+			.filter(function::equals)
+			.findAny()
+			.isPresent();
 	}
 
 	@Override

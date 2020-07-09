@@ -1,5 +1,6 @@
 package cppclassanalyzer.data.manager.recordmanagers;
 
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.vtable.AbstractVtableDB;
@@ -13,4 +14,7 @@ public interface ProgramRttiRecordManager extends
 			ClassTypeInfoRecord, VtableRecord> {
 
 	AbstractClassTypeInfoDB resolve(ArchivedClassTypeInfo type);
+
+	@Override
+	public ProgramClassTypeInfoManager getManager();
 }

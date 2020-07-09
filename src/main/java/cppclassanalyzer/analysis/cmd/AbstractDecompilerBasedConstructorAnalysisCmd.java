@@ -13,9 +13,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
-import ghidra.program.model.pcode.HighFunction;
-import ghidra.program.model.pcode.HighParam;
-import ghidra.program.model.pcode.HighVariable;
+import ghidra.program.model.pcode.*;
 import ghidra.program.model.symbol.Reference;
 import ghidra.util.exception.AssertException;
 import util.CollectionUtils;
@@ -53,9 +51,17 @@ public abstract class AbstractDecompilerBasedConstructorAnalysisCmd
 			boolean success = false;
 			try {
 				HighFunction hf = api.getHighFunction(function.function);
-				HighParam thisParam = hf.getLocalSymbolMap().getParam(0);
+				if (hf == null) {
+					// timed out
+					continue;
+				}
+				LocalSymbolMap map = hf.getLocalSymbolMap();
+				if (map.getNumParams() == 0) {
+					continue;
+				}
+				HighParam thisParam = map.getParam(0);
 				List<HighFunctionCall> statements = api.getFunctionCalls(function.function);
-				if (type.getParentModels().length < statements.size()) {
+				if (type.getParentModels().length >= statements.size()) {
 					continue;
 				}
 				if (function.isDestructor()) {
@@ -80,10 +86,20 @@ public abstract class AbstractDecompilerBasedConstructorAnalysisCmd
 		int end = calls.size() - 1;
 		int start = end - parents.length;
 		List<HighFunctionCall> destructorCalls = calls.subList(start, end);
-		if (destructorCalls.size() != parents.length) {
-			throw new AssertException("Start and end indexes aren't correct");
+		boolean hasExternal = destructorCalls.stream()
+			.map(HighFunctionCall::getFunction)
+			.anyMatch(Function::isExternal);
+		if (hasExternal) {
+			return false;
 		}
 		return setFunctions(thisParam, destructorCalls, false);
+	}
+
+	private static boolean isExternalFunction(Function f) {
+		if (f.isThunk()) {
+			f = f.getThunkedFunction(true);
+		}
+		return f.isExternal();
 	}
 
 	private boolean processConstructor(HighParam thisParam, Function function,
@@ -94,8 +110,11 @@ public abstract class AbstractDecompilerBasedConstructorAnalysisCmd
 		int start = 0;
 		int end = parents.length;
 		List<HighFunctionCall> constructorCalls = calls.subList(start, end);
-		if (constructorCalls.size() != parents.length) {
-			throw new AssertException("Start and end indexes aren't correct");
+		boolean hasExternal = constructorCalls.stream()
+			.map(HighFunctionCall::getFunction)
+			.anyMatch(AbstractDecompilerBasedConstructorAnalysisCmd::isExternalFunction);
+		if (hasExternal) {
+			return false;
 		}
 		return setFunctions(thisParam, constructorCalls, true);
 	}
@@ -170,6 +189,10 @@ public abstract class AbstractDecompilerBasedConstructorAnalysisCmd
 			.filter(CppClassAnalyzerUtils::isDefaultFunction)
 			.map(f -> new ClassFunction(f, vtable.containsFunction(f)))
 			.collect(Collectors.toList());
+	}
+
+	public void setDecompilerTimeout(int timeout) {
+		api.setTimeout(timeout);
 	}
 
 	protected static class ClassFunction {
