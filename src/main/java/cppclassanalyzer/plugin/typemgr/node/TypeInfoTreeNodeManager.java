@@ -12,9 +12,7 @@ import cppclassanalyzer.database.SchemaMismatchException;
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 import cppclassanalyzer.database.schema.TypeInfoTreeNodeSchema;
 import cppclassanalyzer.database.tables.TypeInfoTreeNodeTable;
-import db.DBHandle;
-import db.StringField;
-import db.Table;
+import db.*;
 import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
 
@@ -25,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TypeInfoTreeNodeManager {
+public class TypeInfoTreeNodeManager implements DBListener {
 
 	private final TypeInfoTreeNodeTable table;
 	private final ClassTypeInfoManager manager;
@@ -47,6 +45,7 @@ public class TypeInfoTreeNodeManager {
 		this.manager = manager;
 		this.handler = new TransactionHandler(handle);
 		this.table = getTable(name);
+		handle.addListener(this);
 	}
 
 	private TypeInfoTreeNodeTable getTable(String name) {
@@ -218,6 +217,27 @@ public class TypeInfoTreeNodeManager {
 		}
 		children.sort(null);
 		return children;
+	}
+
+	@Override
+	public void dbRestored(DBHandle dbh) {
+		if (dbh == handle) {
+			if (root != null) {
+				root.rebuild();
+			}
+		}
+	}
+
+	@Override
+	public void dbClosed(DBHandle dbh) {
+	}
+
+	@Override
+	public void tableDeleted(DBHandle dbh, Table table) {
+	}
+
+	@Override
+	public void tableAdded(DBHandle dbh, Table table) {
 	}
 
 	// dbHandle transactions are different
