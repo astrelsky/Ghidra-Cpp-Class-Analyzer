@@ -29,8 +29,6 @@ import ghidra.program.model.listing.Program;
 //@formatter:on
 public interface ClassTypeInfoManagerService {
 
-// man = state.tool.getService(ghidra.app.services.ClassTypeInfoManagerService).getManager(currentProgram)
-
 	public void addTypeInfoManagerChangeListener(TypeInfoManagerListener listener);
 
 	public void removeTypeInfoManagerChangeListener(TypeInfoManagerListener listener);
@@ -53,6 +51,7 @@ public interface ClassTypeInfoManagerService {
 	public List<ClassTypeInfoManager> getManagers();
 
 	public void managerAdded(ClassTypeInfoManager manager);
+	public void managerRemoved(ClassTypeInfoManager manager);
 
 	public GTree getTree();
 
@@ -70,5 +69,7 @@ public interface ClassTypeInfoManagerService {
 	public ArchivedVtable getArchivedVtable(String symbolName);
 
 	public DecompilerAPI getDecompilerAPI(Program program);
+
+	public ProgramClassTypeInfoManager getCurrentManager();
 
 }

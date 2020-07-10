@@ -21,6 +21,7 @@ import cppclassanalyzer.plugin.typemgr.node.TypeInfoNode;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 
 import ghidra.app.services.DataTypeManagerService;
+import ghidra.app.services.GoToService;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
@@ -42,12 +43,16 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
+import ghidra.util.task.Task;
+import ghidra.util.task.TaskMonitor;
 
 import docking.ActionContext;
 import docking.Tool;
 import docking.action.DockingActionIf;
 import docking.actions.PopupActionProvider;
 import docking.widgets.tree.GTree;
+
+import static ghidra.util.SystemUtilities.isInHeadlessMode;
 
 /**
  * Plugin to pop up the dialog to manage rtti in the program
@@ -64,7 +69,7 @@ import docking.widgets.tree.GTree;
 			"The rtti display shows all rtti found in the " +
 			"current program, and rtti in all open archives.",
 	servicesProvided = { ClassTypeInfoManagerService.class },
-	servicesRequired = { DataTypeManagerService.class }
+	servicesRequired = { DataTypeManagerService.class, GoToService.class }
 )
 //@formatter:on
 public class ClassTypeInfoManagerPlugin extends ProgramPlugin
@@ -76,6 +81,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	private final TypeInfoTreeProvider provider;
 	private final Clipboard clipboard;
 	private DataTypeManagerPlugin dtmPlugin;
+	private ProgramClassTypeInfoManager currentManager;
 
 	public ClassTypeInfoManagerPlugin(PluginTool tool) {
 		super(tool, true, true);
@@ -83,7 +89,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		this.clipboard = new Clipboard(getName());
 		this.listeners = new ArrayList<>();
 		this.managers = new ArrayList<>();
-		this.provider = new TypeInfoTreeProvider(tool, this);
+		this.provider = !isInHeadlessMode() ? new TypeInfoTreeProvider(tool, this) : null;
 	}
 
 	@Override
@@ -91,9 +97,11 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		DataTypeManagerService service = tool.getService(DataTypeManagerService.class);
 		dtmPlugin = (DataTypeManagerPlugin) service;
 		dtmPlugin.getDataTypeManagerHandler().addArchiveManagerListener(this);
-		DecompilerProvider provider =
-			(DecompilerProvider) tool.getComponentProvider("Decompiler");
-		provider.addLocalAction(new FillOutClassAction(this));
+		if (!isInHeadlessMode()) {
+			DecompilerProvider provider =
+				(DecompilerProvider) tool.getComponentProvider("Decompiler");
+			provider.addLocalAction(new FillOutClassAction(this));
+		}
 	}
 
 	@Override
@@ -115,18 +123,16 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	protected void programActivated(Program program) {
-		ClassTypeInfoManager manager = getManager(program);
-		if (manager != null) {
-			managerAdded(manager);
-		}
+		currentManager = getManager(program);
+		RunnableTask task = new RunnableTask(() -> managerAdded(currentManager));
+		tool.execute(task);
 	}
 
 	@Override
 	protected void programDeactivated(Program program) {
 		ClassTypeInfoManager manager = getManager(program);
-		if (manager != null) {
-			listeners.forEach(l -> l.managerClosed(manager));
-		}
+		RunnableTask task = new RunnableTask(() -> managerRemoved(manager));
+		tool.execute(task);
 	}
 
 	@Override
@@ -184,9 +190,9 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	public boolean hasManager(ProjectArchive archive) {
 		String name = archive.getName();
 		return managers.stream()
-			.filter(ProjectClassTypeInfoManager.class::isInstance)
-			.map(ClassTypeInfoManager::getName)
-			.anyMatch(name::equals);
+				.filter(ProjectClassTypeInfoManager.class::isInstance)
+				.map(ClassTypeInfoManager::getName)
+				.anyMatch(name::equals);
 	}
 
 	public void openProjectArchive(ProjectArchive archive) throws IOException {
@@ -239,8 +245,10 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	protected void dispose() {
-		tool.removeComponentProvider(provider);
-		provider.dispose();
+		if (!isInHeadlessMode()) {
+			tool.removeComponentProvider(provider);
+			provider.dispose();
+		}
 		api.dispose();
 	}
 
@@ -257,12 +265,17 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	public GTree getTree() {
-		return provider.getTree();
+		return !isInHeadlessMode() ? provider.getTree() : null;
 	}
 
 	@Override
 	public void managerAdded(ClassTypeInfoManager manager) {
 		listeners.forEach(l -> l.managerOpened(manager));
+	}
+
+	@Override
+	public void managerRemoved(ClassTypeInfoManager manager) {
+		listeners.forEach(l -> l.managerClosed(manager));
 	}
 
 	@Override
@@ -283,12 +296,17 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		}
 	}
 
+	@Override
+	public ProgramClassTypeInfoManager getCurrentManager() {
+		return currentManager;
+	}
+
 	private ClassTypeInfoManager getManager(Archive archive) {
 		return managers.stream()
-			.filter(FileArchiveClassTypeInfoManager.class::isInstance)
-			.filter(m -> m.getName().equals(archive.getName()))
-			.findFirst()
-			.orElse(null);
+				.filter(FileArchiveClassTypeInfoManager.class::isInstance)
+				.filter(m -> m.getName().equals(archive.getName()))
+				.findFirst()
+				.orElse(null);
 	}
 
 	@Override
@@ -296,7 +314,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		ClassTypeInfoManager manager = getManager(archive);
 		if (manager != null) {
 			managers.remove(manager);
-			listeners.forEach(l -> l.managerClosed(manager));
+			managerRemoved(manager);
 		}
 	}
 
@@ -312,10 +330,10 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	public ArchivedClassTypeInfo getExternalClassTypeInfo(Program program, String mangled) {
 		String[] libs = program.getExternalManager().getExternalLibraryNames();
 		List<LibraryClassTypeInfoManager> libManagers = managers.stream()
-			.filter(ProjectClassTypeInfoManager.class::isInstance)
-			.map(ProjectClassTypeInfoManager.class::cast)
-			.flatMap(m -> m.getAvailableManagers(libs))
-			.collect(Collectors.toList());
+				.filter(ProjectClassTypeInfoManager.class::isInstance)
+				.map(ProjectClassTypeInfoManager.class::cast)
+				.flatMap(m -> m.getAvailableManagers(libs))
+				.collect(Collectors.toList());
 		for (LibraryClassTypeInfoManager manager : libManagers) {
 			ArchivedClassTypeInfo type = manager.getType(mangled);
 			if (type != null) {
@@ -337,11 +355,26 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	private <T extends ArchivedRttiData> T getArchivedRttiData(Class<T> clazz, String symbolName) {
 		return managers.stream()
-			.filter(ProjectClassTypeInfoManager.class::isInstance)
-			.map(ProjectClassTypeInfoManager.class::cast)
-			.map(m -> m.getRttiData(clazz, symbolName))
-			.filter(Objects::nonNull)
-			.findFirst()
-			.orElse(null);
+				.filter(ProjectClassTypeInfoManager.class::isInstance)
+				.map(ProjectClassTypeInfoManager.class::cast)
+				.map(m -> m.getRttiData(clazz, symbolName))
+				.filter(Objects::nonNull)
+				.findFirst()
+				.orElse(null);
+	}
+
+	private static class RunnableTask extends Task {
+
+		private final Runnable r;
+
+		RunnableTask(Runnable r) {
+			super("", false, false, false);
+			this.r = r;
+		}
+
+		@Override
+		public void run(TaskMonitor monitor) {
+			r.run();
+		}
 	}
 }
