@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import ghidra.program.model.listing.Data;
 import cppclassanalyzer.data.TypeInfoManager;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+import util.CollectionUtils;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
@@ -113,6 +114,10 @@ public class TypeInfoUtils {
 	public static TypeInfo findTypeInfo(Program program, AddressSetView set, String typename,
 		TaskMonitor monitor) throws CancelledException {
 			TypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
+			TypeInfo type = getExistingTypeInfo(program, manager, typename);
+			if (type != null) {
+				return type;
+			}
 			int pointerAlignment =
 				program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
 			List<Address> stringAddress = findTypeString(program, set, typename, monitor);
@@ -126,14 +131,26 @@ public class TypeInfoUtils {
 			}
 			for (Address reference : references) {
 				Address typeinfoAddress = reference.subtract(program.getDefaultPointerSize());
-				TypeInfo typeinfo = manager.getTypeInfo(typeinfoAddress);
-				if (typeinfo == null) {
+				type = manager.getTypeInfo(typeinfoAddress);
+				if (type == null) {
 					continue;
 				}
-				if (typeinfo.getTypeName().equals(typename)) {
-					return typeinfo;
+				if (type.getTypeName().equals(typename)) {
+					return type;
 				}
 			} return null;
+	}
+
+	private static TypeInfo getExistingTypeInfo(Program program, TypeInfoManager manager,
+			String typename) {
+		Namespace ns = getNamespaceFromTypeName(program, typename);
+		SymbolTable table = program.getSymbolTable();
+		return CollectionUtils.asStream(table.getChildren(ns.getSymbol()))
+			.filter(s -> s.getName().equals(TypeInfo.SYMBOL_NAME))
+			.map(Symbol::getAddress)
+			.map(manager::getTypeInfo)
+			.findFirst()
+			.orElse(null);
 	}
 
 	private static List<Address> findTypeString(Program program, AddressSetView set,

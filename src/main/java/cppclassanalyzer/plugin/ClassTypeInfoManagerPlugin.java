@@ -80,6 +80,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	private final List<TypeInfoManagerListener> listeners;
 	private final TypeInfoTreeProvider provider;
 	private final Clipboard clipboard;
+	private final FillOutClassAction fillOutClassAction;
 	private DataTypeManagerPlugin dtmPlugin;
 	private ProgramClassTypeInfoManager currentManager;
 
@@ -87,9 +88,10 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		super(tool, true, true);
 		this.api = new DecompilerAPI(tool);
 		this.clipboard = new Clipboard(getName());
-		this.listeners = new ArrayList<>();
-		this.managers = new ArrayList<>();
+		this.listeners = Collections.synchronizedList(new ArrayList<>());
+		this.managers = Collections.synchronizedList(new ArrayList<>());
 		this.provider = !isInHeadlessMode() ? new TypeInfoTreeProvider(tool, this) : null;
+		this.fillOutClassAction = new FillOutClassAction(this);
 	}
 
 	@Override
@@ -100,7 +102,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		if (!isInHeadlessMode()) {
 			DecompilerProvider provider =
 				(DecompilerProvider) tool.getComponentProvider("Decompiler");
-			provider.addLocalAction(new FillOutClassAction(this));
+			provider.addLocalAction(fillOutClassAction);
 		}
 	}
 
@@ -248,6 +250,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		if (!isInHeadlessMode()) {
 			tool.removeComponentProvider(provider);
 			provider.dispose();
+			fillOutClassAction.dispose();
 		}
 		api.dispose();
 	}
