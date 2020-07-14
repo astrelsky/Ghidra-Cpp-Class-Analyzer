@@ -1,6 +1,7 @@
 package cppclassanalyzer.plugin.typemgr.action;
 
 import java.io.File;
+import java.util.List;
 
 import ghidra.framework.Application;
 import ghidra.framework.preferences.Preferences;
@@ -26,8 +27,14 @@ final class CppClassAnalyzerPreferences {
 
 	static File getExtensionRoot() {
 		ApplicationLayout layout = Application.getApplicationLayout();
-		ResourceFile path = layout.getExtensionInstallationDir();
-		return new File(path.getFile(false), EXTENSION_NAME);
+		List<ResourceFile> paths = layout.getExtensionInstallationDirs();
+		for (ResourceFile path : paths) {
+			File f = new File(path.getFile(false), EXTENSION_NAME);
+			if (f.exists()) {
+				return f;
+			}
+		}
+		return null;
 	}
 
 	static File getLastOpenedArchivePath() {
