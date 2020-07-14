@@ -104,7 +104,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			throw e;
 		} catch (Exception e) {
 			e.printStackTrace();
-			log.error("Ghidra-Cpp-Class-Analyzer", e.getMessage());
+			log.appendMsg("Ghidra-Cpp-Class-Analyzer", e.getMessage());
 			return false;
 		}
 	}

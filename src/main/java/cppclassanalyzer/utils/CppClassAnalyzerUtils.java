@@ -52,6 +52,9 @@ public final class CppClassAnalyzerUtils {
 		if (function == null || function.isThunk()) {
 			return true;
 		}
+		if (!function.getParentNamespace().isGlobal()) {
+			return false;
+		}
 		String defaultName = SymbolUtilities.getDefaultFunctionName(function.getEntryPoint());
 		return defaultName.equals(function.getName());
 	}
