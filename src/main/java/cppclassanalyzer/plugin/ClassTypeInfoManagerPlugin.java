@@ -126,14 +126,14 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	@Override
 	protected void programActivated(Program program) {
 		currentManager = getManager(program);
-		RunnableTask task = new RunnableTask(() -> managerAdded(currentManager));
+		RunnableTask task = new RunnableTask(() -> provider.getTree().managerOpened(currentManager));
 		tool.execute(task);
 	}
 
 	@Override
 	protected void programDeactivated(Program program) {
 		ClassTypeInfoManager manager = getManager(program);
-		RunnableTask task = new RunnableTask(() -> managerRemoved(manager));
+		RunnableTask task = new RunnableTask(() -> provider.getTree().managerClosed(manager));
 		tool.execute(task);
 	}
 
@@ -247,6 +247,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	protected void dispose() {
+		listeners.clear();
 		if (!isInHeadlessMode()) {
 			tool.removeComponentProvider(provider);
 			provider.dispose();
@@ -358,12 +359,12 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	private <T extends ArchivedRttiData> T getArchivedRttiData(Class<T> clazz, String symbolName) {
 		return managers.stream()
-				.filter(ProjectClassTypeInfoManager.class::isInstance)
-				.map(ProjectClassTypeInfoManager.class::cast)
-				.map(m -> m.getRttiData(clazz, symbolName))
-				.filter(Objects::nonNull)
-				.findFirst()
-				.orElse(null);
+			.filter(ProjectClassTypeInfoManager.class::isInstance)
+			.map(ProjectClassTypeInfoManager.class::cast)
+			.map(m -> m.getRttiData(clazz, symbolName))
+			.filter(Objects::nonNull)
+			.findFirst()
+			.orElse(null);
 	}
 
 	private static class RunnableTask extends Task {

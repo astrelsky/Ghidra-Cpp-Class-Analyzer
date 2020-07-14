@@ -28,12 +28,10 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 
 	private static final long serialVersionUID = 1L;
 
-	private final ClassTypeInfoManagerPlugin plugin;
 	private final TypeInfoDragNDropHandler dropHandler;
 
 	public TypeInfoArchiveGTree(ClassTypeInfoManagerPlugin plugin) {
 		super(new TypeInfoArchiveGTreeRootNode());
-		this.plugin = plugin;
 		this.dropHandler = new TypeInfoDragNDropHandler();
 		plugin.addTypeInfoManagerChangeListener(this);
 	}
@@ -54,7 +52,6 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 	@Override
 	public void dispose() {
 		super.dispose();
-		plugin.removeTypeInfoManagerChangeListener(this);
 	}
 
 	@Override
