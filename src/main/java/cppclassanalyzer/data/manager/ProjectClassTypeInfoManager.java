@@ -27,6 +27,7 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
+import ghidra.program.util.ChangeManager;
 import ghidra.util.InvalidNameException;
 import ghidra.util.Lock;
 import ghidra.util.exception.AssertException;
@@ -263,9 +264,9 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		acquireLock();
 		try {
 			return libMap.values()
-					.stream()
-					.mapToInt(ClassTypeInfoManager::getTypeCount)
-					.sum();
+				.stream()
+				.mapToInt(ClassTypeInfoManager::getTypeCount)
+				.sum();
 		} finally {
 			releaseLock();
 		}
@@ -349,8 +350,11 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		int i = 0;
 		for (ClassTypeInfoManager manager : managers) {
 			monitor.checkCanceled();
-			monitor.setMessage(String.format(format, manager.getName(), ++i, size));
+			String msg = String.format(format, manager.getName(), ++i, size);
+			//int id = startTransaction(msg);
+			monitor.setMessage(msg);
 			doInsert(manager, monitor);
+			//endTransaction(id, true);
 		}
 	}
 
@@ -407,7 +411,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		lock.acquire();
 		try {
 			Table table = createLibMapTable(getDBHandle(archive));
-			getDB(archive).setChanged(-1, null, table);
+			getDB(archive).setChanged(ChangeManager.DOCR_OBJECT_CREATED, null, table);
 		} finally {
 			lock.release();
 		}
