@@ -11,6 +11,7 @@ import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.database.DataTypeArchiveDB;
@@ -280,7 +281,8 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		getDB(archive).getLock().release();
 	}
 
-	ClassTypeInfoManagerPlugin getPlugin() {
+	@Override
+	public ClassTypeInfoManagerPlugin getPlugin() {
 		return plugin;
 	}
 

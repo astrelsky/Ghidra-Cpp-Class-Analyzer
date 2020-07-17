@@ -73,4 +73,10 @@ abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeI
 	public final boolean isProgramNode() {
 		return getTypeManager() instanceof ProgramClassTypeInfoManager;
 	}
+
+	@Override
+	public void dispose() {
+		getManager().dispose();
+		super.dispose();
+	}
 }

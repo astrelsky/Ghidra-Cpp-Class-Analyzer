@@ -11,6 +11,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.FileArchive;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+
 import ghidra.framework.store.db.PackedDBHandle;
 import ghidra.framework.store.db.PackedDatabase;
 
@@ -79,6 +80,11 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		ArchivedRttiTablePair tables = new ArchivedRttiTablePair(classTable, vtableTable);
 		this.worker = new RttiRecordWorker(tables, caches);
 		this.name = FilenameUtils.removeExtension(file.getName());
+	}
+
+	@Override
+	public ClassTypeInfoManagerPlugin getPlugin() {
+		return plugin;
 	}
 
 	private ArchivedClassTypeInfoDatabaseTable getClassTable() {

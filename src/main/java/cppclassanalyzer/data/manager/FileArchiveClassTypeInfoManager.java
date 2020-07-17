@@ -1,6 +1,8 @@
 package cppclassanalyzer.data.manager;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
+
 import ghidra.program.model.data.FileBasedDataTypeManager;
 
 /**
@@ -28,4 +30,6 @@ public interface FileArchiveClassTypeInfoManager extends ClassTypeInfoManager,
 	 * @return true if data has been changed
 	 */
 	public boolean isChanged();
+
+	public ClassTypeInfoManagerPlugin getPlugin();
 }

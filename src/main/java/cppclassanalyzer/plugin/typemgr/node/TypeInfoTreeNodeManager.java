@@ -1,12 +1,19 @@
 package cppclassanalyzer.plugin.typemgr.node;
 
+import ghidra.app.plugin.core.datamgr.archive.DomainFileArchive;
 import ghidra.app.util.SymbolPath;
+import ghidra.framework.model.DomainObject;
+import ghidra.framework.model.DomainObjectChangedEvent;
+import ghidra.framework.model.DomainObjectListener;
+import ghidra.util.Disposable;
 import ghidra.util.Lock;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.database.SchemaMismatchException;
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
@@ -23,7 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TypeInfoTreeNodeManager implements DBListener {
+public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener {
 
 	private final TypeInfoTreeNodeTable table;
 	private final ClassTypeInfoManager manager;
@@ -45,7 +52,47 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		this.manager = manager;
 		this.handler = new TransactionHandler(handle);
 		this.table = getTable(name);
-		handle.addListener(this);
+	}
+
+	@Override
+	public void domainObjectChanged(DomainObjectChangedEvent event) {
+
+		if (!getTree().isVisible()) {
+			return;
+		}
+
+		if (event.containsEvent(DomainObject.DO_OBJECT_RESTORED)) {
+			DomainObject source = (DomainObject) event.getSource();
+			if (root.getName().equals(source.getName())) {
+				root.rebuild();
+			}
+		}
+	}
+
+	@Override
+	public void dispose() {
+		DomainObject object = getDomainObject();
+		if (object != null) {
+			object.removeListener(this);
+		}
+	}
+
+	private DomainObject getDomainObject() {
+		if (manager instanceof ProgramClassTypeInfoManager) {
+			return ((ProgramClassTypeInfoManager) manager).getProgram();
+		}
+		if (manager instanceof FileArchiveClassTypeInfoManager) {
+			return ((FileArchiveClassTypeInfoManager) manager).getPlugin()
+				.getDataTypeManagerHandler()
+				.getAllFileOrProjectArchives()
+				.stream()
+				.map(DomainFileArchive.class::cast)
+				.map(DomainFileArchive::getDomainObject)
+				.filter(o -> o.getName().equals(manager.getName()))
+				.findFirst()
+				.orElse(null);
+		}
+		return null;
 	}
 
 	private TypeInfoTreeNodeTable getTable(String name) {
@@ -79,6 +126,10 @@ public class TypeInfoTreeNodeManager implements DBListener {
 
 	void setRootNode(AbstractManagerNode node) {
 		this.root = node;
+		DomainObject object = getDomainObject();
+		if (object != null) {
+			object.addListener(this);
+		}
 	}
 
 	private TypeInfoTreeNodeRecord createRootRecord() {
@@ -217,27 +268,6 @@ public class TypeInfoTreeNodeManager implements DBListener {
 		}
 		children.sort(null);
 		return children;
-	}
-
-	@Override
-	public void dbRestored(DBHandle dbh) {
-		if (dbh == handle) {
-			if (root != null) {
-				root.rebuild();
-			}
-		}
-	}
-
-	@Override
-	public void dbClosed(DBHandle dbh) {
-	}
-
-	@Override
-	public void tableDeleted(DBHandle dbh, Table table) {
-	}
-
-	@Override
-	public void tableAdded(DBHandle dbh, Table table) {
 	}
 
 	// dbHandle transactions are different
