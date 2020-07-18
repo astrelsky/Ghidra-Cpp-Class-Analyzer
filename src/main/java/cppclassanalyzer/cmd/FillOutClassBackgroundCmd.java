@@ -1,24 +1,25 @@
 package cppclassanalyzer.cmd;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Predicate;
 
+import ghidra.app.decompiler.*;
 import ghidra.app.plugin.core.decompile.DecompilerActionContext;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObject;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.Structure;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.data.*;
+import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
-import ghidra.program.model.pcode.HighVariable;
+import ghidra.program.model.listing.Program;
+import ghidra.program.model.pcode.*;
+import ghidra.util.UniversalID;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
-import cppclassanalyzer.decompiler.function.HighFunctionCall;
-import cppclassanalyzer.decompiler.function.HighFunctionCallParameter;
+import cppclassanalyzer.decompiler.function.*;
 import cppclassanalyzer.decompiler.token.ClangNodeUtils;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 
@@ -60,16 +61,65 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 	}
 
 	private void doApplyTo(TaskMonitor monitor) throws CancelledException {
+		applyFunctionCalls(monitor);
+		applyVptrAssignments(monitor);
+	}
+
+	private void applyFunctionCalls(TaskMonitor monitor) throws CancelledException {
 		List<HighFunctionCall> calls =
 			ClangNodeUtils.getClangFunctionCalls(context.getCCodeModel());
-		monitor.setMessage("Analyzing "+type.getName()+" member usage");
+		monitor.setMessage("Analyzing "+type.getName()+" member usage in calls");
 		monitor.initialize(calls.size());
 		for (HighFunctionCall call : calls) {
 			monitor.checkCanceled();
 			analyzeCall(call);
 			monitor.incrementProgress(1);
 		}
-		// TODO do _vptr assignments too
+	}
+
+	private void applyVptrAssignments(TaskMonitor monitor) throws CancelledException {
+		List<ClangStatement> statements = ClangNodeUtils.getClangStatements(context.getCCodeModel());
+		statements.removeIf(Predicate.not(FillOutClassBackgroundCmd::isAssignment));
+		monitor.setMessage("Analyzing "+type.getName()+" member vptr assignments");
+		monitor.initialize(statements.size());
+		for (ClangStatement statement : statements) {
+			monitor.checkCanceled();
+			HighVariableAssignment assignment = new HighVariableAssignment(statement);
+			if (assignment.hasGlobalRef() && isThisVariable(assignment)) {
+				final int offset;
+				if (assignment.hasFieldToken()) {
+					offset = assignment.getOffset() + assignment.getFieldToken().getOffset();
+				} else {
+					offset = assignment.getOffset();
+				}
+				ClassTypeInfoDB member = getType(assignment);
+				if (member != null && !member.equals(type)) {
+					setMember(member, offset);
+				}
+			}
+			monitor.incrementProgress(1);
+		}
+	}
+
+	private ClassTypeInfoDB getType(HighVariableAssignment assignment) {
+		Address addr = assignment.getGlobalRefAddress();
+		if (addr != null) {
+			Program program = getManager().getProgram();
+			int ptrSize = program.getDefaultPointerSize();
+			Data d = program.getListing().getDataAt(addr.subtract(ptrSize));
+			if (d != null && d.isPointer()) {
+				return getManager().getType((Address) d.getValue());
+			}
+		}
+		return null;
+	}
+
+	private static boolean isAssignment(ClangStatement statement) {
+		PcodeOp op = statement.getPcodeOp();
+		if (op != null) {
+			return op.getOpcode() == PcodeOp.STORE;
+		}
+		return false;
 	}
 
 	private void analyzeCall(HighFunctionCall call) {
@@ -78,11 +128,7 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 			return;
 		}
 		HighFunctionCallParameter self = params.get(0);
-		if (!self.hasLocalRef()) {
-			return;
-		}
-		HighVariable var = self.getVariableToken().getHighVariable();
-		if (var == null || !var.getName().equals("this")) {
+		if (!self.hasLocalRef() || !isThisVariable(self)) {
 			return;
 		}
 		final int offset;
@@ -94,11 +140,34 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 		setMember(call.getFunction(), offset);
 	}
 
+	private boolean isThisVariable(HighStructAccess self) {
+		HighVariable var = self.getVariableToken().getHighVariable();
+		if (var == null) {
+			return false;
+		}
+		DataType dt = var.getDataType();
+		if (!(dt instanceof Pointer)) {
+			return false;
+		}
+		UniversalID id = ((Pointer) dt).getDataType().getUniversalID();
+		if (id == null) {
+			return false;
+		}
+		ClassTypeInfoDB member = getManager().getType(id);
+		if (member == null || !member.equals(type)) {
+			return false;
+		}
+		return true;
+	}
+
 	private void setMember(Function fun, int offset) {
 		ClassTypeInfoDB member = getManager().getType(fun);
-		if (member == null) {
-			return;
+		if (member != null) {
+			setMember(member, offset);
 		}
+	}
+
+	private void setMember(ClassTypeInfoDB member, int offset) {
 		MemberValidator validator = new MemberValidator(member);
 		Structure struct = type.getClassDataType();
 		DataTypeComponent comp = struct.getComponentAt(offset);
@@ -147,7 +216,7 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 		private final ClassTypeInfoDB type;
 
 		MemberValidator(ClassTypeInfoDB type) {
-			this.type = type;
+			this.type = Objects.requireNonNull(type);
 		}
 
 		boolean isInvalidMember(DataType dt) {
@@ -159,5 +228,4 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 			return dt.isEquivalent(struct);
 		}
 	}
-
 }

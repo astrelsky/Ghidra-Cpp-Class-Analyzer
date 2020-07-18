@@ -10,9 +10,7 @@ import java.util.stream.Stream;
 import javax.swing.Icon;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.GnuVtable;
-import ghidra.app.cmd.data.rtti.TypeInfo;
+import ghidra.app.cmd.data.rtti.*;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
@@ -20,7 +18,6 @@ import cppclassanalyzer.vs.RttiModelWrapper;
 import cppclassanalyzer.vs.VsClassTypeInfo;
 import cppclassanalyzer.vs.VsVtableModel;
 
-import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.program.database.ManagerDB;
 import ghidra.program.database.ProgramDB;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
@@ -33,9 +30,7 @@ import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.*;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.GhidraClass;
-import ghidra.program.model.listing.VariableUtilities;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 import ghidra.util.Lock;
 import ghidra.util.UniversalID;
@@ -396,10 +391,29 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		}
 	}
 
+	private static boolean isRtti4Model(Data data) {
+		if (data == null) {
+			return false;
+		}
+		return data.getMnemonicString().equals(VsClassTypeInfo.LOCATOR_SYMBOL_NAME);
+	}
+
 	@Override
 	public ClassTypeInfoDB getType(Address address) {
 		lock.acquire();
 		try {
+			if (isVs()) {
+				Data data = program.getListing().getDataAt(address);
+				if (isRtti4Model(data)) {
+					Rtti4Model model =
+						new Rtti4Model(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);
+					try {
+						address = model.getRtti0Address();
+					} catch (InvalidDataTypeException e) {
+						throw new AssertException(e);
+					}
+				}
+			}
 			long key = getTypeKey(address);
 			if (key != INVALID_KEY) {
 				return worker.getType(key);

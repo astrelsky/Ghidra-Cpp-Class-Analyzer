@@ -1,6 +1,7 @@
 package ghidra.app.cmd.data.rtti;
 
 import java.util.*;
+import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -180,9 +181,13 @@ public abstract class AbstractCppClassBuilder {
 		if (comps.length == 0) {
 			return;
 		}
-		int endOffset =  comps[comps.length-1].getEndOffset()+1;
-		while (struct.getLength() > endOffset) {
-			struct.deleteAtOffset(endOffset);
+		int ordinal =  comps[comps.length-1].getOrdinal()+1;
+		trimStructure(struct, ordinal);
+	}
+
+	private static void trimStructure(Structure struct, int ordinal) {
+		for (int index = struct.getNumComponents() - 1; index >= ordinal; index--) {
+			struct.delete(index);
 		}
 	}
 
@@ -198,15 +203,19 @@ public abstract class AbstractCppClassBuilder {
 			.map(AbstractCppClassBuilder::getSuperName)
 			.collect(Collectors.toSet());
 		DataTypeComponent[] comps = superStruct.getDefinedComponents();
-		for (DataTypeComponent comp : comps) {
-			if (parents.contains(comp.getFieldName())) {
-				int ordinal = comp.getOrdinal();
-				int numComponents = superStruct.getNumComponents() - 1;
-				int[] ordinals = IntStream.rangeClosed(ordinal, numComponents).toArray();
-				superStruct.delete(ordinals);
-				break;
-			}
+		DataTypeComponent comp = getReverseIndexStream(comps.length)
+			.mapToObj(i -> comps[i])
+			.filter(c -> parents.contains(c.getFieldName()))
+			.findFirst()
+			.orElse(null);
+		if (comp != null) {
+			trimStructure(superStruct, comp.getOrdinal());
 		}
+	}
+
+	private static IntStream getReverseIndexStream(int max) {
+		return IntStream.generate(new ReverseIndexSupplier(max - 1))
+			.limit(max);
 	}
 
 	private boolean validFieldName(String name) {
@@ -251,6 +260,20 @@ public abstract class AbstractCppClassBuilder {
 			}
 			replaceComponent(struct, (DataType) comp.getDataTypeHandle(),
 							 dtComps.get(comp), offset);
+		}
+	}
+
+	private static final class ReverseIndexSupplier implements IntSupplier {
+
+		private int index;
+
+		ReverseIndexSupplier(int index) {
+			this.index = index;
+		}
+
+		@Override
+		public int getAsInt() {
+			return index--;
 		}
 	}
 }

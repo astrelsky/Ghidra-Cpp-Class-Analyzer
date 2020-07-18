@@ -23,7 +23,7 @@ public final class HighFunctionCall implements Comparable<HighFunctionCall> {
 		this.name = supplier.getFunctionName();
 		this.parameters = supplier.getParameterGroups()
 			.stream()
-			.map(group -> new HighFunctionCallParameter(hf, group))
+			.map(HighFunctionCallParameter::new)
 			.collect(Collectors.toList());
 	}
 
