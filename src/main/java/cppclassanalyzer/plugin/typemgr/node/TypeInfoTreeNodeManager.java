@@ -1,6 +1,5 @@
 package cppclassanalyzer.plugin.typemgr.node;
 
-import ghidra.app.plugin.core.datamgr.archive.DomainFileArchive;
 import ghidra.app.util.SymbolPath;
 import ghidra.framework.model.DomainObject;
 import ghidra.framework.model.DomainObjectChangedEvent;
@@ -12,8 +11,6 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.database.SchemaMismatchException;
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
@@ -52,6 +49,7 @@ public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener
 		this.manager = manager;
 		this.handler = new TransactionHandler(handle);
 		this.table = getTable(name);
+		manager.addListener(this);
 	}
 
 	@Override
@@ -71,28 +69,7 @@ public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener
 
 	@Override
 	public void dispose() {
-		DomainObject object = getDomainObject();
-		if (object != null) {
-			object.removeListener(this);
-		}
-	}
-
-	private DomainObject getDomainObject() {
-		if (manager instanceof ProgramClassTypeInfoManager) {
-			return ((ProgramClassTypeInfoManager) manager).getProgram();
-		}
-		if (manager instanceof FileArchiveClassTypeInfoManager) {
-			return ((FileArchiveClassTypeInfoManager) manager).getPlugin()
-				.getDataTypeManagerHandler()
-				.getAllFileOrProjectArchives()
-				.stream()
-				.map(DomainFileArchive.class::cast)
-				.map(DomainFileArchive::getDomainObject)
-				.filter(o -> o.getName().equals(manager.getName()))
-				.findFirst()
-				.orElse(null);
-		}
-		return null;
+		manager.removeListener(this);
 	}
 
 	private TypeInfoTreeNodeTable getTable(String name) {
@@ -126,10 +103,6 @@ public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener
 
 	void setRootNode(AbstractManagerNode node) {
 		this.root = node;
-		DomainObject object = getDomainObject();
-		if (object != null) {
-			object.addListener(this);
-		}
 	}
 
 	private TypeInfoTreeNodeRecord createRootRecord() {

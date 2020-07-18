@@ -6,6 +6,8 @@ import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
+import ghidra.framework.model.DomainObjectListener;
+
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
@@ -116,4 +118,10 @@ public interface ClassTypeInfoManager extends ErrorHandler {
 	 * @return this manager's TypeInfoTreeNodeManager
 	 */
 	TypeInfoTreeNodeManager getTreeNodeManager();
+
+	default void addListener(DomainObjectListener listener) {
+	}
+
+	default void removeListener(DomainObjectListener listener) {
+	}
 }

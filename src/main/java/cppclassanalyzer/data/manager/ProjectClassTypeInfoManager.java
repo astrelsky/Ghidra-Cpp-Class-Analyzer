@@ -13,6 +13,7 @@ import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 
 import ghidra.framework.cmd.BackgroundCommand;
+import ghidra.framework.model.DomainObjectListener;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.database.DataTypeArchiveDB;
 import ghidra.program.database.data.ProjectDataTypeManager;
@@ -326,6 +327,16 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	@Override
 	public ClassTypeInfoDB getType(long key) {
 		throw new UnsupportedOperationException("Cannot get type from project archive by key");
+	}
+
+	@Override
+	public void addListener(DomainObjectListener listener) {
+		archive.getDomainObject().addListener(listener);
+	}
+
+	@Override
+	public void removeListener(DomainObjectListener listener) {
+		archive.getDomainObject().removeListener(listener);
 	}
 
 	/**

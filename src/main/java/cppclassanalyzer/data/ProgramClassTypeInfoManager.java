@@ -5,6 +5,8 @@ import java.util.stream.Stream;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
+import ghidra.framework.model.DomainObjectListener;
+
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
@@ -153,5 +155,15 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 	 * @return the type with the corresponding data type id or null
 	 */
 	ClassTypeInfoDB getType(UniversalID id);
+
+	@Override
+	default void addListener(DomainObjectListener listener) {
+		getProgram().addListener(listener);
+	}
+
+	@Override
+	default void removeListener(DomainObjectListener listener) {
+		getProgram().removeListener(listener);
+	}
 
 }
