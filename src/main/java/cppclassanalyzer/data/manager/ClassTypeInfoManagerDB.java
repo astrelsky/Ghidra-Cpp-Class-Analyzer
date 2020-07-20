@@ -33,6 +33,7 @@ import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 import ghidra.util.Lock;
+import ghidra.util.Msg;
 import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongArrayList;
 import ghidra.util.datastruct.LongIntHashtable;
@@ -461,6 +462,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	@Override
 	public ClassTypeInfoDB getType(Function fun) {
 		if (fun.getParentNamespace().isGlobal()) {
+			return null;
+		}
+		if (!(fun.getParentNamespace() instanceof GhidraClass)) {
+			Msg.info(this, fun.getParentNamespace().getName(true)+" is not a class");
 			return null;
 		}
 		GenericCallingConvention cc = fun.getSignature().getGenericCallingConvention();
