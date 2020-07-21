@@ -1,7 +1,5 @@
 package cppclassanalyzer.plugin.typemgr.node;
 
-import java.util.List;
-
 import javax.swing.Icon;
 
 import ghidra.app.plugin.core.symboltree.nodes.NamespaceSymbolNode;
@@ -10,11 +8,14 @@ import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 import docking.widgets.tree.GTreeNode;
-import docking.widgets.tree.GTreeSlowLoadingNode;
 
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
 
-public final class NamespacePathNode extends GTreeSlowLoadingNode implements TypeInfoTreeNode {
+import java.util.*;
+import java.util.stream.Collectors;
+
+public final class NamespacePathNode extends AbstractSortedSlowLoadingNode
+		implements TypeInfoTreeNode {
 
 	private final TypeInfoTreeNodeManager manager;
 	private final TypeInfoTreeNodeRecord record;
@@ -40,18 +41,24 @@ public final class NamespacePathNode extends GTreeSlowLoadingNode implements Typ
 	}
 
 	@Override
-	public void addNode(GTreeNode node) {
+	public void addNode(int index, GTreeNode node) {
 		if (node instanceof TypeInfoTreeNode) {
 			TypeInfoTreeNode treeNode = (TypeInfoTreeNode) node;
+			long key = treeNode.getKey();
 			long[] children = record.getLongArray(CHILDREN_KEYS);
-			long[] newChildren = new long[children.length + 1];
-			System.arraycopy(children, 0, newChildren, 0, children.length);
-			newChildren[children.length] = treeNode.getKey();
-			record.setLongArray(CHILDREN_KEYS, newChildren);
-			manager.updateRecord(record);
+			if (Arrays.binarySearch(children, key) < 0) {
+				Set<Long> kids = Arrays.stream(children)
+					.boxed()
+					.collect(Collectors.toCollection(TreeSet::new));
+				kids.add(key);
+				children = kids.stream()
+					.mapToLong(Long::longValue)
+					.toArray();
+				record.setLongArray(CHILDREN_KEYS, children);
+				getManager().updateRecord(record);
+			}
 		}
-		super.addNode(node);
-		children().sort(null);
+		super.addNode(index, node);
 	}
 
 	@Override

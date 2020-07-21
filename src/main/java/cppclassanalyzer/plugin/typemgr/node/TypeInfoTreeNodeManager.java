@@ -6,6 +6,7 @@ import ghidra.framework.model.DomainObjectChangedEvent;
 import ghidra.framework.model.DomainObjectListener;
 import ghidra.util.Disposable;
 import ghidra.util.Lock;
+import ghidra.util.datastruct.RedBlackLongKeySet;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -24,8 +25,7 @@ import static cppclassanalyzer.database.record.TypeInfoTreeNodeRecord.*;
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener {
 
@@ -231,12 +231,16 @@ public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener
 			throws CancelledException {
 		TypeInfoTreeNodeRecord record = node.getRecord();
 		long[] keys = record.getLongArray(CHILDREN_KEYS);
+		RedBlackLongKeySet keySet = new RedBlackLongKeySet();
 		List<GTreeNode> children = new ArrayList<>(keys.length);
 		monitor.initialize(keys.length);
 		for (long key : keys) {
 			monitor.checkCanceled();
-			TypeInfoTreeNodeRecord child = getRecord(key);
-			children.add(createNode(child));
+			if (!keySet.containsKey(key)) {
+				keySet.put(key);
+				TypeInfoTreeNodeRecord child = getRecord(key);
+				children.add(createNode(child));
+			}
 			monitor.incrementProgress(1);
 		}
 		children.sort(null);

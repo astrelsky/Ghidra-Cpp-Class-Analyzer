@@ -8,6 +8,7 @@ import docking.widgets.tree.GTreeNode;
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import ghidra.app.util.SymbolPath;
 import ghidra.util.Msg;
@@ -25,19 +26,25 @@ abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 	}
 
 	@Override
-	public final void addNode(GTreeNode node) {
+	public final void addNode(int index, GTreeNode node) {
 		if (node instanceof TypeInfoTreeNode) {
 			TypeInfoTreeNode treeNode = (TypeInfoTreeNode) node;
 			TypeInfoTreeNodeRecord record = getRecord();
+			long key = treeNode.getKey();
 			long[] children = record.getLongArray(CHILDREN_KEYS);
-			long[] newChildren = new long[children.length + 1];
-			System.arraycopy(children, 0, newChildren, 0, children.length);
-			newChildren[children.length] = treeNode.getKey();
-			record.setLongArray(CHILDREN_KEYS, newChildren);
-			getManager().updateRecord(record);
+			if (Arrays.binarySearch(children, key) < 0) {
+				Set<Long> kids = Arrays.stream(children)
+					.boxed()
+					.collect(Collectors.toCollection(TreeSet::new));
+				kids.add(key);
+				children = kids.stream()
+					.mapToLong(Long::longValue)
+					.toArray();
+				record.setLongArray(CHILDREN_KEYS, children);
+				getManager().updateRecord(record);
+			}
 		}
-		super.addNode(node);
-		children().sort(null);
+		super.addNode(index, node);
 	}
 
 	@Override

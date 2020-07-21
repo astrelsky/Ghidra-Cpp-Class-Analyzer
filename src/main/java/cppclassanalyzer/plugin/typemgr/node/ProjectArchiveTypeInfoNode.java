@@ -17,12 +17,6 @@ public final class ProjectArchiveTypeInfoNode extends AbstractManagerNode {
 		super(manager);
 	}
 
-	@Override
-	public void addNode(GTreeNode node) {
-		super.addNode(node);
-		children().sort(null);
-	}
-
 	public void addNode(LibraryClassTypeInfoManager libManager) {
 		addNode(new TypeInfoLibraryNode(libManager));
 	}

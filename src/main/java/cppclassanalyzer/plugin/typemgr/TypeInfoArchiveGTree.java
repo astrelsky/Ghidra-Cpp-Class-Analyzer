@@ -13,6 +13,7 @@ import cppclassanalyzer.plugin.typemgr.node.TypeInfoArchiveNode;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoNode;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoRootNode;
 import ghidra.app.plugin.core.datamgr.util.DataTypeUtils;
+import ghidra.util.exception.AssertException;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
@@ -140,6 +141,19 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 		@Override
 		public boolean isLeaf() {
 			return false;
+		}
+
+		@Override
+		public void addNode(GTreeNode node) {
+			if (isLoaded()) {
+				List<GTreeNode> kids = children();
+				int index = Collections.binarySearch(kids, node);
+				if (index >= 0) {
+					String msg = "Child node "+node.getName()+" already exists in "+getName();
+					throw new AssertException(msg);
+				}
+				super.addNode(-(index + 1), node);
+			}
 		}
 
 		void addNode(ClassTypeInfoManager manager) {

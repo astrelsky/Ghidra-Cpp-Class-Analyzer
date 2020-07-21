@@ -6,9 +6,9 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
 
 import docking.widgets.tree.GTreeNode;
-import docking.widgets.tree.GTreeSlowLoadingNode;
 
-abstract class AbstractManagerNode extends GTreeSlowLoadingNode implements TypeInfoArchiveNode {
+abstract class AbstractManagerNode extends AbstractSortedSlowLoadingNode
+		implements TypeInfoArchiveNode {
 
 	private final ClassTypeInfoManager manager;
 	private final TypeInfoTreeNodeRecord record;

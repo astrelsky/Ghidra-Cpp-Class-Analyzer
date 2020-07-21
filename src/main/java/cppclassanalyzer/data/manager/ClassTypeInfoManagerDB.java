@@ -479,10 +479,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	public ClassTypeInfoDB getType(String name) {
 		SymbolTable table = program.getSymbolTable();
 		return CollectionUtils.asStream(table.getSymbols(name))
-				.map(Symbol::getAddress)
-				.map(this::getType)
-				.findFirst()
-				.orElse(null);
+			.map(Symbol::getAddress)
+			.map(this::getType)
+			.findFirst()
+			.orElse(null);
 	}
 
 	@Override
