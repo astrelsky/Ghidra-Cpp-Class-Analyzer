@@ -29,11 +29,7 @@ import ghidra.program.model.reloc.Relocation;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
-import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.GenericCallingConvention;
-import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.MutabilitySettingsDefinition;
-import ghidra.program.model.data.VoidDataType;
+import ghidra.program.model.data.*;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
@@ -203,19 +199,14 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			return null;
 	}
 
-	private void findAndCreatePureVirtualFunction() throws CancelledException,
-		InvalidDataTypeException {
-			monitor.setMessage("Locating "+PURE_VIRTUAL_FUNCTION_NAME);
-			Function pureVirtual = getPureVirtualFunction();
-			try {
-				pureVirtual.setName(PURE_VIRTUAL_FUNCTION_NAME, SourceType.IMPORTED);
-				pureVirtual.setNoReturn(true);
-				pureVirtual.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
-				pureVirtual.setCallingConvention(
-					GenericCallingConvention.stdcall.getDeclarationName());
-			} catch (Exception e) {
-				return;
-			}
+	private void findAndCreatePureVirtualFunction() throws Exception {
+		monitor.setMessage("Locating "+PURE_VIRTUAL_FUNCTION_NAME);
+		Function pureVirtual = getPureVirtualFunction();
+		String cc = GenericCallingConvention.stdcall.getDeclarationName();
+		pureVirtual.setName(PURE_VIRTUAL_FUNCTION_NAME, SourceType.IMPORTED);
+		pureVirtual.setNoReturn(true);
+		pureVirtual.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
+		pureVirtual.setCallingConvention(cc);
 	}
 
 	private void createVtable(GnuVtable vtable) throws Exception {

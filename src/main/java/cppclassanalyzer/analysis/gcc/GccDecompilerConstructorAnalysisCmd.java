@@ -39,10 +39,17 @@ public class GccDecompilerConstructorAnalysisCmd
 			return;
 		}
 		Function[][] functionTables = vtable.getFunctionTables();
-		for (int i = 1; i < functionTables.length; i++) {
+		for (int i = 0; i < functionTables.length; i++) {
 			for (int j = 0; j < functionTables[i].length && j < 2; j++) {
-				functionTables[i][j].setThunkedFunction(functionTables[0][j]);
-				functionTables[i][j].setParentNamespace(type.getGhidraClass());
+				if (i == 0) {
+					if (functionTables[i][j] == null) {
+						continue;
+					}
+					setFunction(type, functionTables[i][j], true);
+				} else {
+					functionTables[i][j].setThunkedFunction(functionTables[0][j]);
+					functionTables[i][j].setParentNamespace(type.getGhidraClass());
+				}
 			}
 		}
 	}

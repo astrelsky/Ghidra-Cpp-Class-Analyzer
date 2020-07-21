@@ -66,13 +66,6 @@ public abstract class AbstractCppClassBuilder {
 	protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
 	protected abstract void addVptr(Structure struct);
 
-	private static boolean containsMember(Structure struct, String name) {
-		return Arrays.stream(struct.getComponents())
-			.map(DataTypeComponent::getFieldName)
-			.filter(Objects::nonNull)
-			.anyMatch(name::equals);
-	}
-
 	public Structure getDataType() {
 		if (struct.isDeleted()) {
 			struct = ClassTypeInfoUtils.getPlaceholderStruct(
@@ -83,30 +76,22 @@ public abstract class AbstractCppClassBuilder {
 			id = program.startTransaction("creating datatype for "+type.getName());
 		}
 		stashComponents();
-		int pointerSize = program.getDefaultPointerSize();
 		Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
-		int primaryBaseCount = 0;
+		boolean primaryBaseSet = false;
 		for (ClassTypeInfo parent : baseMap.keySet()) {
 			AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
 			Structure parentStruct = parentBuilder.getSuperClassDataType();
 			String memberName = SUPER + parent.getName();
 			int offset = baseMap.get(parent);
-			if (offset == 0 && parentStruct.getLength() > pointerSize) {
-				// it is an empty class, interface or essentially a namespace.
-				if (primaryBaseCount++ > 0) {
-					DataTypeComponent dtComp = struct.getComponent(0);
-					if (dtComp.getDataType() instanceof Structure) {
-						Structure comp = (Structure) dtComp.getDataType();
-						if (containsMember(comp, memberName)) {
-							continue;
-						}
-						if (containsMember(parentStruct, struct.getComponent(0).getFieldName())) {
-							replaceComponent(struct, parentStruct, memberName, 0);
-							continue;
-						}
-					}
+			if (offset == 0) {
+				if (parentStruct.isNotYetDefined()) {
+					// it is an empty class, interface or essentially a namespace
+					continue;
 				}
-				replaceComponent(struct, parentStruct, memberName, 0);
+				if (!primaryBaseSet) {
+					replaceComponent(struct, parentStruct, memberName, 0);
+					primaryBaseSet = true;
+				}
 			} else if (offset < 0) {
 				// it is contained within another base class
 				// or unable to resolve and already reported
