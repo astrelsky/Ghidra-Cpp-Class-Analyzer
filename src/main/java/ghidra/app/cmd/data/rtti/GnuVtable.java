@@ -8,6 +8,8 @@ import ghidra.program.model.listing.Function;
 
 public interface GnuVtable extends Vtable {
 
+	public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
+
 	/**
 	 * Gets the ptrdiff_t value within the base offset array.
 	 *

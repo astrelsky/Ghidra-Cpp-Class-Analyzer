@@ -42,7 +42,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.*;
 
 import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
-import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
+import static ghidra.app.cmd.data.rtti.GnuVtable.PURE_VIRTUAL_FUNCTION_NAME;
 
 public class GccRttiAnalyzer extends AbstractAnalyzer {
 

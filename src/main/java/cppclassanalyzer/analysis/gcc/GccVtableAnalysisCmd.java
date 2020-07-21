@@ -3,7 +3,6 @@ package cppclassanalyzer.analysis.gcc;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.CreateThunkFunctionCmd;
@@ -71,7 +70,7 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 	}
 
 	private static boolean isPureVirtual(Function f) {
-		return f.getName().equals(GnuUtils.PURE_VIRTUAL_FUNCTION_NAME);
+		return f.getName().equals(GnuVtable.PURE_VIRTUAL_FUNCTION_NAME);
 	}
 
 	private void setupFunctions(Vtable vftable) throws Exception {

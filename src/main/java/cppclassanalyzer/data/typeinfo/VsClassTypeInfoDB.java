@@ -19,9 +19,7 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
-import cppclassanalyzer.vs.RttiModelWrapper;
-import cppclassanalyzer.vs.VsClassTypeInfo;
-import cppclassanalyzer.vs.VsCppClassBuilder;
+import cppclassanalyzer.vs.*;
 
 public class VsClassTypeInfoDB extends AbstractClassTypeInfoDB implements VsClassTypeInfo {
 
@@ -207,7 +205,7 @@ public class VsClassTypeInfoDB extends AbstractClassTypeInfoDB implements VsClas
 
 	@Override
 	protected String getPureVirtualFunctionName() {
-		return PURE_VIRTUAL_FUNCTION_NAME;
+		return VsVtableModel.PURE_VIRTUAL_FUNCTION_NAME;
 	}
 
 	private TypeDescriptorModel getTypeDescriptorModel() {

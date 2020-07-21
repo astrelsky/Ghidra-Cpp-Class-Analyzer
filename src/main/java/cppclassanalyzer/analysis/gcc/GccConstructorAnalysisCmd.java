@@ -76,7 +76,8 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 		return instr.getFlows()[0];
 	}
 
-	private boolean isInherited(ClassTypeInfo typeinfo, Namespace ns) throws InvalidDataTypeException {
+	private boolean isInherited(ClassTypeInfo typeinfo, Namespace ns)
+			throws InvalidDataTypeException {
 		for (ClassTypeInfo parent : typeinfo.getParentModels()) {
 			if (ns.equals(parent.getGhidraClass())) {
 				return true;

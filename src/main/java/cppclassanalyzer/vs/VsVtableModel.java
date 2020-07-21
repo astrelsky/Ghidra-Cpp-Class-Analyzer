@@ -23,6 +23,8 @@ import static ghidra.program.model.data.Undefined.isUndefined;
 
 public class VsVtableModel implements Vtable {
 
+	public static final String PURE_VIRTUAL_FUNCTION_NAME = "_purecall";
+
 	private final Program program;
 	private final List<VfTableModel> vftables;
 	private final ClassTypeInfo type;

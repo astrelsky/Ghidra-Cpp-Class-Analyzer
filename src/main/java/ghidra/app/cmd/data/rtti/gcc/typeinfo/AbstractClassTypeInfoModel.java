@@ -27,7 +27,7 @@ import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
-import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
+import static ghidra.app.cmd.data.rtti.GnuVtable.PURE_VIRTUAL_FUNCTION_NAME;
 
 /**
  * Base Model for __class_type_info and its derivatives.

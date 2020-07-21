@@ -10,6 +10,7 @@ import java.util.Collections;
 
 import docking.Tool;
 import ghidra.program.model.data.DataType;
+import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.util.demangler.*;
 import ghidra.app.util.demangler.gnu.GnuDemanglerNativeProcess;
 import ghidra.framework.main.AppInfo;
@@ -51,7 +52,6 @@ public final class GnuUtils {
 	private static final String EXTERNAL = "<EXTERNAL>";
 
 	public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
-	public static final String PURE_VIRTUAL_FUNCTION_NAME = "__cxa_pure_virtual";
 
 	private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
 	private static final Pattern DESCRIPTIVE_PREFIX_PATTERN =
@@ -173,7 +173,7 @@ public final class GnuUtils {
 			if (reloc != null) {
 				String name = reloc.getSymbolName();
 				if (name != null) {
-					if (name.equals(PURE_VIRTUAL_FUNCTION_NAME)) {
+					if (name.equals(GnuVtable.PURE_VIRTUAL_FUNCTION_NAME)) {
 						return true;
 					}
 					DemangledObject demangled = demangle(name);

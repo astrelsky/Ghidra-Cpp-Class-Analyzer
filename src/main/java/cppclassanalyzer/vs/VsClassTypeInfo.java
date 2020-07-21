@@ -10,7 +10,6 @@ import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 public interface VsClassTypeInfo extends ClassTypeInfo {
 
-	public static final String PURE_VIRTUAL_FUNCTION_NAME = "_purecall";
 	public static final String LOCATOR_SYMBOL_NAME = Rtti4Model.DATA_TYPE_NAME;
 	public static final String HIERARCHY_SYMBOL_NAME = Rtti3Model.DATA_TYPE_NAME;
 	public static final String BASE_ARRAY_SYMBOL_NAME = Rtti2Model.DATA_TYPE_NAME;
@@ -24,7 +23,7 @@ public interface VsClassTypeInfo extends ClassTypeInfo {
 
 	@Override
 	default public boolean isAbstract() {
-		return CppClassAnalyzerUtils.isAbstract(this, PURE_VIRTUAL_FUNCTION_NAME);
+		return CppClassAnalyzerUtils.isAbstract(this, VsVtableModel.PURE_VIRTUAL_FUNCTION_NAME);
 	}
 
 }

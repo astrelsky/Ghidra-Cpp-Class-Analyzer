@@ -14,7 +14,6 @@ import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.GccCppClassBuilder;
-import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.BaseClassTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.program.database.DatabaseObject;
@@ -253,7 +252,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 
 	@Override
 	protected String getPureVirtualFunctionName() {
-		return GnuUtils.PURE_VIRTUAL_FUNCTION_NAME;
+		return GnuVtable.PURE_VIRTUAL_FUNCTION_NAME;
 	}
 
 	@Override

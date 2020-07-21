@@ -12,7 +12,7 @@ import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import cppclassanalyzer.vs.VsClassTypeInfo;
+import cppclassanalyzer.vs.VsVtableModel;
 
 public class VsVftableAnalysisCmd extends BackgroundCommand {
 
@@ -55,7 +55,7 @@ public class VsVftableAnalysisCmd extends BackgroundCommand {
 	}
 
 	private static boolean isPureVirtual(Function f) {
-		return f.getName().equals(VsClassTypeInfo.PURE_VIRTUAL_FUNCTION_NAME);
+		return f.getName().equals(VsVtableModel.PURE_VIRTUAL_FUNCTION_NAME);
 	}
 
 	private void setupFunctions(Vtable vftable) throws CancelledException {
