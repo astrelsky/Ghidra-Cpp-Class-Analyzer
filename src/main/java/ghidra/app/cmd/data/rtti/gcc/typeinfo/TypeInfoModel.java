@@ -5,7 +5,6 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.data.VoidDataType;
@@ -61,7 +60,7 @@ public final class TypeInfoModel extends AbstractTypeInfoModel {
 		}
 		StructureDataType struct = new StructureDataType(STD_PATH, STRUCTURE_NAME, 0, dtm);
 		struct.add(dtm.getPointer(VoidDataType.dataType), "_vptr", null);
-		struct.add(PointerDataType.getPointer(StringDataType.dataType, dtm), "__name", null);
+		struct.add(dtm.getPointer(StringDataType.dataType), "__name", null);
 		struct.setDescription(DESCRIPTION);
 		return alignDataType(struct, dtm);
 	}

@@ -55,7 +55,7 @@ public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener
 	@Override
 	public void domainObjectChanged(DomainObjectChangedEvent event) {
 
-		if (!getTree().isVisible()) {
+		if (getTree() == null || !getTree().isVisible()) {
 			return;
 		}
 
