@@ -58,7 +58,8 @@ abstract class AbstractTypeMgrAction extends DockingAction {
 	static enum MenuGroupType {
 		FILE("File"),
 		EDIT("Edit"),
-		ARCHIVE("Archive");
+		ARCHIVE("Archive"),
+		NONE("");
 
 		private final String displayName;
 

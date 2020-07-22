@@ -3,6 +3,7 @@ package cppclassanalyzer.plugin.typemgr.node;
 import java.util.Collections;
 import java.util.List;
 
+import ghidra.util.SystemUtilities;
 import ghidra.util.exception.AssertException;
 
 import docking.widgets.tree.GTreeNode;
@@ -21,5 +22,10 @@ abstract class AbstractSortedSlowLoadingNode extends GTreeSlowLoadingNode {
 			}
 			addNode(-(index + 1), node);
 		}
+	}
+
+	@Override
+	public void addNode(int index, GTreeNode node) {
+		SystemUtilities.runSwingLater(() -> super.addNode(index, node));
 	}
 }

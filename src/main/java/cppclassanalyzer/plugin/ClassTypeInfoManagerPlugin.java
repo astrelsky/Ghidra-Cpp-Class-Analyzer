@@ -248,6 +248,11 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		return provider;
 	}
 
+	@Override
+	public boolean goTo(Address address) {
+		return super.goTo(address);
+	}
+
 	public void goTo(TypeInfoNode node) {
 		Address address = node.getAddress();
 		if (address != null) {
