@@ -164,7 +164,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			T1 typeDb = buildType(type, record);
 			TypeInfoArchiveChangeRecord change =
 				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, typeDb);
-			getPlugin().fireArchiveChanged(change);
+			getPlugin().managerChanged(change);
 			return typeDb;
 		} catch (IOException e) {
 			dbError(e);

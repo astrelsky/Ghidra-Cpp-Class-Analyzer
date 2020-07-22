@@ -190,10 +190,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		try {
 			long addrKey = encodeAddress(address);
 			long[] keys = worker.getTables()
-					.getTypeTable()
-					.findRecords(
-						new LongField(addrKey),
-						ClassTypeInfoSchemaFields.ADDRESS.ordinal());
+				.getTypeTable()
+				.findRecords(
+					new LongField(addrKey),
+					ClassTypeInfoSchemaFields.ADDRESS.ordinal());
 			if (keys.length == 1) {
 				return keys[0];
 			}
@@ -214,9 +214,9 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		try {
 			long addrKey = encodeAddress(address);
 			long[] keys = worker.getTables()
-					.getVtableTable()
-					.findRecords(
-						new LongField(addrKey), VtableSchemaFields.ADDRESS.ordinal());
+				.getVtableTable()
+				.findRecords(
+					new LongField(addrKey), VtableSchemaFields.ADDRESS.ordinal());
 			if (keys.length == 1) {
 				return keys[0];
 			}
@@ -526,7 +526,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			AbstractClassTypeInfoDB result = new GnuClassTypeInfoDB(worker, type, record);
 			TypeInfoArchiveChangeRecord changeRecord =
 				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, result);
-			plugin.fireArchiveChanged(changeRecord);
+			plugin.managerChanged(changeRecord);
 			return result;
 		} finally {
 			lock.release();
@@ -633,7 +633,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			monitor.checkCanceled();
 			type.findVtable(dummy);
 			changeRecord = new TypeInfoArchiveChangeRecord(ChangeType.TYPE_UPDATED, type);
-			plugin.fireArchiveChanged(changeRecord);
+			plugin.managerChanged(changeRecord);
 			monitor.incrementProgress(1);
 		}
 	}
@@ -687,7 +687,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 					vtableDB.setClassKey(record.getKey());
 				}
 				changeRecord = new TypeInfoArchiveChangeRecord(ChangeType.TYPE_UPDATED, type);
-				plugin.fireArchiveChanged(changeRecord);
+				plugin.managerChanged(changeRecord);
 			}
 		} catch (IOException e) {
 			dbError(e);

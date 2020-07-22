@@ -3,6 +3,7 @@ package cppclassanalyzer.plugin.typemgr;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.swing.Icon;
@@ -14,6 +15,8 @@ import cppclassanalyzer.plugin.typemgr.node.TypeInfoNode;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoRootNode;
 import ghidra.app.plugin.core.datamgr.util.DataTypeUtils;
 import ghidra.util.exception.AssertException;
+import ghidra.util.task.Task;
+import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
@@ -36,7 +39,6 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 		super(new TypeInfoArchiveGTreeRootNode());
 		this.dropHandler = new TypeInfoDragNDropHandler();
 		this.plugin = plugin;
-		plugin.addTypeInfoManagerChangeListener(this);
 	}
 
 	private TypeInfoArchiveGTreeRootNode getRoot() {
@@ -84,25 +86,37 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 
 	@Override
 	public void typeAdded(ClassTypeInfoDB type) {
+		BackgroundTask task = new BackgroundTask(this::doAddType, type);
+		plugin.getTool().execute(task);
+	}
+
+	private void doAddType(ClassTypeInfoDB type) {
 		getManagerNode(type).addNode(type);
-		repaint();
 	}
 
 	@Override
 	public void typeRemoved(ClassTypeInfoDB type) {
+		BackgroundTask task = new BackgroundTask(this::doRemoveType, type);
+		plugin.getTool().execute(task);
+	}
+
+	private void doRemoveType(ClassTypeInfoDB type) {
 		GTreeNode node = getNode(type);
 		if (node != null && node.getName().equals(type.getName())) {
 			GTreeNode root = (GTreeNode) getManagerNode(type);
 			root.removeNode(node);
 		}
-		repaint();
 	}
 
 	@Override
 	public void typeUpdated(ClassTypeInfoDB type) {
+		BackgroundTask task = new BackgroundTask(this::doUpdateType, type);
+		plugin.getTool().execute(task);
+	}
+
+	private void doUpdateType(ClassTypeInfoDB type) {
 		TypeInfoNode node = getNode(type);
 		node.typeUpdated(type);
-		repaint();
 	}
 
 	TypeInfoNode getNode(ClassTypeInfoDB type) {
@@ -149,7 +163,7 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 				List<GTreeNode> kids = children();
 				int index = Collections.binarySearch(kids, node);
 				if (index >= 0) {
-					String msg = "Child node "+node.getName()+" already exists in "+getName();
+					String msg = "Child node " + node.getName() + " already exists in " + getName();
 					throw new AssertException(msg);
 				}
 				super.addNode(-(index + 1), node);
@@ -162,7 +176,6 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 			} else {
 				addNode(new TypeInfoRootNode(manager));
 			}
-			children().sort(null);
 		}
 
 		void removeNode(ClassTypeInfoManager manager) {
@@ -181,6 +194,23 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 			return (TypeInfoArchiveNode) getChild(manager.getName());
 		}
 
+	}
+
+	private static class BackgroundTask extends Task {
+
+		private final Consumer<ClassTypeInfoDB> consumer;
+		private final ClassTypeInfoDB type;
+
+		BackgroundTask(Consumer<ClassTypeInfoDB> consumer, ClassTypeInfoDB type) {
+			super("", false, false, false);
+			this.consumer = consumer;
+			this.type = type;
+		}
+
+		@Override
+		public void run(TaskMonitor monitor) {
+			consumer.accept(type);
+		}
 	}
 
 }

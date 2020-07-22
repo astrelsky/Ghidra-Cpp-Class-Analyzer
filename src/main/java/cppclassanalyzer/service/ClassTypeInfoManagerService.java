@@ -15,7 +15,6 @@ import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.vtable.ArchivedVtable;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
-import cppclassanalyzer.plugin.TypeInfoManagerListener;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import docking.widgets.tree.GTree;
 
@@ -28,10 +27,6 @@ import ghidra.program.model.listing.Program;
 )
 //@formatter:on
 public interface ClassTypeInfoManagerService {
-
-	public void addTypeInfoManagerChangeListener(TypeInfoManagerListener listener);
-
-	public void removeTypeInfoManagerChangeListener(TypeInfoManagerListener listener);
 
 	public void closeManager(ClassTypeInfoManager manager);
 

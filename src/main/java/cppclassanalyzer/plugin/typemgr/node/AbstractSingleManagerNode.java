@@ -22,7 +22,7 @@ abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 
 	AbstractSingleManagerNode(ClassTypeInfoManager manager) {
 		super(manager);
-		this.treePaths = new HashMap<>(manager.getTypeCount());
+		this.treePaths = Collections.synchronizedMap(new HashMap<>(manager.getTypeCount()));
 	}
 
 	@Override
@@ -111,7 +111,6 @@ abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 			}
 			createTypeNode(node, type);
 		}
-		children().sort(null);
 	}
 
 	@Override

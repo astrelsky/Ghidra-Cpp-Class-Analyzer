@@ -1,8 +1,6 @@
 package ghidra.app.plugin.prototype;
 
 import java.util.*;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
@@ -13,7 +11,6 @@ import ghidra.docking.settings.SettingsDefinition;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
@@ -172,31 +169,17 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		return type.getTypeName().contains(PURE_VIRTUAL_CONTAINING_STRING);
 	}
 
-	private Stream<ClassTypeInfoDB> getStream() {
-		Iterable<ClassTypeInfoDB> iter = manager.getTypes();
-		return StreamSupport.stream(iter.spliterator(), false);
-	}
-
 	private Function getPureVirtualFunction() throws CancelledException {
-		try {
-			final Optional<Function[][]> function =
-				getStream().filter(GccRttiAnalyzer::isPureVirtualType)
-					.map(ClassTypeInfo::getVtable)
-					.filter(Vtable::isValid)
-					.map(Vtable::getFunctionTables)
-					.filter(this::checkTableAddresses)
-					.findFirst();
-			if (function.isPresent()) {
-				// pre checked
-				return function.get()[0][2];
-			}
-		} catch (RuntimeException e) {
-			if (e.getCause() instanceof CancelledException) {
-				throw (CancelledException) e.getCause();
-			}
-			throw e;
-		}
-			return null;
+		return
+			manager.getTypeStream()
+			.filter(GccRttiAnalyzer::isPureVirtualType)
+			.map(t -> t.findVtable())
+			.filter(Vtable::isValid)
+			.map(Vtable::getFunctionTables)
+			.filter(this::checkTableAddresses)
+			.findFirst()
+			.map(f -> f[0][2])
+			.orElse(null);
 	}
 
 	private void findAndCreatePureVirtualFunction() throws Exception {
