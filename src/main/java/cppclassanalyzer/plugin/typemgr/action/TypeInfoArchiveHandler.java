@@ -84,6 +84,10 @@ public final class TypeInfoArchiveHandler {
 		return new RenameManagerAction(this);
 	}
 
+	public DockingAction getGoToVtableAction() {
+		return new GoToVtableAction(this);
+	}
+
 	private Stream<TypeInfoTreeNode> getSelectedNodes(ActionContext context) {
 		TreePath[] selectionPaths = getTree().getSelectionPaths();
 		if (selectionPaths.length == 0) {
