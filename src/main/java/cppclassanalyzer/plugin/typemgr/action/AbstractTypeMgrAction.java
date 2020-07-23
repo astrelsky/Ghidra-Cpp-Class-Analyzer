@@ -59,7 +59,7 @@ abstract class AbstractTypeMgrAction extends DockingAction {
 		FILE("File"),
 		EDIT("Edit"),
 		ARCHIVE("Archive"),
-		NONE("");
+		TYPEINFO("TypeInfo");
 
 		private final String displayName;
 

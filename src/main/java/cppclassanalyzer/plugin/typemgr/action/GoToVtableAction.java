@@ -16,7 +16,7 @@ final class GoToVtableAction extends AbstractTypeInfoNodeAction {
 
 	@Override
 	MenuGroupType getGroup() {
-		return MenuGroupType.NONE;
+		return MenuGroupType.TYPEINFO;
 	}
 
 	@Override
