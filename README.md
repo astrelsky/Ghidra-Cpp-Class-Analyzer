@@ -40,16 +40,28 @@ Supported Compilers
 * Clang
 * Visual Studio (Control Flow Guard (CFG) not supported)
 
-Information
------------
+Inheritance Modeling via the Type Info Tree
+-------------------------------------------
 
-This was initially built with the intention of having it merged into Ghidra.
-As time went on it grew exponentially. There is still work needed to be done
-regarding package paths, cleanup, documentation and testing. It it mostly
-functional. All packages, class names, etc. subject to change.
+![Capture](https://user-images.githubusercontent.com/46897303/86498580-62295580-bd54-11ea-9434-d1b3e6e40a4c.PNG)
 
-The Visual Studio class analysis was hastily thrown together in two days.
-Issues and minor oversights are to be expected.
+Class Type Info Color Coding
+----------------------------
+
+![#28a745](https://via.placeholder.com/15/28a745/000000?text=+) - Basic Class  
+![#d73a49](https://via.placeholder.com/15/d73a49/000000?text=+) - Abstract Class  
+![#0366d6](https://via.placeholder.com/15/0366d6/000000?text=+) - Virtual Class  
+![#6f42c1](https://via.placeholder.com/15/6f42c1/000000?text=+) - Virtual Abstract Class  
+
+CppClassAnalyzerGhidraScript
+----------------------------
+
+Want to make a GhidraScript with easy access to the ClassTypeInfoManager for the currentProgram? Try extending the CppClassAnalyzerGhidraScript class instead of GhidraScript. Unfortunately this is currently only possible for scripts written in Java.
+
+Fill Out Class Decompiler Action
+--------------------------------
+
+Right clicking within the decompiler window in a `__thiscall` function with which a ClassTypeInfo exists will contain an action to fill out the class. It behaves similarly to the fill out structure action accept class members are determined via calls to other `__thiscall` functions.
 
 Dynamic RTTI Handling
 ---------------------
@@ -64,9 +76,4 @@ It is compatible with current builds of 9.2
 TODO
 ----
 
-Cleanup, bugfixes and fillout new documentation.
-
-License
----------
-
-The stand alone release and source is licensed under the The MIT License (MIT).
+Graphing, fix DynamicCaster script
