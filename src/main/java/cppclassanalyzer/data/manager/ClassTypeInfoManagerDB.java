@@ -721,6 +721,12 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 					ClassTypeInfoRecord oldRecord = iter.next();
 					ClassTypeInfoRecord record = oldRecord.copy();
 					record.setKey(keyMap.get(record.getKey()));
+					if (record.getBooleanValue(ClassTypeInfoSchemaFields.VTABLE_SEARCHED)) {
+						// since the vtable table will be removed
+						// this information must be cleared if present
+						record.setBooleanValue(ClassTypeInfoSchemaFields.VTABLE_SEARCHED, false);
+						record.setLongValue(ClassTypeInfoSchemaFields.VTABLE_KEY, INVALID_KEY);
+					}
 					AbstractClassTypeInfoDB.updateRecord(record, keyMap);
 					tmpTable.getTable().putRecord(record.getRecord());
 				}

@@ -8,6 +8,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import ghidra.app.decompiler.*;
+import ghidra.app.decompiler.component.DecompilerUtils;
 import ghidra.program.model.pcode.PcodeOp;
 
 import cppclassanalyzer.decompiler.function.HighFunctionCall;
@@ -68,27 +69,15 @@ public final class ClangNodeUtils {
 	}
 
 	public static ClangLine getClangLine(ClangTokenGroup group, int line) {
-		return new ClangTokenGroupIterator(group)
+		return getClangLines(group)
 			.stream()
-			.flatMap(ClangNodeUtils::asStream)
-			.filter(ClangToken.class::isInstance)
-			.map(ClangToken.class::cast)
-			.map(ClangToken::getLineParent)
-			.filter(Objects::nonNull)
 			.filter(l -> l.getLineNumber() == line)
 			.findFirst()
 			.orElse(null);
 	}
 
 	public static List<ClangLine> getClangLines(ClangTokenGroup group) {
-		return ClangNodeUtils.asFlatStream(group)
-			.filter(ClangToken.class::isInstance)
-			.map(ClangToken.class::cast)
-			.map(ClangToken::getLineParent)
-			.filter(Objects::nonNull)
-			.distinct()
-			.sorted(ClangNodeUtils::compareClangLines)
-			.collect(Collectors.toList());
+		return DecompilerUtils.toLines(group);
 	}
 
 	///////////////////////////////////////////////////////////////////////////
