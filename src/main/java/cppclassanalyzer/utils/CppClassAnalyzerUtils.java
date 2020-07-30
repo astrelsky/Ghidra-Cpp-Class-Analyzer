@@ -1,6 +1,7 @@
 package cppclassanalyzer.utils;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -168,10 +169,24 @@ public final class CppClassAnalyzerUtils {
 		if (!Vtable.isValid(vtable)) {
 			return false;
 		}
+		AbstractFunctionChecker checker = new AbstractFunctionChecker(pureVirtualFunctionName);
 		return Arrays.stream(vtable.getFunctionTables())
 			.flatMap(Arrays::stream)
-			.filter(Objects::nonNull)
-			.map(Function::getName)
-			.anyMatch(pureVirtualFunctionName::equals);
+			.anyMatch(checker);
+	}
+	
+	private static final class AbstractFunctionChecker implements Predicate<Function> {
+		
+		private final String fName;
+		
+		AbstractFunctionChecker(String fName) {
+			this.fName = fName;
+		}
+
+		@Override
+		public boolean test(Function f) {
+			// f can only be null if the class is abstract
+			return f != null ? f.getName().equals(fName) : true;
+		}
 	}
 }

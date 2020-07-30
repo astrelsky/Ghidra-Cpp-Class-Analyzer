@@ -160,6 +160,9 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		}
 		if (functionTables[0].length >= 3) {
 			// sanity check. This is only possible for __cxa_pure_virtual
+			if (functionTables[0][2] == null || functionTables[0][3] == null) {
+				return false;
+			}
 			return functionTables[0][2].equals(functionTables[0][3]);
 		}
 		return false;
@@ -185,6 +188,9 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	private void findAndCreatePureVirtualFunction() throws Exception {
 		monitor.setMessage("Locating "+PURE_VIRTUAL_FUNCTION_NAME);
 		Function pureVirtual = getPureVirtualFunction();
+		if (pureVirtual == null) {
+			return;
+		}
 		String cc = GenericCallingConvention.stdcall.getDeclarationName();
 		pureVirtual.setName(PURE_VIRTUAL_FUNCTION_NAME, SourceType.IMPORTED);
 		pureVirtual.setNoReturn(true);
