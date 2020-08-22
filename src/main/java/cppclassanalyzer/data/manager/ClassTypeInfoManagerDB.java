@@ -464,12 +464,12 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		if (fun.getParentNamespace().isGlobal()) {
 			return null;
 		}
-		if (!(fun.getParentNamespace() instanceof GhidraClass)) {
-			Msg.info(this, fun.getParentNamespace().getName(true)+" is not a class");
-			return null;
-		}
 		GenericCallingConvention cc = fun.getSignature().getGenericCallingConvention();
 		if (cc.equals(GenericCallingConvention.thiscall)) {
+			if (!(fun.getParentNamespace() instanceof GhidraClass)) {
+				Msg.info(this, fun.getParentNamespace().getName(true)+" is not a class");
+				return null;
+			}
 			return getType((GhidraClass) fun.getParentNamespace());
 		}
 		return null;

@@ -186,12 +186,18 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 			}
 			comp = struct.getComponent(offset);
 		}
-		if (comp.getFieldName().startsWith("super_") && offset == 0) {
-			return;
+		if (comp != null && comp.getFieldName() != null) {
+			if (comp.getFieldName().startsWith("super_") && offset == 0) {
+				return;
+			}
 		}
 		DataType memberDt = member.getClassDataType();
 		String name = createMemberName(memberDt, struct, offset);
-		struct.replaceAtOffset(offset, memberDt, memberDt.getLength(), name, null);
+		if (offset > struct.getLength()) {
+			struct.insertAtOffset(offset, memberDt, memberDt.getLength());
+		} else {
+			struct.replaceAtOffset(offset, memberDt, memberDt.getLength(), name, null);
+		}
 	}
 
 	private static String createMemberName(DataType dt, Structure struct, int offset) {
