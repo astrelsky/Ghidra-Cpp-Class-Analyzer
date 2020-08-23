@@ -2,6 +2,7 @@
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.app.script.GhidraScript;
 import ghidra.app.cmd.data.rtti.gcc.builder.AbstractTypeInfoProgramBuilder;
@@ -367,7 +368,7 @@ public class TestBuilder extends GhidraScript {
 	}
 
 	private void populateMaps() throws Exception {
-		ProgramClassTypeInfoManager manager = ClassTypeInfoUtils.getManager(currentProgram);
+		ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(currentProgram);
 		int pointerSize = currentProgram.getDefaultPointerSize();
 		SymbolTable table = currentProgram.getSymbolTable();
 		Listing listing = currentProgram.getListing();

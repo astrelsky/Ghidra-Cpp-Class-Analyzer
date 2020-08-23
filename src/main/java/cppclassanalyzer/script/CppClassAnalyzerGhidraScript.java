@@ -33,4 +33,8 @@ public abstract class CppClassAnalyzerGhidraScript extends GhidraScript {
 	protected final DemangledObject demangle(String mangled) {
 		return DemanglerUtil.demangle(currentProgram, mangled);
 	}
+
+	protected final ClassTypeInfoManagerService getService() {
+		return state.getTool().getService(ClassTypeInfoManagerService.class);
+	}
 }
