@@ -110,6 +110,8 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 			managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
 		} catch (SchemaMismatchException e) {
 			Msg.showInfo(this, null, "Ghidra C++ Class Analyzer", e.getMessage());
+		} catch (UnsupportedOperationException e) {
+			// do nothing
 		}
 	}
 
@@ -124,15 +126,21 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	@Override
 	protected void programActivated(Program program) {
 		currentManager = getManager(program);
-		RunnableTask task = new RunnableTask(() -> provider.getTree().managerOpened(currentManager));
-		tool.execute(task);
+		if (currentManager != null) {
+			RunnableTask task =
+				new RunnableTask(() -> provider.getTree().managerOpened(currentManager));
+			tool.execute(task);
+		}
 	}
 
 	@Override
 	protected void programDeactivated(Program program) {
 		ClassTypeInfoManager manager = getManager(program);
-		RunnableTask task = new RunnableTask(() -> provider.getTree().managerClosed(manager));
-		tool.execute(task);
+		if (manager != null) {
+			RunnableTask task =
+				new RunnableTask(() -> provider.getTree().managerClosed(manager));
+			tool.execute(task);
+		}
 	}
 
 	@Override

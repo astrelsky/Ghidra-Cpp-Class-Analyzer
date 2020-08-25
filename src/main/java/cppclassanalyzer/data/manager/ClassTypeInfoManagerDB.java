@@ -143,7 +143,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		if (isVs()) {
 			return new WindowsRttiRecordWorker(tables, caches);
 		}
-		throw new AssertException("Unknown/Unsupported Compiler");
+		throw new UnsupportedOperationException("Unknown/Unsupported Compiler");
 	}
 
 	private static ClassTypeInfoDatabaseTable getNewClassTable(DBHandle handle) throws IOException {
