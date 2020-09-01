@@ -120,7 +120,6 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			if (!relocatable) {
 				if (TypeInfoUtils.findTypeInfo(
 					program, set, TypeInfoModel.ID_STRING, dummy) == null) {
-						log.appendMsg(this.getName(), "RTTI not detected");
 						return false;
 					}
 			}
