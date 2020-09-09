@@ -18,8 +18,6 @@ abstract class AbstractManagerNode extends AbstractSortedSlowLoadingNode
 		TypeInfoTreeNodeManager treeManager = getManager();
 		this.record = treeManager.getRootRecord();
 		treeManager.setRootNode(this);
-		// force generate now to prevent deadlock
-		children();
 	}
 
 	abstract AbstractManagerNode rebuild();
