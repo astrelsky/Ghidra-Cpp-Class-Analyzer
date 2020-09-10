@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.swing.Icon;
@@ -648,20 +649,21 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 					"Ghidra-Cpp-Class-Analyzer: Unable to sort Database. Too many keys");
 			}
 			ClassTypeInfoRecord[] records = getClassRecords();
-			ReferenceCounter[] keys = getRecordStream(records)
-					.map(ReferenceCounter::new)
-					.toArray(ReferenceCounter[]::new);
+			Map<Long, ReferenceCounter> keys = getRecordStream(records)
+				.map(ReferenceCounter::new)
+				.collect(Collectors.toMap(ReferenceCounter::getKey, r -> r));
 			for (ClassTypeInfoRecord record : records) {
 				monitor.checkCanceled();
 				long[] baseKeys = AbstractClassTypeInfoDB.getBaseKeys(record);
 				for (long key : baseKeys) {
-					keys[(int) key].referencesFrom.getAndIncrement();
+					keys.get(key).referencesFrom.getAndIncrement();
 				}
 			}
-			Arrays.parallelSort(keys);
-			long[] newKeys = Arrays.stream(keys)
-					.mapToLong(ReferenceCounter::getKey)
-					.toArray();
+			long[] newKeys = keys.values()
+				.parallelStream()
+				.sorted()
+				.mapToLong(ReferenceCounter::getKey)
+				.toArray();
 			newKeys = sortByMostDerived(newKeys, monitor);
 			rebuildTable(newKeys, monitor);
 			for (long key = 0; key < classTable.getMaxKey(); key++) {
@@ -695,6 +697,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			lock.release();
 		}
 	}
+
 
 	private void rebuildTable(long[] newKeys, TaskMonitor monitor) throws CancelledException {
 		lock.acquire();

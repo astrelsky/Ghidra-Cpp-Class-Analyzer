@@ -190,13 +190,8 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		try {
 			handler.startTransaction();
 			key = getVtableKey();
-			try {
-				T4 record = createVtableRecord(key);
-				return buildVtable(vtable, record);
-			} catch (RuntimeException e) {
-				getTables().getVtableTable().deleteRecord(key);
-				throw e;
-			}
+			T4 record = createVtableRecord(key);
+			return buildVtable(vtable, record);
 		} catch (IOException e) {
 			dbError(e);
 		} finally {
@@ -269,13 +264,12 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		LongStream keys = reverse ? LongStream.iterate(maxKey, i -> i >= 0, i -> i - 1)
 			: LongStream.rangeClosed(0, maxKey);
 		return keys.filter(this::containsTypeKey)
-			.mapToObj(this::getType);
+		.mapToObj(this::getType);
 	}
 
 	final Stream<T2> getVtableStream() {
 		long maxKey = tables.getVtableTable().getMaxKey();
 		return LongStream.rangeClosed(0, maxKey)
-			.filter(this::containsVtableKey)
 			.mapToObj(this::getVtable);
 	}
 
@@ -289,10 +283,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 
 	private boolean containsTypeKey(long key) {
 		return getType(key) != null;
-	}
-
-	private boolean containsVtableKey(long key) {
-		return getVtable(key) != null;
 	}
 
 }

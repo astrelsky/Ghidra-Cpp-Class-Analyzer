@@ -20,6 +20,7 @@ import cppclassanalyzer.database.tables.TypeInfoTreeNodeTable;
 import db.*;
 import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
+import docking.widgets.tree.tasks.GTreeBulkTask;
 
 import static cppclassanalyzer.database.record.TypeInfoTreeNodeRecord.*;
 import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
@@ -227,10 +228,19 @@ public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener
 		return ((GTreeNode) root).getTree();
 	}
 
+	List<GTreeNode> createChildren() {
+		ManagerLoaderBulkTask task = new ManagerLoaderBulkTask(getTree(), root);
+		getTree().runBulkTask(task);
+		return Collections.emptyList();
+	}
+
 	List<GTreeNode> generateChildren(TypeInfoTreeNode node, TaskMonitor monitor)
 			throws CancelledException {
 		TypeInfoTreeNodeRecord record = node.getRecord();
 		long[] keys = record.getLongArray(CHILDREN_KEYS);
+		if (keys.length == 0 && node == root) {
+			return createChildren();
+		}
 		RedBlackLongKeySet keySet = new RedBlackLongKeySet();
 		List<GTreeNode> children = new ArrayList<>(keys.length);
 		monitor.initialize(keys.length);
@@ -264,6 +274,27 @@ public class TypeInfoTreeNodeManager implements Disposable, DomainObjectListener
 		void end() throws IOException {
 			if (id != -1) {
 				handle.endTransaction(id, true);
+			}
+		}
+	}
+
+	private static class ManagerLoaderBulkTask extends GTreeBulkTask {
+
+		private final TypeInfoArchiveNode node;
+
+		ManagerLoaderBulkTask(GTree tree, TypeInfoArchiveNode node) {
+			super(tree);
+			this.node = node;
+		}
+
+		@Override
+		public void runBulk(TaskMonitor monitor) throws CancelledException {
+			ClassTypeInfoManager manager = node.getTypeManager();
+			monitor.initialize(manager.getTypeCount());
+			for (ClassTypeInfoDB type : manager.getTypes()) {
+				monitor.checkCanceled();
+				node.addNode(type);
+				monitor.incrementProgress(1);
 			}
 		}
 	}

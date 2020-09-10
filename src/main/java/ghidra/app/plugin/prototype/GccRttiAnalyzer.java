@@ -352,8 +352,10 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			} catch (UnresolvedClassTypeInfoException e) {
 				log.appendMsg(e.getMessage());
 			} catch (Exception e) {
-				e.printStackTrace();
-				log.appendException(e);
+				if (e instanceof IndexOutOfBoundsException) {
+					e.printStackTrace();
+				}
+				//log.appendException(e);
 			}
 			monitor.incrementProgress(1);
 		}
