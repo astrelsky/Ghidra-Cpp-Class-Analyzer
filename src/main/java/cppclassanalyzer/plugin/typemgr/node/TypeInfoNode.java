@@ -126,6 +126,11 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 	}
 
 	@Override
+	public int hashCode() {
+		return type.hashCode();
+	}
+
+	@Override
 	public String getName() {
 		return type.getName();
 	}

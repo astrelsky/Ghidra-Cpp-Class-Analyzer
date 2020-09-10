@@ -160,12 +160,17 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		try {
 			handler.startTransaction();
 			key = getClassKey();
-			T3 record = createTypeRecord(key);
-			T1 typeDb = buildType(type, record);
-			TypeInfoArchiveChangeRecord change =
-				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, typeDb);
-			getPlugin().managerChanged(change);
-			return typeDb;
+			try {
+				T3 record = createTypeRecord(key);
+				T1 typeDb = buildType(type, record);
+				TypeInfoArchiveChangeRecord change =
+					new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, typeDb);
+				getPlugin().managerChanged(change);
+				return typeDb;
+			} catch (RuntimeException e) {
+				getTables().getTypeTable().deleteRecord(key);
+				throw e;
+			}
 		} catch (IOException e) {
 			dbError(e);
 		} finally {
@@ -185,8 +190,13 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		try {
 			handler.startTransaction();
 			key = getVtableKey();
-			T4 record = createVtableRecord(key);
-			return buildVtable(vtable, record);
+			try {
+				T4 record = createVtableRecord(key);
+				return buildVtable(vtable, record);
+			} catch (RuntimeException e) {
+				getTables().getVtableTable().deleteRecord(key);
+				throw e;
+			}
 		} catch (IOException e) {
 			dbError(e);
 		} finally {
@@ -256,17 +266,16 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 
 	final Stream<ClassTypeInfoDB> getTypeStream(boolean reverse) {
 		long maxKey = tables.getTypeTable().getMaxKey();
-		if (reverse) {
-			return LongStream.iterate(maxKey, i -> i >= 0, i -> i - 1)
-				.mapToObj(this::getType);
-		}
-		return LongStream.iterate(0, i -> i <= maxKey, i -> i + 1)
+		LongStream keys = reverse ? LongStream.iterate(maxKey, i -> i >= 0, i -> i - 1)
+			: LongStream.rangeClosed(0, maxKey);
+		return keys.filter(this::containsTypeKey)
 			.mapToObj(this::getType);
 	}
 
 	final Stream<T2> getVtableStream() {
 		long maxKey = tables.getVtableTable().getMaxKey();
-		return LongStream.iterate(0, i -> i <= maxKey, i -> i + 1)
+		return LongStream.rangeClosed(0, maxKey)
+			.filter(this::containsVtableKey)
 			.mapToObj(this::getVtable);
 	}
 
@@ -277,4 +286,13 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 	final Iterable<ClassTypeInfoDB> getTypes(boolean reverse) {
 		return () -> getTypeStream(reverse).iterator();
 	}
+
+	private boolean containsTypeKey(long key) {
+		return getType(key) != null;
+	}
+
+	private boolean containsVtableKey(long key) {
+		return getVtable(key) != null;
+	}
+
 }

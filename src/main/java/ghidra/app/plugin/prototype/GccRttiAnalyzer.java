@@ -130,12 +130,12 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				addDataTypes();
 				if (fundamentalOption) {
 					for (String typeString : FUNDAMENTAL_TYPESTRINGS) {
-						applyTypeInfoTypes(typeString);
+						applyTypeInfoTypes(typeString, log);
 					}
 				}
-				applyTypeInfoTypes(TypeInfoModel.ID_STRING);
+				applyTypeInfoTypes(TypeInfoModel.ID_STRING, log);
 				for (String typeString : CLASS_TYPESTRINGS) {
-					applyTypeInfoTypes(typeString);
+					applyTypeInfoTypes(typeString, log);
 				}
 				createVtables();
 				return true;
@@ -325,7 +325,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		return getStaticReferences(typeString);
 	}
 
-	private void applyTypeInfoTypes(String typeString) throws Exception {
+	private void applyTypeInfoTypes(String typeString, MessageLog log) throws Exception {
 		boolean isClass = CLASS_TYPESTRINGS.contains(typeString);
 		Set<Address> types = getReferences(typeString);
 		if (types.isEmpty()) {
@@ -337,16 +337,23 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				"Creating "+typeClass.getName()+" structures");
 		for (Address reference : types) {
 			monitor.checkCanceled();
-			TypeInfo type = manager.getTypeInfo(reference);
-			if (type != null) {
-				if (isClass) {
-					ClassTypeInfo classType = ((ClassTypeInfo) type);
-					manager.resolve(classType);
-					classType.getGhidraClass();
+			try {
+				TypeInfo type = manager.getTypeInfo(reference);
+				if (type != null) {
+					if (isClass) {
+						ClassTypeInfo classType = ((ClassTypeInfo) type);
+						manager.resolve(classType);
+						classType.getGhidraClass();
+					}
+					CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
+					cmd.applyTo(program, dummy);
+					markDataAsConstant(type.getAddress());
 				}
-				CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
-				cmd.applyTo(program, dummy);
-				markDataAsConstant(type.getAddress());
+			} catch (UnresolvedClassTypeInfoException e) {
+				log.appendMsg(e.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				log.appendException(e);
 			}
 			monitor.incrementProgress(1);
 		}
