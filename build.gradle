@@ -57,26 +57,30 @@ eclipse {
     classpath {
         downloadJavadoc = true
         downloadSources = true
-    }
-}
-
-eclipse.classpath.file.whenMerged {
-	File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
-	for (entry in entries) {
-		if (entry.path.contains('jar')) {
-			//File sources = new File(entry.path.replace(".jar", "-sources.jar"));
-			//String docs = new File(entry.path.replace(".jar", "-javadoc.jar"));
-			File folder = new File(entry.getPath()).getParentFile();
-			for (File file : folder.listFiles()) {
-				if (file.getName().endsWith(".zip")) {
-					if (file.getName().contains("-src")) {
-						entry.setSourcePath(it.fileReference(file));
+		file {
+			whenMerged {
+				File javaDoc = new File(ghidraInstallDir+"/docs/GhidraAPI_javadoc.zip");
+				for (entry in entries) {
+					if (entry.path.contains('jar')) {
+						File folder = new File(entry.getPath()).getParentFile();
+						for (File file : folder.listFiles()) {
+							if (file.getName().endsWith(".zip")) {
+								if (file.getName().contains("-src")) {
+									entry.setSourcePath(it.fileReference(file));
+								}
+								entry.setJavadocPath(it.fileReference(javaDoc));
+							}
+						}
 					}
-					entry.setJavadocPath(it.fileReference(javaDoc));
 				}
+				entries.add(
+					new org.gradle.plugins.ide.eclipse.model.Library(
+						it.fileReference(new File(projectDir, '/bin'))
+					)
+				)
 			}
 		}
-	}
+    }
 }
 
 javadoc.destinationDir = new File(projectDir, 'docs')
