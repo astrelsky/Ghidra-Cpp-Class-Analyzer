@@ -186,6 +186,9 @@ public class TypeInfoUtils {
 		RelocationTable table = program.getRelocationTable();
 		Relocation reloc = table.getRelocation(address);
 		if (reloc != null && reloc.getSymbolName() != null) {
+			if (reloc.getSymbolName().startsWith(VtableModel.MANGLED_PREFIX)) {
+				return reloc.getSymbolName().substring(VtableModel.MANGLED_PREFIX.length());
+			}
 			Address relocationAddress = getAbsoluteAddress(program, address);
 			if (relocationAddress == null || relocationAddress.getOffset() == 0) {
 				return "";

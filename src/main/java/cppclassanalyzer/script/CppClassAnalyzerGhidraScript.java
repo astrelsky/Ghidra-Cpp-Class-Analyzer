@@ -20,9 +20,7 @@ public abstract class CppClassAnalyzerGhidraScript extends GhidraScript {
 	@Override
 	protected void loadPropertiesFile() throws IOException {
 		super.loadPropertiesFile();
-		ClassTypeInfoManagerService service =
-			state.getTool().getService(ClassTypeInfoManagerService.class);
-		this.currentManager = service.getManager(currentProgram);
+		this.currentManager = getService().getManager(currentProgram);
 	}
 
 	/**
@@ -34,6 +32,10 @@ public abstract class CppClassAnalyzerGhidraScript extends GhidraScript {
 		return DemanglerUtil.demangle(currentProgram, mangled);
 	}
 
+	/**
+	 * Gets the ClassTypeInfoManagerService
+	 * @return the ClassTypeInfoManagerService
+	 */
 	protected final ClassTypeInfoManagerService getService() {
 		return state.getTool().getService(ClassTypeInfoManagerService.class);
 	}

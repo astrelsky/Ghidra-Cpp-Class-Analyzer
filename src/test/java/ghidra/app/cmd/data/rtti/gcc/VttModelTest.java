@@ -28,7 +28,7 @@ public class VttModelTest extends GenericGccRttiTest {
 		X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
 		Program program = builder.getProgram();
 		ProgramClassTypeInfoManager manager = builder.getManager();
-		manager.findVtables(TaskMonitor.DUMMY);
+		manager.findVtables(TaskMonitor.DUMMY, null);
 		Set<Address> addresses = builder.getVttStream()
 										.map(VttModel::getAddress)
 										.collect(Collectors.toSet());

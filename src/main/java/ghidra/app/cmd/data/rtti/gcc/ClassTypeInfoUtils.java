@@ -8,6 +8,8 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.GnuClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB.TypeId;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+import util.CollectionUtils;
+
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -25,9 +27,7 @@ import ghidra.program.model.mem.DumbMemBufferImpl;
 import ghidra.program.model.mem.MemBuffer;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.scalar.Scalar;
-import ghidra.program.model.symbol.Namespace;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.symbol.*;
 import ghidra.util.Msg;
 import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
@@ -74,19 +74,20 @@ public class ClassTypeInfoUtils {
 		throws CancelledException {
 			SymbolTable table = program.getSymbolTable();
 			Listing listing = program.getListing();
-			for (Symbol symbol : table.getChildren(type.getNamespace().getSymbol())) {
-				if (symbol.getName().equals(VtableModel.SYMBOL_NAME)) {
-					try {
-						return new VtableModel(program, symbol.getAddress(), type);
-					} catch (InvalidDataTypeException e) {
-						break;
-					}
+			List<Symbol> symbols =
+				table.getSymbols(VtableModel.SYMBOL_NAME, type.getNamespace());
+			for (Symbol symbol : symbols) {
+				try {
+					return new VtableModel(program, symbol.getAddress(), type);
+				} catch (InvalidDataTypeException e) {
+					break;
 				}
 			}
 			Set<Address> references = Collections.emptySet();
 			Data tiData = listing.getDataAt(type.getAddress());
 			if (tiData != null) {
-				references = Arrays.stream(XReferenceUtil.getXRefList(tiData))
+				references = CollectionUtils.asStream(tiData.getReferenceIteratorTo())
+					.map(Reference::getFromAddress)
 					.filter(Predicate.not(SpecialAddress.class::isInstance))
 					.collect(Collectors.toSet());
 				if (!references.isEmpty()) {
@@ -96,8 +97,16 @@ public class ClassTypeInfoUtils {
 					}
 				}
 			}
-			references = GnuUtils.getDirectDataReferences(program, type.getAddress());
-			return getValidVtable(program, references, monitor, type);
+			if (type.getName().contains("type_info")) {
+				references = GnuUtils.getDirectDataReferences(program, type.getAddress());
+				if (!references.isEmpty()) {
+					Vtable vtable = getValidVtable(program, references, monitor, type);
+					if (Vtable.isValid(vtable)) {
+						return vtable;
+					}
+				}
+			}
+			return Vtable.NO_VTABLE;
 	}
 
 	private static boolean invalidData(Data data) {

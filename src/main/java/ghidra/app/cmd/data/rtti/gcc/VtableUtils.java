@@ -1,14 +1,14 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+import util.CollectionUtils;
 
-import ghidra.program.model.address.Address;
-import ghidra.program.model.address.AddressOverflowException;
-import ghidra.program.model.address.AddressRange;
-import ghidra.program.model.address.AddressRangeImpl;
+import ghidra.program.model.address.*;
 import ghidra.program.model.data.Array;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
@@ -22,8 +22,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
-import ghidra.program.model.symbol.Symbol;
-import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.symbol.*;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -91,6 +90,11 @@ public class VtableUtils {
 				if (after == null) {
 					set = new AddressRangeImpl(before.getMaxAddress(), program.getMaxAddress());
 				} else {
+					AddressSpace beforeSpace = before.getMaxAddress().getAddressSpace();
+					AddressSpace afterSpace = after.getAddress().getAddressSpace();
+					if (!beforeSpace.equals(afterSpace)) {
+						return 0;
+					}
 					set = new AddressRangeImpl(before.getMaxAddress(), after.getAddress());
 				}
 			}
@@ -272,11 +276,12 @@ public class VtableUtils {
 
 	private static Function createFunction(Program program, Address currentAddress) {
 		Listing listing = program.getListing();
-		Function function = listing.getFunctionAt(currentAddress);
+		// arm lto may do offset pointers
+		Function function = listing.getFunctionContaining(currentAddress);
 		if (function != null) {
 			return function;
 		}
-		if (listing.getInstructionAt(currentAddress) == null) {
+		if (listing.getInstructionContaining(currentAddress) == null) {
 			// If it has not been disassembled, disassemble it first.
 			if (program.getMemory().getBlock(currentAddress).isInitialized()) {
 				DisassembleCommand cmd = new DisassembleCommand(currentAddress, null, true);
@@ -302,7 +307,12 @@ public class VtableUtils {
 		if (tableAddresses.length == 0) {
 			return VttModel.INVALID;
 		}
-		Set<Address> references = GnuUtils.getDirectDataReferences(program, tableAddresses[0]);
+		ReferenceManager man = program.getReferenceManager();
+		Address addr = tableAddresses[0];
+		Set<Address> references = CollectionUtils.asStream(man.getReferencesTo(addr))
+			.map(Reference::getFromAddress)
+			.filter(Predicate.not(SpecialAddress.class::isInstance))
+			.collect(Collectors.toSet());
 		if (references.isEmpty()) {
 			return VttModel.INVALID;
 		}

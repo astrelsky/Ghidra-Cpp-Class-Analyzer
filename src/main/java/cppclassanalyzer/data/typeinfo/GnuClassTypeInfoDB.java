@@ -60,6 +60,12 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 		this.baseKeys = extractKeys(aMan, type.getBaseKeys());
 		this.baseOffsets = type.getBaseOffsetValues();
 		fillRecord(record);
+		setVtableSearched();
+		Vtable vtable = type.getVtable();
+		if (Vtable.isValid(vtable)) {
+			vtable = worker.resolve(vtable);
+			setVtable(vtable);
+		}
 	}
 
 	private long[] extractKeys(ClassTypeInfoManager aMan, long[] keys) {

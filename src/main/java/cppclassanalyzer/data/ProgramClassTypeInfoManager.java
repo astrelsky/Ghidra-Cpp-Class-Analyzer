@@ -5,6 +5,7 @@ import java.util.stream.Stream;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
+import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.model.DomainObjectListener;
 
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
@@ -120,7 +121,7 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 	 * @param monitor the TaskMonitor used to monitor the progress
 	 * @throws CancelledException if the task is cancelled
 	 */
-	void findVtables(TaskMonitor monitor) throws CancelledException;
+	void findVtables(TaskMonitor monitor, MessageLog log) throws CancelledException;
 
 	/**
 	 * Returns a ClassTypeInfo that is managed by this ClassTypeInfoManager.

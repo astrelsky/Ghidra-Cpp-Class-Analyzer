@@ -1,32 +1,33 @@
 package ghidra.app.plugin.prototype;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 import ghidra.framework.options.Options;
-import ghidra.app.services.AnalyzerType;
+import ghidra.app.util.XReferenceUtil;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.docking.settings.SettingsDefinition;
-import ghidra.app.services.AbstractAnalyzer;
-import ghidra.app.services.AnalysisPriority;
+
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+import util.CollectionUtils;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
-import ghidra.program.model.symbol.Namespace;
-import ghidra.program.model.symbol.SourceType;
-import ghidra.program.model.listing.Data;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Program;
+import ghidra.program.util.ProgramMemoryUtil;
+import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.Relocation;
+import ghidra.program.model.symbol.*;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
-import ghidra.util.Msg;
+import ghidra.app.plugin.core.analysis.ReferenceAddressPair;
+import ghidra.app.services.*;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.data.*;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.GnuVtable;
@@ -52,6 +53,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 
 	private Program program;
 	private TaskMonitor monitor;
+	private MessageLog log;
 	private CancelOnlyWrappingTaskMonitor dummy;
 
 	// The only one excluded is BaseClassTypeInfoModel
@@ -61,7 +63,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		VmiClassTypeInfoModel.ID_STRING
 	);
 
-	private static final String[] FUNDAMENTAL_TYPESTRINGS = new String[] {
+	private static final List<String> FUNDAMENTAL_TYPESTRINGS = List.of(
 		FundamentalTypeInfoModel.ID_STRING,
 		PBaseTypeInfoModel.ID_STRING,
 		PointerToMemberTypeInfoModel.ID_STRING,
@@ -70,10 +72,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		EnumTypeInfoModel.ID_STRING,
 		FunctionTypeInfoModel.ID_STRING,
 		IosFailTypeInfoModel.ID_STRING
-	};
+	);
 
 	private ProgramClassTypeInfoManager manager;
 	private boolean relocatable;
+	private AddressSet set;
 
 	// if a typename contains this, vftable components index >= 2 point to __cxa_pure_virtual
 	private static final String PURE_VIRTUAL_CONTAINING_STRING = "abstract_base";
@@ -101,14 +104,23 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
 		throws CancelledException {
 			this.program = program;
+			this.set = new AddressSet();
 			this.monitor = monitor;
-
+			this.log = log;
 			this.manager = CppClassAnalyzerUtils.getManager(program);
 			if (this.manager == null) {
 				return false;
 			}
 
 			this.relocatable = program.getRelocationTable().isRelocatable();
+			Set<Relocation> relocations = getRelocations(CLASS_TYPESTRINGS);
+			if (relocations.size() == CLASS_TYPESTRINGS.size()) {
+				relocatable = true;
+				if (fundamentalOption) {
+					relocations.addAll(getRelocations(FUNDAMENTAL_TYPESTRINGS));
+				}
+				createOffcutVtableRefs(relocations);
+			}
 
 			dummy = new CancelOnlyWrappingTaskMonitor(monitor);
 			for (String typeString : CLASS_TYPESTRINGS) {
@@ -130,14 +142,15 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				addDataTypes();
 				if (fundamentalOption) {
 					for (String typeString : FUNDAMENTAL_TYPESTRINGS) {
-						applyTypeInfoTypes(typeString, log);
+						applyTypeInfoTypes(typeString);
 					}
 				}
-				applyTypeInfoTypes(TypeInfoModel.ID_STRING, log);
+				applyTypeInfoTypes(TypeInfoModel.ID_STRING);
 				for (String typeString : CLASS_TYPESTRINGS) {
-					applyTypeInfoTypes(typeString, log);
+					applyTypeInfoTypes(typeString);
 				}
 				createVtables();
+				createVtts();
 				return true;
 			} catch (CancelledException e) {
 				throw e;
@@ -146,6 +159,38 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				log.appendMsg("Ghidra-Cpp-Class-Analyzer", e.getMessage());
 				return false;
 			}
+	}
+
+	private void createOffcutVtableRefs(Set<Relocation> relocs) throws CancelledException {
+		Listing listing = program.getListing();
+		AddressSet addresses = new AddressSet();
+		relocs.stream()
+			.map(Relocation::getAddress)
+			.map(listing::getDataAt)
+			.filter(Objects::nonNull)
+			.forEach(d -> addresses.add(d.getMinAddress(), d.getMaxAddress()));
+		addReferences(addresses);
+	}
+
+	private void addReferences(AddressSet addresses) throws CancelledException {
+		if (addresses.isEmpty()) {
+			return;
+		}
+		Memory mem = program.getMemory();
+		ReferenceManager refMan = program.getReferenceManager();
+		List<ReferenceAddressPair> refList = new LinkedList<>();
+		ProgramMemoryUtil.loadDirectReferenceList(
+			program, program.getDefaultPointerSize(), addresses.getMinAddress(),
+			addresses, refList, monitor);
+		monitor.setProgress(monitor.getMaximum());
+		for (ReferenceAddressPair ref : refList) {
+			monitor.checkCanceled();
+			if (CppClassAnalyzerUtils.isDataBlock(mem.getBlock(ref.getSource()))) {
+				refMan.addMemoryReference(
+					ref.getSource(), ref.getDestination(),
+					RefType.DATA, SourceType.ANALYSIS, 0);
+			}
+		}
 	}
 
 	private void addDataTypes() {
@@ -172,16 +217,28 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	}
 
 	private Function getPureVirtualFunction() throws CancelledException {
-		return
-			manager.getTypeStream()
-			.filter(GccRttiAnalyzer::isPureVirtualType)
-			.map(t -> t.findVtable())
-			.filter(Vtable::isValid)
-			.map(Vtable::getFunctionTables)
-			.filter(this::checkTableAddresses)
-			.findFirst()
-			.map(f -> f[0][2])
-			.orElse(null);
+		SymbolTable table = program.getSymbolTable();
+		for (Symbol symbol : table.getSymbols(PURE_VIRTUAL_FUNCTION_NAME)) {
+			if (symbol.getSymbolType() == SymbolType.FUNCTION) {
+				return (Function) symbol.getObject();
+			}
+		}
+		for (ClassTypeInfo type : manager.getTypes()) {
+			monitor.checkCanceled();
+			if (isPureVirtualType(type)) {
+				try {
+					Vtable vtable = type.findVtable(dummy);
+					if (Vtable.isValid(vtable)) {
+						Function[][] ftables = vtable.getFunctionTables();
+						if (checkTableAddresses(ftables)) {
+							return ftables[0][2];
+						}
+					}
+				} catch (Exception e) {
+				}
+			}
+		}
+		return null;
 	}
 
 	private void findAndCreatePureVirtualFunction() throws Exception {
@@ -209,7 +266,6 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				markDataAsConstant(tableAddress);
 			}
 		}
-		locateVTT(vtable);
 	}
 
 	public final void markDataAsConstant(Address address) {
@@ -224,6 +280,28 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 					(MutabilitySettingsDefinition) setting;
 				mutabilitySetting.setChoice(data, MutabilitySettingsDefinition.CONSTANT);
 			}
+		}
+	}
+
+	private void createVtts() throws Exception {
+		for (Vtable vtable : manager.getVtables()) {
+			for (Address addr : vtable.getTableAddresses()) {
+				set.add(addr);
+			}
+		}
+		monitor.setMessage("Creating Vtable References");
+		addReferences(set);
+		set.clear();
+		monitor.initialize(manager.getVtableCount());
+		monitor.setMessage("Locating VTTs");
+		for (Vtable vtable : manager.getVtables()) {
+			monitor.checkCanceled();
+			try {
+				locateVTT((GnuVtable) vtable);
+			} catch (Exception e) {
+				log.appendException(e);
+			}
+			monitor.incrementProgress(1);
 		}
 	}
 
@@ -245,12 +323,19 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 
 	private void createVtables() throws Exception {
 		findAndCreatePureVirtualFunction();
-		manager.findVtables(monitor);
+		monitor.setMessage("Creating ClassTypeInfo References");
+		addReferences(set);
+		set.clear();
+		manager.findVtables(monitor, log);
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Creating vtables");
 		for (Vtable vtable : manager.getVtables()) {
 			monitor.checkCanceled();
-			createVtable((GnuVtable) vtable);
+			try {
+				createVtable((GnuVtable) vtable);
+			} catch (Exception e) {
+				log.appendMsg("Unable to create vtable for "+vtable.getTypeInfo().getFullName());
+			}
 			monitor.incrementProgress(1);
 		}
 	}
@@ -279,43 +364,41 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		return set;
 	}
 
-	private Set<Address> getClangDynamicReferences(Relocation reloc) throws CancelledException {
-		Data data = program.getListing().getDataContaining(reloc.getAddress());
+	private Set<Address> getClangDynamicReferences(Address address) throws CancelledException {
+		Data data = program.getListing().getDataContaining(address);
 		if (data == null) {
-			Msg.error(this, "Null data at clang relocation");
+			log.appendMsg("Null data at clang relocation");
 			return null;
 		}
-		int start = 0;
-		int ptrdiffSize = GnuUtils.getPtrDiffSize(program.getDataTypeManager());
-		Set<Address> result = new HashSet<>();
-		while (start < data.getLength()) {
-			monitor.checkCanceled();
-			result.addAll(GnuUtils.getDirectDataReferences(
-				program, data.getAddress().add(start), dummy));
-			start += ptrdiffSize;
-		}
-		return result;
+		return Arrays.stream(XReferenceUtil.getOffcutXReferences(data, -1))
+			.filter(r -> r.getReferenceType().isData())
+			.map(Reference::getFromAddress)
+			.collect(Collectors.toSet());
 	}
 
 	private Set<Address> getDynamicReferences(String typeString) throws CancelledException {
 		String target = VtableModel.MANGLED_PREFIX+typeString;
 		Iterator<Relocation> relocations = program.getRelocationTable()
 			.getRelocations(getDataAddressSet());
-		Set<Address> result = new LinkedHashSet<>();
-		while (relocations.hasNext()) {
-			monitor.checkCanceled();
-			Relocation reloc = relocations.next();
-			String name = reloc.getSymbolName();
-			if (name == null) {
-				continue;
-			}
-			if (name.equals(target)) {
-				if (GnuUtils.isCopyRelocation(program, reloc.getType())) {
-					return getClangDynamicReferences(reloc);
-				}
-				result.add(reloc.getAddress());
-			}
-		} return result;
+		Set<Address> result = CollectionUtils.asStream(relocations)
+			.filter(r -> r.getSymbolName() != null && r.getSymbolName().equals(target))
+			.map(Relocation::getAddress)
+			.collect(Collectors.toSet());
+		if (result.size() == 1) {
+			return getClangDynamicReferences(result.toArray(Address[]::new)[0]);
+		}
+		return result;
+	}
+
+	private Set<Relocation> getRelocations(List<String> names) {
+		Set<String> symbols = names.stream()
+			.map(n -> VtableModel.MANGLED_PREFIX+n)
+			.collect(Collectors.toSet());
+		Iterator<Relocation> relocations = program.getRelocationTable()
+			.getRelocations(getDataAddressSet());
+		return CollectionUtils.asStream(relocations)
+			.filter(r -> r.getSymbolName() != null && symbols.contains(r.getSymbolName()))
+			.collect(Collectors.toSet());
 	}
 
 	private Set<Address> getReferences(String typeString) throws Exception {
@@ -325,7 +408,8 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		return getStaticReferences(typeString);
 	}
 
-	private void applyTypeInfoTypes(String typeString, MessageLog log) throws Exception {
+	private void applyTypeInfoTypes(String typeString) throws Exception {
+		Listing listing = program.getListing();
 		boolean isClass = CLASS_TYPESTRINGS.contains(typeString);
 		Set<Address> types = getReferences(typeString);
 		if (types.isEmpty()) {
@@ -344,6 +428,10 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 						ClassTypeInfo classType = ((ClassTypeInfo) type);
 						manager.resolve(classType);
 						classType.getGhidraClass();
+					}
+					Data data = listing.getDataAt(reference);
+					if (data == null || !data.getDataType().isEquivalent(type.getDataType())) {
+						set.add(reference);
 					}
 					CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
 					cmd.applyTo(program, dummy);

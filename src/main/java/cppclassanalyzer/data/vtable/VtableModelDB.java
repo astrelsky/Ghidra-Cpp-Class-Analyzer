@@ -185,7 +185,7 @@ public final class VtableModelDB extends AbstractVtableDB implements GnuVtable {
 			Listing listing = getProgram().getListing();
 			return Arrays.stream(functions)
 				.mapToObj(typeManager::decodeAddress)
-				.map(listing::getFunctionAt)
+				.map(listing::getFunctionContaining)
 				.toArray(Function[]::new);
 		}
 

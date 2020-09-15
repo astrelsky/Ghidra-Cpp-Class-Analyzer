@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 
 import ghidra.app.util.SymbolPath;
 import ghidra.util.Msg;
-import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
@@ -121,10 +120,9 @@ abstract class AbstractSingleManagerNode extends AbstractManagerNode {
 			addNode(type);
 		}
 		GTreeNode node = treePaths.get(path);
-		if (node instanceof TypeInfoNode) {
-			return (TypeInfoNode) node;
+		if (node instanceof NamespacePathNode) {
+			node = new TypeInfoNode(type, (NamespacePathNode) node);
 		}
-		// should be unreachable
-		throw new AssertException("Node for "+type.getName()+" is not the correct node type");
+		return (TypeInfoNode) node;
 	}
 }

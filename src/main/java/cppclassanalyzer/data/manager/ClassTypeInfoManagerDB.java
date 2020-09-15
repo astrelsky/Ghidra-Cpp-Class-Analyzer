@@ -14,6 +14,8 @@ import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.*;
 import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
+import ghidra.app.util.importer.MessageLog;
+
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 import cppclassanalyzer.vs.RttiModelWrapper;
 import cppclassanalyzer.vs.VsClassTypeInfo;
@@ -624,7 +626,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	@Override
-	public void findVtables(TaskMonitor monitor) throws CancelledException {
+	public void findVtables(TaskMonitor monitor, MessageLog log) throws CancelledException {
 		TaskMonitor dummy = new CancelOnlyWrappingTaskMonitor(monitor);
 		sort(monitor);
 		monitor.initialize(getTypeCount());
@@ -632,11 +634,29 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		TypeInfoArchiveChangeRecord changeRecord = null;
 		for (ClassTypeInfoDB type : getTypes(true)) {
 			monitor.checkCanceled();
-			type.findVtable(dummy);
-			changeRecord = new TypeInfoArchiveChangeRecord(ChangeType.TYPE_UPDATED, type);
-			plugin.managerChanged(changeRecord);
+			try {
+				type.findVtable(dummy);
+				changeRecord = new TypeInfoArchiveChangeRecord(ChangeType.TYPE_UPDATED, type);
+				plugin.managerChanged(changeRecord);
+			} catch (CancelledException e) {
+				throw e;
+			} catch (Exception e) {
+				if (log != null) {
+					log.appendMsg(e.getMessage());
+				}
+			}
 			monitor.incrementProgress(1);
 		}
+	}
+
+	private boolean isValidRecord(ClassTypeInfoRecord record) {
+		try {
+			AbstractClassTypeInfoDB.getBaseCount(record);
+			return true;
+		} catch (Exception e) {
+			// record is incomplete and will be removed
+		}
+		return false;
 	}
 
 	private void sort(TaskMonitor monitor) throws CancelledException {
@@ -650,13 +670,16 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 			ClassTypeInfoRecord[] records = getClassRecords();
 			Map<Long, ReferenceCounter> keys = getRecordStream(records)
+				.filter(this::isValidRecord)
 				.map(ReferenceCounter::new)
 				.collect(Collectors.toMap(ReferenceCounter::getKey, r -> r));
 			for (ClassTypeInfoRecord record : records) {
 				monitor.checkCanceled();
-				long[] baseKeys = AbstractClassTypeInfoDB.getBaseKeys(record);
-				for (long key : baseKeys) {
-					keys.get(key).referencesFrom.getAndIncrement();
+				if (keys.containsKey(record.getKey())) {
+					long[] baseKeys = AbstractClassTypeInfoDB.getBaseKeys(record);
+					for (long key : baseKeys) {
+						keys.get(key).referencesFrom.getAndIncrement();
+					}
 				}
 			}
 			long[] newKeys = keys.values()
@@ -722,6 +745,9 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 				while (iter.hasNext()) {
 					monitor.checkCanceled();
 					ClassTypeInfoRecord oldRecord = iter.next();
+					if (!keyMap.contains(oldRecord.getKey())) {
+						continue;
+					}
 					ClassTypeInfoRecord record = oldRecord.copy();
 					record.setKey(keyMap.get(record.getKey()));
 					if (record.getBooleanValue(ClassTypeInfoSchemaFields.VTABLE_SEARCHED)) {

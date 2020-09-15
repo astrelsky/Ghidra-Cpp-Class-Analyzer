@@ -137,7 +137,11 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 				}
 			}
 			// this takes care of everything
-			type.getClassDataType();
+			try {
+				type.getClassDataType();
+			} catch (Exception e) {
+				log.appendException(e);
+			}
 			monitor.incrementProgress(1);
 		}
 	}

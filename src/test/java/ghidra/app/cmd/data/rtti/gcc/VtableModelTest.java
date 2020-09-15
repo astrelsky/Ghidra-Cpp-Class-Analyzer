@@ -31,7 +31,7 @@ public class VtableModelTest extends GenericGccRttiTest {
 
 	private void locationTest(AbstractTypeInfoProgramBuilder builder) throws Exception {
 		ProgramClassTypeInfoManager manager = builder.getManager();
-		manager.findVtables(TaskMonitor.DUMMY);
+		manager.findVtables(TaskMonitor.DUMMY, null);
 		Set<Address> addresses = builder.getVtableStream()
 			.map(Vtable::getAddress)
 			.collect(Collectors.toSet());
