@@ -327,7 +327,7 @@ public class TypeInfoUtils {
 	 */
 	public static Namespace getNamespaceFromTypeName(Program program, String typename) {
 		String mangled = typename.startsWith("_ZTI") ? typename : "_ZTI" + typename;
-		Demangled demangled = GnuUtils.getSpecialDemangled(mangled);
+		Demangled demangled = DemanglerUtil.demangle(program, mangled);
 		if (demangled == null) {
 			throw new AssertException("Failed to demangle " + typename);
 		}

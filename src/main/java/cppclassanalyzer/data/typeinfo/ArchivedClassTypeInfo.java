@@ -13,11 +13,11 @@ import javax.help.UnsupportedOperationException;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.GnuUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.util.SymbolPath;
 import ghidra.app.util.SymbolPathParser;
 import ghidra.app.util.demangler.Demangled;
+import ghidra.app.util.demangler.DemanglerUtil;
 
 import cppclassanalyzer.cmd.CreateExternalSymbolBackgroundCmd;
 import cppclassanalyzer.data.ArchivedRttiData;
@@ -150,7 +150,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB implements Arch
 	}
 
 	private static Demangled doDemangle(String symbolName) {
-		Demangled demangled = GnuUtils.getSpecialDemangled(symbolName);
+		Demangled demangled = DemanglerUtil.demangle(symbolName);
 		if (demangled == null) {
 			throw new AssertException("ArchivedClassTypeInfo symbol "
 				+ symbolName + " failed to demangle");

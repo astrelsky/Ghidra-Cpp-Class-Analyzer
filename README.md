@@ -76,4 +76,5 @@ It is compatible with current builds of 9.2
 TODO
 ----
 
-Graphing
+* Graphing
+* Utilize extension points for compiler differences

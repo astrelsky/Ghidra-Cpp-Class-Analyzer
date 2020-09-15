@@ -1,18 +1,13 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.io.IOException;
 import java.util.Collections;
 
 import docking.Tool;
 import ghidra.program.model.data.DataType;
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.util.demangler.*;
-import ghidra.app.util.demangler.gnu.GnuDemanglerNativeProcess;
 import ghidra.framework.main.AppInfo;
 import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.Project;
@@ -27,14 +22,11 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.*;
 import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
-import ghidra.util.datastruct.IntSet;
-import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.DummyCancellableTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import cppclassanalyzer.utils.LanguageIdHandler;
 
 import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.app.util.demangler.DemanglerUtil.demangle;
@@ -54,19 +46,6 @@ public final class GnuUtils {
 	public static final Set<String> COMPILER_NAMES = Set.of("gcc", "default");
 
 	private static final CategoryPath CXXABI_PATH = new CategoryPath(CategoryPath.ROOT, CXXABI);
-	private static final Pattern DESCRIPTIVE_PREFIX_PATTERN =
-		Pattern.compile("((?:(.+) )+(for|to) )(.+)");
-	private static final Pattern TRAILING_NUMBER_PATTERN = Pattern.compile(".+?(\\d+)$");
-
-	private static final Map<String, IntSet> COPY_RELOCATIONS = Map.of(
-		"x86", new IntSet(new int[]{5}),
-		"sparc", new IntSet(new int[]{19}),
-		"RISCV", new IntSet(new int[]{4}),
-		"PowerPC", new IntSet(new int[]{19}),
-		"MIPS", new IntSet(new int[]{126}),
-		"ARM", new IntSet(new int[]{20}),
-		"AARCH64", new IntSet(new int[]{180, 1024})
-	);
 
 	private GnuUtils() {
 	}
@@ -359,48 +338,6 @@ public final class GnuUtils {
 		Memory mem = program.getMemory();
 		MemoryBlock block = mem.getBlock(address);
 		return block.getName().equals(MemoryBlock.EXTERNAL_BLOCK_NAME);
-	}
-
-	/**
-	 * Gets the unparsed demangled output from the native GnuDemangler
-	 * @param mangled the mangled input for the demangler
-	 * @return the unmodified demangled string
-	 * @throws IOException if an error occurs from the native GnuDemangler process
-	 */
-	public static String getRawDemangledString(String mangled) throws IOException {
-		GnuDemanglerNativeProcess process = GnuDemanglerNativeProcess.getDemanglerNativeProcess();
-		return process.demangle(mangled).trim();
-	}
-
-	public static Demangled getSpecialDemangled(String mangled) {
-		try {
-			Demangled demangled = demangle(mangled);
-			String output = GnuUtils.getRawDemangledString(mangled);
-			Matcher matcher = DESCRIPTIVE_PREFIX_PATTERN.matcher(output);
-			if (!matcher.matches()) {
-				throw new AssertException("Regex should have matched: " + output);
-			}
-			DemangledAddressTable table =
-				new DemangledAddressTable(mangled, output, matcher.group(2), true);
-			table.setSignature(output);
-			demangled = demangled.getNamespace();
-			matcher = TRAILING_NUMBER_PATTERN.matcher(matcher.group(4));
-			if (matcher.matches()) {
-				demangled.setName(demangled.getName()+matcher.group(1));
-			}
-			table.setNamespace(demangled);
-			return table;
-		} catch (IOException e) {
-			return null;
-		}
-	}
-
-	public static boolean isCopyRelocation(Program program, int type) {
-		LanguageIdHandler handler = new LanguageIdHandler(program.getLanguageID());
-		if (COPY_RELOCATIONS.containsKey(handler.getProcessor())) {
-			return COPY_RELOCATIONS.get(handler.getProcessor()).contains(type);
-		}
-		return false;
 	}
 
 }

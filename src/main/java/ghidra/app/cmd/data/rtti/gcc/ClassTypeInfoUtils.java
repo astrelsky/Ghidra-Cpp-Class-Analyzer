@@ -18,7 +18,6 @@ import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.cmd.disassemble.DisassembleCommand;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.util.NamespaceUtils;
-import ghidra.app.util.XReferenceUtil;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.SpecialAddress;
 import ghidra.program.model.data.*;
