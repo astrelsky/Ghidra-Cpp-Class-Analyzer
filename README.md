@@ -78,3 +78,4 @@ TODO
 
 * Graphing
 * Utilize extension points for compiler differences
+* Help Documentation
