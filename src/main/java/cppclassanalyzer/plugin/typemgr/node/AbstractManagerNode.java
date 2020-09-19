@@ -1,26 +1,18 @@
 package cppclassanalyzer.plugin.typemgr.node;
 
 import javax.swing.Icon;
+
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
-
 import docking.widgets.tree.GTreeNode;
 
-abstract class AbstractManagerNode extends AbstractSortedSlowLoadingNode
-		implements TypeInfoArchiveNode {
+abstract class AbstractManagerNode extends AbstractSortedNode implements TypeInfoArchiveNode {
 
 	private final ClassTypeInfoManager manager;
-	private final TypeInfoTreeNodeRecord record;
 
 	AbstractManagerNode(ClassTypeInfoManager manager) {
 		this.manager = manager;
-		TypeInfoTreeNodeManager treeManager = getManager();
-		this.record = treeManager.getRootRecord();
-		treeManager.setRootNode(this);
 	}
-
-	abstract AbstractManagerNode rebuild();
 
 	@Override
 	public final GTreeNode clone() {
@@ -53,16 +45,6 @@ abstract class AbstractManagerNode extends AbstractSortedSlowLoadingNode
 	}
 
 	@Override
-	public long getKey() {
-		return 0;
-	}
-
-	@Override
-	public TypeInfoTreeNodeRecord getRecord() {
-		return record;
-	}
-
-	@Override
 	public TypeInfoTreeNodeManager getManager() {
 		return manager.getTreeNodeManager();
 	}
@@ -70,11 +52,5 @@ abstract class AbstractManagerNode extends AbstractSortedSlowLoadingNode
 	@Override
 	public final boolean isProgramNode() {
 		return getTypeManager() instanceof ProgramClassTypeInfoManager;
-	}
-
-	@Override
-	public void dispose() {
-		getManager().dispose();
-		super.dispose();
 	}
 }

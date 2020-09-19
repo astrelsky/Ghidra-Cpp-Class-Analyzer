@@ -3,7 +3,6 @@ package cppclassanalyzer.data.manager;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -35,7 +34,6 @@ import ghidra.program.model.address.AddressOverflowException;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
-import ghidra.util.Lock;
 import ghidra.util.Msg;
 import ghidra.util.UniversalID;
 import ghidra.util.datastruct.LongArrayList;
@@ -74,8 +72,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	};
 
 	private final ClassTypeInfoManagerPlugin plugin;
-	private final Lock lock;
-	private ProgramDB program;
+	private final ProgramDB program;
 	private final AddressMap map;
 	private final RttiRecordWorker worker;
 	private final TypeInfoTreeNodeManager treeNodeManager;
@@ -85,8 +82,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		this.program = program;
 		this.map = program.getAddressMap();
 		DBHandle handle = program.getDBHandle();
-		lock = new Lock(getClass().getSimpleName());
-		this.treeNodeManager = new TypeInfoTreeNodeManager(this, handle);
 		ClassTypeInfoDatabaseTable classTable = getClassTable(handle);
 		VtableDatabaseTable vtableTable = getVtableTable(handle);
 		if (shouldResetDatabase(classTable, vtableTable)) {
@@ -110,6 +105,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		ProgramRttiCachePair caches = new ProgramRttiCachePair();
 		ProgramRttiTablePair tables = new ProgramRttiTablePair(classTable, vtableTable);
 		this.worker = doGetWorker(tables, caches);
+		this.treeNodeManager = new TypeInfoTreeNodeManager(plugin, this);
+		treeNodeManager.generateTree();
 	}
 
 	private ClassTypeInfoDatabaseTable getClassTable(DBHandle handle) {
@@ -165,19 +162,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		return new VtableDatabaseTable(vtableTable);
 	}
 
-	public <T> T lockAndRun(Supplier<T> supplier, T defaultResult) {
-		Thread lockOwner = lock.getOwner();
-		if (lockOwner == null || lockOwner == Thread.currentThread()) {
-			lock.acquire();
-			try {
-				return supplier.get();
-			} finally {
-				lock.release();
-			}
-		}
-		return defaultResult;
-	}
-
 	@Override
 	public String getName() {
 		return getProgram().getName();
@@ -189,7 +173,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	public long getTypeKey(Address address) {
-		lock.acquire();
 		try {
 			long addrKey = encodeAddress(address);
 			long[] keys = worker.getTables()
@@ -206,14 +189,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 		return INVALID_KEY;
 	}
 
 	public long getVtableKey(Address address) {
-		lock.acquire();
 		try {
 			long addrKey = encodeAddress(address);
 			long[] keys = worker.getTables()
@@ -229,8 +209,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 		return INVALID_KEY;
 	}
@@ -244,7 +222,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	private boolean containsClassKey(Address address) {
-		lock.acquire();
 		try {
 			long key = getTypeKey(address);
 			if (key != INVALID_KEY) {
@@ -252,8 +229,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 		return false;
 	}
@@ -262,14 +237,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		if (key == 0) {
 			return false;
 		}
-		lock.acquire();
 		try {
 			return worker.getTables().getVtableTable().hasRecord(key);
 		} catch (IOException e) {
 			dbError(e);
 			return false;
-		} finally {
-			lock.release();
 		}
 	}
 
@@ -292,7 +264,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	@Override
 	public void setProgram(ProgramDB program) {
-		this.program = program;
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -303,12 +275,7 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	@Override
 	public void invalidateCache(boolean all) {
-		lock.acquire();
-		try {
-			worker.getCaches().invalidate();
-		} finally {
-			lock.release();
-		}
+		worker.getCaches().invalidate();
 	}
 
 	private LongArrayList getTypeKeys(Address startAddr, Address endAddr, TaskMonitor monitor)
@@ -322,30 +289,23 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	private LongArrayList getRangedKeys(Address startAddr, Address endAddr,
-			ToLongFunction<Address> keyFinder, TaskMonitor monitor)
-			throws CancelledException {
-		lock.acquire();
-		try {
-			LongArrayList keys = new LongArrayList();
-			Address currentAddress = startAddr;
-			while (currentAddress.compareTo(endAddr) < 0) {
-				monitor.checkCanceled();
-				long key = keyFinder.applyAsLong(currentAddress);
-				if (key != INVALID_KEY) {
-					keys.add(key);
-				}
-				currentAddress.add(currentAddress.getPointerSize());
+			ToLongFunction<Address> keyFinder, TaskMonitor monitor) throws CancelledException {
+		LongArrayList keys = new LongArrayList();
+		Address currentAddress = startAddr;
+		while (currentAddress.compareTo(endAddr) < 0) {
+			monitor.checkCanceled();
+			long key = keyFinder.applyAsLong(currentAddress);
+			if (key != INVALID_KEY) {
+				keys.add(key);
 			}
-			return keys;
-		} finally {
-			lock.release();
+			currentAddress.add(currentAddress.getPointerSize());
 		}
+		return keys;
 	}
 
 	@Override
 	public void deleteAddressRange(Address startAddr, Address endAddr, TaskMonitor monitor)
 			throws CancelledException {
-		lock.acquire();
 		try {
 			Table table = worker.getTables().getTypeTable();
 			for (long key : getTypeKeys(startAddr, endAddr, monitor)) {
@@ -359,15 +319,12 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 	}
 
 	@Override
 	public void moveAddressRange(Address fromAddr, Address toAddr, long length, TaskMonitor monitor)
 			throws AddressOverflowException, CancelledException {
-		lock.acquire();
 		try {
 			Address endAddr = fromAddr.add(length);
 			Table table = worker.getTables().getTypeTable();
@@ -390,8 +347,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 	}
 
@@ -404,49 +359,39 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 
 	@Override
 	public ClassTypeInfoDB getType(Address address) {
-		lock.acquire();
-		try {
-			if (isVs()) {
-				Data data = program.getListing().getDataAt(address);
-				if (isRtti4Model(data)) {
-					Rtti4Model model =
-						new Rtti4Model(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);
-					try {
-						address = model.getRtti0Address();
-					} catch (InvalidDataTypeException e) {
-						throw new AssertException(e);
-					}
+		if (isVs()) {
+			Data data = program.getListing().getDataAt(address);
+			if (isRtti4Model(data)) {
+				Rtti4Model model =
+					new Rtti4Model(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);
+				try {
+					address = model.getRtti0Address();
+				} catch (InvalidDataTypeException e) {
+					throw new AssertException(e);
 				}
 			}
-			long key = getTypeKey(address);
-			if (key != INVALID_KEY) {
-				return worker.getType(key);
-			}
-			if (!isTypeInfo(address)) {
-				return null;
-			}
-			TypeInfo ti = getTypeInfo(address, false);
-			if (ti instanceof ClassTypeInfo) {
-				return worker.resolve((ClassTypeInfo) ti);
-			}
-			return null;
-		} finally {
-			lock.release();
 		}
+		long key = getTypeKey(address);
+		if (key != INVALID_KEY) {
+			return worker.getType(key);
+		}
+		if (!isTypeInfo(address)) {
+			return null;
+		}
+		TypeInfo ti = getTypeInfo(address, false);
+		if (ti instanceof ClassTypeInfo) {
+			return worker.resolve((ClassTypeInfo) ti);
+		}
+		return null;
 	}
 
 	@Override
 	public Vtable getVtable(Address address) {
-		lock.acquire();
-		try {
-			long key = getVtableKey(address);
-			if (key == INVALID_KEY) {
-				return Vtable.NO_VTABLE;
-			}
-			return worker.getVtable(key);
-		} finally {
-			lock.release();
+		long key = getVtableKey(address);
+		if (key == INVALID_KEY) {
+			return Vtable.NO_VTABLE;
 		}
+		return worker.getVtable(key);
 	}
 
 	@Override
@@ -520,20 +465,15 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		if (key != INVALID_KEY) {
 			return (AbstractClassTypeInfoDB) worker.getType(key);
 		}
-		lock.acquire();
-		try {
-			key = worker.getClassKey();
-			ClassTypeInfoRecord record =
-				ClassTypeInfoSchema.SCHEMA.getNewRecord(key);
-			worker.updateRecord(record);
-			AbstractClassTypeInfoDB result = new GnuClassTypeInfoDB(worker, type, record);
-			TypeInfoArchiveChangeRecord changeRecord =
-				new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, result);
-			plugin.managerChanged(changeRecord);
-			return result;
-		} finally {
-			lock.release();
-		}
+		key = worker.getClassKey();
+		ClassTypeInfoRecord record =
+			ClassTypeInfoSchema.SCHEMA.getNewRecord(key);
+		worker.updateRecord(record);
+		AbstractClassTypeInfoDB result = new GnuClassTypeInfoDB(worker, type, record);
+		TypeInfoArchiveChangeRecord changeRecord =
+			new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, result);
+		plugin.managerChanged(changeRecord);
+		return result;
 	}
 
 	@Override
@@ -556,15 +496,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		} catch (InvalidInputException e) {
 			throw new AssertException(e);
 		}
-		lock.acquire();
-		try {
-			key = worker.getVtableKey();
-			VtableRecord record = VtableSchema.SCHEMA.getNewRecord(key);
-			worker.updateRecord(record);
-			return new VtableModelDB(worker, vtable, record);
-		} finally {
-			lock.release();
-		}
+		key = worker.getVtableKey();
+		VtableRecord record = VtableSchema.SCHEMA.getNewRecord(key);
+		worker.updateRecord(record);
+		return new VtableModelDB(worker, vtable, record);
 	}
 
 	@Override
@@ -585,9 +520,9 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	@Override
 	public Iterable<Vtable> getVtableIterable(boolean reverse) {
 		return () -> getTypeStream(reverse)
-				.map(ClassTypeInfo::getVtable)
-				.filter(Vtable::isValid)
-				.iterator();
+			.map(ClassTypeInfo::getVtable)
+			.filter(Vtable::isValid)
+			.iterator();
 	}
 
 	@Override
@@ -599,12 +534,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	public Stream<Vtable> getVtableStream() {
 		// vtableTable is NOT sorted
 		return getTypeStream()
-				.map(ClassTypeInfo::getVtable)
-				.filter(Vtable::isValid);
+			.map(ClassTypeInfo::getVtable)
+			.filter(Vtable::isValid);
 	}
 
 	private ClassTypeInfoRecord[] getClassRecords() {
-		lock.acquire();
 		try {
 			ClassTypeInfoRecord[] keys = new ClassTypeInfoRecord[getTypeCount()];
 			RecordIterator iter = worker.getTables().getTypeTable().iterator();
@@ -615,14 +549,12 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		} catch (IOException e) {
 			dbError(e);
 			return null;
-		} finally {
-			lock.release();
 		}
 	}
 
 	private Stream<ClassTypeInfoRecord> getRecordStream(ClassTypeInfoRecord[] records) {
 		return Arrays.stream(records)
-				.parallel();
+			.parallel();
 	}
 
 	@Override
@@ -631,13 +563,10 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		sort(monitor);
 		monitor.initialize(getTypeCount());
 		monitor.setMessage("Finding vtables");
-		TypeInfoArchiveChangeRecord changeRecord = null;
 		for (ClassTypeInfoDB type : getTypes(true)) {
 			monitor.checkCanceled();
 			try {
 				type.findVtable(dummy);
-				changeRecord = new TypeInfoArchiveChangeRecord(ChangeType.TYPE_UPDATED, type);
-				plugin.managerChanged(changeRecord);
 			} catch (CancelledException e) {
 				throw e;
 			} catch (Exception e) {
@@ -647,6 +576,8 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 			monitor.incrementProgress(1);
 		}
+		treeNodeManager.getRoot().removeAll();
+		treeNodeManager.generateTree();
 	}
 
 	private boolean isValidRecord(ClassTypeInfoRecord record) {
@@ -660,7 +591,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	private void sort(TaskMonitor monitor) throws CancelledException {
-		lock.acquire();
 		try {
 			Table classTable = worker.getTables().getTypeTable();
 			classTable.rebuild(monitor);
@@ -701,7 +631,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 					}
 				}
 			}
-			TypeInfoArchiveChangeRecord changeRecord = null;
 			for (ClassTypeInfoRecord record : getClassRecords()) {
 				monitor.checkCanceled();
 				AbstractClassTypeInfoDB type =
@@ -711,19 +640,14 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 					AbstractVtableDB vtableDB = (AbstractVtableDB) vtable;
 					vtableDB.setClassKey(record.getKey());
 				}
-				changeRecord = new TypeInfoArchiveChangeRecord(ChangeType.TYPE_UPDATED, type);
-				plugin.managerChanged(changeRecord);
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 	}
 
 
 	private void rebuildTable(long[] newKeys, TaskMonitor monitor) throws CancelledException {
-		lock.acquire();
 		try {
 			DBHandle handle = program.getDBHandle();
 			Table classTable = worker.getTables().getTypeTable();
@@ -777,8 +701,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			dbError(e);
 		} catch (DuplicateNameException e) {
 			throw new AssertException(e);
-		} finally {
-			lock.release();
 		}
 	}
 
@@ -825,34 +747,29 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	public TypeInfo getTypeInfo(Address address, boolean resolve) {
-		lock.acquire();
-		try {
-			if (containsClassKey(address) && resolve) {
-				return getType(address);
-			}
-			if (!isTypeInfo(address)) {
-				return null;
-			}
-			TypeInfo type = null;
-			if (isGnu()) {
-				type = TypeInfoFactory.getTypeInfo(program, address);
-			}
-			if (isVs()) {
-				TypeDescriptorModel model =
-					new TypeDescriptorModel(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);
-				try {
-					type = RttiModelWrapper.getWrapper(model, TaskMonitor.DUMMY);
-				} catch (CancelledException e) {
-					throw new AssertException(e);
-				}
-			}
-			if (type instanceof ClassTypeInfo && resolve) {
-				type = resolve((ClassTypeInfo) type);
-			}
-			return type;
-		} finally {
-			lock.release();
+		TypeInfo type = null;
+		if (containsClassKey(address) && resolve) {
+			return getType(address);
 		}
+		if (!isTypeInfo(address)) {
+			return null;
+		}
+		if (isGnu()) {
+			type = TypeInfoFactory.getTypeInfo(program, address);
+		}
+		if (isVs()) {
+			TypeDescriptorModel model =
+				new TypeDescriptorModel(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);
+			try {
+				type = RttiModelWrapper.getWrapper(model, TaskMonitor.DUMMY);
+			} catch (CancelledException e) {
+				throw new AssertException(e);
+			}
+		}
+		if (type instanceof ClassTypeInfo && resolve) {
+			type = resolve((ClassTypeInfo) type);
+		}
+		return type;
 	}
 
 	@Override
@@ -881,11 +798,11 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	@Override
 	public ClassTypeInfoDB getExternalClassTypeInfo(Address address) {
 		String mangled = Arrays.stream(program.getSymbolTable().getSymbols(address))
-				.map(Symbol::getName)
-				.filter(s -> s.startsWith("_ZTI"))
-				.filter(s -> !s.contains("@"))
-				.findFirst()
-				.orElse(null);
+			.map(Symbol::getName)
+			.filter(s -> s.startsWith("_ZTI"))
+			.filter(s -> !s.contains("@"))
+			.findFirst()
+			.orElse(null);
 		if (mangled != null) {
 			ArchivedClassTypeInfo type = plugin.getExternalClassTypeInfo(program, mangled);
 			if (type != null) {
@@ -906,13 +823,12 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 	}
 
 	@Override
-	public ClassTypeInfoDB getType(long key) {
+	public synchronized ClassTypeInfoDB getType(long key) {
 		return worker.getType(key);
 	}
 
 	@Override
 	public AbstractClassTypeInfoDB getType(UniversalID id) {
-		lock.acquire();
 		try {
 			Table table = worker.getTables().getTypeTable();
 			LongField field = new LongField(id.getValue());
@@ -923,8 +839,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 		return null;
 	}
@@ -991,16 +905,6 @@ public class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassTypeInfoMa
 		@Override
 		public final ClassTypeInfoManagerDB getManager() {
 			return ClassTypeInfoManagerDB.this;
-		}
-
-		@Override
-		final void acquireLock() {
-			lock.acquire();
-		}
-
-		@Override
-		final void releaseLock() {
-			lock.release();
 		}
 
 		@Override

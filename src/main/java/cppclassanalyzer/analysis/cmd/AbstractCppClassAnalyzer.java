@@ -55,7 +55,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	protected Program program;
 	protected TaskMonitor monitor;
 
-	protected ProgramClassTypeInfoManager manager;
+	private ProgramClassTypeInfoManager manager;
 
 	protected AbstractConstructorAnalysisCmd constructorAnalyzer;
 
@@ -96,7 +96,13 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 			return false;
 		}
 		init();
+		if (manager == null) {
+			return false;
+		}
 		try {
+			if (manager == null) {
+				return false;
+			}
 			repairInheritance();
 			analyzeVftables();
 			return true;

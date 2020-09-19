@@ -43,8 +43,6 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
-import ghidra.util.task.Task;
-import ghidra.util.task.TaskMonitor;
 
 import docking.ActionContext;
 import docking.Tool;
@@ -126,20 +124,13 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	@Override
 	protected void programActivated(Program program) {
 		currentManager = getManager(program);
-		if (currentManager != null) {
-			RunnableTask task =
-				new RunnableTask(() -> provider.getTree().managerOpened(currentManager));
-			tool.execute(task);
-		}
 	}
 
 	@Override
 	protected void programDeactivated(Program program) {
 		ClassTypeInfoManager manager = getManager(program);
-		if (manager != null) {
-			RunnableTask task =
-				new RunnableTask(() -> provider.getTree().managerClosed(manager));
-			tool.execute(task);
+		if (currentManager != null && currentManager.equals(manager)) {
+			currentManager = null;
 		}
 	}
 
@@ -164,13 +155,13 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	public void openArchive(File file, boolean updateable) throws IOException {
 		ClassTypeInfoManager manager =
 			ArchiveClassTypeInfoManager.open(this, file, updateable);
-		managerAdded(manager);
+		managers.add(manager);
 	}
 
 	@Override
 	public void createArchive(File file) throws IOException {
 		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.createManager(this, file);
-		managerAdded(manager);
+		managers.add(manager);
 	}
 
 	@Override
@@ -199,7 +190,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	}
 
 	private void projectManagerOpened(ClassTypeInfoManager manager) {
-		managerAdded(manager);
+		managers.add(manager);
 	}
 
 	public Clipboard getClipboard() {
@@ -274,16 +265,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	}
 
 	@Override
-	public void managerAdded(ClassTypeInfoManager manager) {
-		provider.getTree().managerOpened(manager);
-	}
-
-	@Override
-	public void managerRemoved(ClassTypeInfoManager manager) {
-		provider.getTree().managerClosed(manager);
-	}
-
-	@Override
 	public void archiveOpened(Archive archive) {
 		ClassTypeInfoManager manager = null;
 		try {
@@ -296,7 +277,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 			Msg.error(manager, e);
 		}
 		if (manager != null) {
-			managerAdded(manager);
 			managers.add(manager);
 		}
 	}
@@ -319,7 +299,6 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 		ClassTypeInfoManager manager = getManager(archive);
 		if (manager != null) {
 			managers.remove(manager);
-			managerRemoved(manager);
 		}
 	}
 
@@ -366,20 +345,5 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 			.filter(Objects::nonNull)
 			.findFirst()
 			.orElse(null);
-	}
-
-	private static class RunnableTask extends Task {
-
-		private final Runnable r;
-
-		RunnableTask(Runnable r) {
-			super("", false, false, false);
-			this.r = r;
-		}
-
-		@Override
-		public void run(TaskMonitor monitor) {
-			r.run();
-		}
 	}
 }

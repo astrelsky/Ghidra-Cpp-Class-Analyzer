@@ -181,7 +181,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		List<ReferenceAddressPair> refList = new LinkedList<>();
 		ProgramMemoryUtil.loadDirectReferenceList(
 			program, program.getDefaultPointerSize(), addresses.getMinAddress(),
-			addresses, refList, monitor);
+			addresses, refList, dummy);
 		monitor.setProgress(monitor.getMaximum());
 		for (ReferenceAddressPair ref : refList) {
 			monitor.checkCanceled();

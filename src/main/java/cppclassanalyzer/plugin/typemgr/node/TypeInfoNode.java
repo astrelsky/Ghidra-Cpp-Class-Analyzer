@@ -9,77 +9,62 @@ import java.util.stream.Collectors;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 
-import cppclassanalyzer.plugin.typemgr.icon.BlueGreenSwappedColorModel;
-import cppclassanalyzer.plugin.typemgr.icon.PurpleSwappedColorModel;
-import cppclassanalyzer.plugin.typemgr.icon.RedGreenSwappedColorModel;
 import ghidra.program.model.address.Address;
 
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
-import cppclassanalyzer.database.record.TypeInfoTreeNodeRecord;
-
+import cppclassanalyzer.plugin.typemgr.icon.*;
 import docking.widgets.tree.GTreeLazyNode;
 import docking.widgets.tree.GTreeNode;
 import generic.util.image.ImageUtils;
 import resources.ResourceManager;
 import resources.icons.ImageIconWrapper;
 
-import static cppclassanalyzer.database.schema.fields.TypeInfoTreeNodeSchemaFields.*;
-
 public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNode {
 
 	private final boolean isVirtual;
-	private final TypeInfoTreeNodeRecord record;
-	private NamespacePathNode nested;
 	private ClassTypeInfoDB type;
 	private ModifierType modifier;
+	private List<GTreeNode> nested = Collections.synchronizedList(new ArrayList<>());
 
-	private TypeInfoNode(ClassTypeInfoDB type) {
-		this(type, false);
+	TypeInfoNode(ClassTypeInfoDB type) {
+		this(type, (ModifierType) null);
 	}
 
-	private TypeInfoNode(ClassTypeInfoDB type, boolean isVirtual) {
-		this.isVirtual = isVirtual;
+	private TypeInfoNode(ClassTypeInfoDB type, ModifierType modifier) {
+		this.isVirtual = modifier == ModifierType.VIRTUAL;
 		this.type = type;
+
+		// will determine if type is also abstract
 		this.modifier = getModifier();
-		this.record = null;
-		this.nested = null;
 	}
 
-	TypeInfoNode(ClassTypeInfoDB type, TypeInfoTreeNodeRecord record) {
+	// conversion constructor
+	TypeInfoNode(ClassTypeInfoDB type, NamespacePathNode existing) {
 		this.isVirtual = false;
-		this.record = record;
 		this.type = type;
 		this.modifier = getModifier();
-		long[] kids = record.getLongArray(CHILDREN_KEYS);
-		if (kids.length > 0) {
-			this.nested = new NamespacePathNode(getManager(), record);
+		List<GTreeNode> children = new ArrayList<>(existing.getChildren());
+		children.forEach(existing::removeNode);
+		GTreeNode parent = existing.getParent();
+		parent.removeNode(existing);
+		parent.addNode(this);
+		nested.addAll(children);
+		for (GTreeNode node : nested) {
+			if (node instanceof TypeInfoNode) {
+				((TypeInfoNode) node).modifier = ModifierType.NESTED;
+			}
 		}
 	}
 
-	TypeInfoNode(ClassTypeInfoDB type, NamespacePathNode nested) {
-		this.isVirtual = false;
-		this.nested = nested;
-		this.record = nested.getRecord();
-		this.type = type;
-		this.modifier = getModifier();
-		record.setByteValue(TYPE_ID, TypeInfoTreeNodeRecord.TYPEINFO_NODE);
-		getManager().updateRecord(record);
-	}
-
 	private ModifierType getModifier() {
+		if (modifier == ModifierType.NESTED) {
+			return modifier;
+		}
 		if (type.isAbstract()) {
 			return isVirtual ? ModifierType.VIRTUAL_ABSTRACT : ModifierType.ABSTRACT;
 		}
 		return isVirtual ? ModifierType.VIRTUAL : ModifierType.NORMAL;
-	}
-
-	@Override
-	public void addNode(GTreeNode node) {
-		if (nested == null) {
-			nested = new NamespacePathNode(getManager(), record);
-		}
-		nested.addNode(node);
 	}
 
 	@Override
@@ -96,25 +81,6 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 	}
 
 	@Override
-	protected List<GTreeNode> generateChildren() {
-		List<GTreeNode> parents = Arrays.stream(type.getParentModels())
-			.map(TypeInfoNode::new)
-			.collect(Collectors.toList());
-		Set<GTreeNode> vParents = type.getVirtualParents()
-			.stream()
-			.map(ClassTypeInfoDB.class::cast)
-			.map(p -> new TypeInfoNode(p, true))
-			.collect(Collectors.toCollection(LinkedHashSet::new));
-		vParents.addAll(parents);
-		List<GTreeNode> result = new ArrayList<>(vParents);
-		if (nested != null) {
-			result.add(nested);
-		}
-		result.sort(null);
-		return result;
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;
@@ -128,6 +94,11 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 	@Override
 	public int hashCode() {
 		return type.hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return type.toString();
 	}
 
 	@Override
@@ -150,15 +121,19 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 		return !type.hasParent();
 	}
 
+	@Override
+	public void addNode(GTreeNode node) {
+		if (node instanceof TypeInfoNode) {
+			((TypeInfoNode) node).modifier = ModifierType.NESTED;
+		}
+		nested.add(node);
+	}
+
 	public ClassTypeInfoDB getType() {
 		return type;
 	}
 
 	public void typeUpdated(ClassTypeInfoDB type) {
-		if (getTypeKey() != type.getKey()) {
-			record.setLongValue(TYPE_KEY, type.getKey());
-			getManager().updateRecord(record);
-		}
 		this.type = type;
 		modifier = getModifier();
 	}
@@ -170,20 +145,6 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 		return type.getAddress();
 	}
 
-	private long getTypeKey() {
-		return record.getLongValue(TYPE_KEY);
-	}
-
-	@Override
-	public long getKey() {
-		return record.getKey();
-	}
-
-	@Override
-	public TypeInfoTreeNodeRecord getRecord() {
-		return record;
-	}
-
 	@Override
 	public TypeInfoTreeNodeManager getManager() {
 		return type.getManager().getTreeNodeManager();
@@ -193,13 +154,15 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 		NORMAL,
 		ABSTRACT,
 		VIRTUAL,
-		VIRTUAL_ABSTRACT;
+		VIRTUAL_ABSTRACT,
+		NESTED;
 
 		private static String[] MODIFIERS = new String[]{
 			"class",
 			"abstract class",
 			"virtual base class",
-			"virtual abstract base class"
+			"virtual abstract base class",
+			"nested class"
 		};
 
 		private static final ImageIcon CLASS_ICON = ResourceManager.loadImage("images/class.png");
@@ -208,7 +171,8 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 			CLASS_ICON,
 			createIcon(ABSTRACT),
 			createIcon(VIRTUAL),
-			createIcon(VIRTUAL_ABSTRACT)
+			createIcon(VIRTUAL_ABSTRACT),
+			createIcon(NESTED)
 		};
 
 		private static Icon createIcon(ModifierType type) {
@@ -225,6 +189,9 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 					break;
 				case VIRTUAL_ABSTRACT:
 					model = new PurpleSwappedColorModel(image.getColorModel());
+					break;
+				case NESTED:
+					model = new YellowSwappedColorModel(image.getColorModel());
 					break;
 				default:
 					break;
@@ -255,5 +222,26 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 		String getModifier() {
 			return MODIFIERS[ordinal()];
 		}
+	}
+
+	@Override
+	protected List<GTreeNode> generateChildren() {
+		List<GTreeNode> parents;
+		Set<GTreeNode> vParents;
+		synchronized (type.getManager()) {
+			parents = Arrays.stream(type.getParentModels())
+				.map(TypeInfoNode::new)
+				.collect(Collectors.toList());
+			vParents = type.getVirtualParents()
+				.stream()
+				.map(ClassTypeInfoDB.class::cast)
+				.map(p -> new TypeInfoNode(p, ModifierType.VIRTUAL))
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+		}
+		vParents.addAll(parents);
+		List<GTreeNode> result = new ArrayList<>(vParents);
+		result.addAll(nested);
+		result.sort(null);
+		return result;
 	}
 }

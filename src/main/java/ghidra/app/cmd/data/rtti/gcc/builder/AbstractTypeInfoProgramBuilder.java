@@ -17,17 +17,14 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.VtableModel;
 import ghidra.app.cmd.data.rtti.gcc.VtableUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
-import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.database.ProgramBuilder;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.RelocationTable;
-import ghidra.test.TestEnv;
 import ghidra.util.Msg;
 
 public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
@@ -42,18 +39,13 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 	protected AbstractTypeInfoProgramBuilder(String languageName, String compilerSpecID)
 			throws Exception {
 		super("TestProgram", languageName, compilerSpecID, null);
-		setupProgram();
 	}
 
 	protected abstract void setupMemory();
 
-	private void setupProgram() throws Exception {
+	public final void init() throws Exception {
 		setupMemory();
 		Program program = getProgram();
-		TestEnv env = new TestEnv();
-		PluginTool tool = env.launchDefaultTool();
-		tool.addPlugin(ClassTypeInfoManagerPlugin.class.getName());
-		env.open(program);
 		manager = CppClassAnalyzerUtils.getManager(program);
 		startTransaction();
 		typeMap = getTypeInfoMap();

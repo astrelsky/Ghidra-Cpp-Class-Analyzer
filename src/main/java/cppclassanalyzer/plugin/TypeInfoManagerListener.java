@@ -9,18 +9,6 @@ import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 public interface TypeInfoManagerListener {
 
 	/**
-	 * Invoked when a manager is opened
-	 * @param manager the opened manager
-	 */
-	void managerOpened(ClassTypeInfoManager manager);
-
-	/**
-	 * Invoked when a manager is closed
-	 * @param manager the closed manager
-	 */
-	void managerClosed(ClassTypeInfoManager manager);
-
-	/**
 	 * Invoked when a type has been added to a manager
 	 * @param type the added type
 	 */

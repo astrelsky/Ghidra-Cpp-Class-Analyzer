@@ -11,10 +11,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.SymbolPath;
-import ghidra.program.database.ProgramDB;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.GhidraClass;
@@ -23,12 +21,11 @@ import ghidra.program.model.symbol.Namespace;
 import org.junit.Test;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import generic.json.JSONParser;
 import generic.json.JSONToken;
 import resources.ResourceManager;
 
-public class ClassBuilderTest extends GenericGccRttiTest {
+public final class ClassBuilderTest extends X86GccRttiTest {
 
     private static final String SERIALIZED_FILE = "cpp_classes.json";
 
@@ -48,25 +45,25 @@ public class ClassBuilderTest extends GenericGccRttiTest {
         switch (parser.parse(data.toCharArray(), tokens)) {
             case JSMN_ERROR_INVAL:
                 throw new Exception("JSON contains invalid character");
-			case JSMN_ERROR_NOMEM:
+            case JSMN_ERROR_NOMEM:
                 throw new Exception("Not enough tokens");
-			case JSMN_ERROR_PART:
+            case JSMN_ERROR_PART:
                 throw new Exception("Malformed or missing JSON data");
-			case JSMN_SUCCESS:
-				break;
+            case JSMN_SUCCESS:
+                break;
         }
         Map<String, Object> namespaces =
             (Map<String, Object>) parser.convert(data.toCharArray(), tokens);
-        return namespaces.entrySet().stream()
-            .map(SerializedNamespace::new)
-            .collect(Collectors.toList());
+        return namespaces.entrySet()
+                .stream()
+                .map(SerializedNamespace::new)
+                .collect(Collectors.toList());
     }
 
     @Test
-	public void test() throws Exception {
-        X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
-        ProgramDB program = builder.getProgram();
-        ProgramClassTypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
+    public void test() throws Exception {
+        initialize();
+        ProgramClassTypeInfoManager manager = getManager();
         List<SerializedNamespace> namespaces = parseData();
         runGccRttiAnalyzer(program);
         runClassAnalyzer(program);
@@ -90,9 +87,10 @@ public class ClassBuilderTest extends GenericGccRttiTest {
             this.name = data.getKey();
             Map<String, Object> classData = (Map<String, Object>) data.getValue();
             SymbolPath path = new SymbolPath(name);
-            this.classes = classData.entrySet().stream()
-                .map(e -> new SerializedClass(path, e))
-                .collect(Collectors.toUnmodifiableList());
+            this.classes = classData.entrySet()
+                    .stream()
+                    .map(e -> new SerializedClass(path, e))
+                    .collect(Collectors.toUnmodifiableList());
         }
 
         List<SerializedClass> getClasses() {
@@ -116,9 +114,10 @@ public class ClassBuilderTest extends GenericGccRttiTest {
                 if (classData.containsKey("offsets")) {
                     Map<String, String> memberData =
                         (Map<String, String>) classData.get("offsets");
-                    this.members = memberData.entrySet().stream()
-                        .map(SerializedClassMember::new)
-                        .collect(Collectors.toUnmodifiableList());
+                    this.members = memberData.entrySet()
+                            .stream()
+                            .map(SerializedClassMember::new)
+                            .collect(Collectors.toUnmodifiableList());
                 } else {
                     this.members = Collections.emptyList();
                 }
@@ -139,13 +138,13 @@ public class ClassBuilderTest extends GenericGccRttiTest {
                 }
                 DataTypeComponent comp = struct.getComponentAt(member.getOffset());
                 assert comp != null
-                    : String.format("%s is missing %s at offset %d\n%s",
-                        name, member.getFieldName(), member.getOffset(), struct);
+                        : String.format("%s is missing %s at offset %d\n%s",
+                            name, member.getFieldName(), member.getOffset(), struct);
                 String fieldName = comp.getFieldName();
                 assert fieldName != null && fieldName.equals(member.getFieldName())
-                    : String.format(
-                        "%s at offset %d does not match the expected member %s in %s\n%s",
-                    fieldName, member.getOffset(), member.getFieldName(), name, struct);
+                        : String.format(
+                            "%s at offset %d does not match the expected member %s in %s\n%s",
+                            fieldName, member.getOffset(), member.getFieldName(), name, struct);
             }
             return true;
         }
@@ -180,4 +179,6 @@ public class ClassBuilderTest extends GenericGccRttiTest {
         }
 
     }
+
+    
 }

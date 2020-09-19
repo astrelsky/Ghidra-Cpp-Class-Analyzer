@@ -5,19 +5,15 @@ import java.util.stream.Collectors;
 
 import ghidra.app.cmd.data.rtti.GnuVtable;
 import ghidra.app.cmd.data.rtti.Vtable;
-import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.listing.Program;
-import ghidra.util.task.TaskMonitor;
 
 import org.junit.Test;
 
-public class VttModelTest extends GenericGccRttiTest {
+public class VttModelTest extends X86GccRttiTest {
 
 	@Test
 	public void validationTest() throws Exception {
-		X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
+		initialize();
 		for (VttModel vtt : builder.getVttList()) {
 			assert vtt.isValid();
 		}
@@ -25,14 +21,12 @@ public class VttModelTest extends GenericGccRttiTest {
 
 	@Test
 	public void locationTest() throws Exception {
-		X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
-		Program program = builder.getProgram();
-		ProgramClassTypeInfoManager manager = builder.getManager();
-		manager.findVtables(TaskMonitor.DUMMY, null);
+		initialize();
+		runGccRttiAnalyzer(program);
 		Set<Address> addresses = builder.getVttStream()
-										.map(VttModel::getAddress)
-										.collect(Collectors.toSet());
-		for (Vtable vtable : manager.getVtables()) {
+			.map(VttModel::getAddress)
+			.collect(Collectors.toSet());
+		for (Vtable vtable : getManager().getVtables()) {
 			VttModel vtt = VtableUtils.getVttModel(program, (GnuVtable) vtable);
 			if (vtt.isValid()) {
 				assert addresses.remove(vtt.getAddress())

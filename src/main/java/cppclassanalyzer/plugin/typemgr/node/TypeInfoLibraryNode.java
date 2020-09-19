@@ -13,11 +13,6 @@ public final class TypeInfoLibraryNode extends AbstractSingleManagerNode {
 	}
 
 	@Override
-	AbstractManagerNode rebuild() {
-		return null;
-	}
-
-	@Override
 	public boolean isEditable() {
 		return true;
 	}

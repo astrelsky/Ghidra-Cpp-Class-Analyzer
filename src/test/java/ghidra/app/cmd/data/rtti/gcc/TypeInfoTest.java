@@ -3,12 +3,11 @@ package ghidra.app.cmd.data.rtti.gcc;
 import java.util.function.Predicate;
 
 import ghidra.app.cmd.data.rtti.TypeInfo;
-import ghidra.app.cmd.data.rtti.gcc.builder.X86TypeInfoProgramBuilder;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 
 import org.junit.Test;
 
-public class TypeInfoTest extends GenericGccRttiTest {
+public class TypeInfoTest extends X86GccRttiTest {
 
 	private static void validate(TypeInfo type) {
 		assert type.getDataType() != null :
@@ -18,7 +17,7 @@ public class TypeInfoTest extends GenericGccRttiTest {
 
 	@Test
 	public void validationTest() throws Exception {
-		X86TypeInfoProgramBuilder builder = new X86TypeInfoProgramBuilder();
+		initialize();
 		builder.getTypeInfoStream()
 			.filter(Predicate.not(FundamentalTypeInfoModel.class::isInstance))
 			.forEach(TypeInfoTest::validate);

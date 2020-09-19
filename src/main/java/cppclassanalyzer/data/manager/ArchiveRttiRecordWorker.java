@@ -96,7 +96,6 @@ abstract class ArchiveRttiRecordWorker extends
 	}
 
 	public final long getTypeKey(String symbolName) {
-		acquireLock();
 		try {
 			StringField field = new StringField(symbolName);
 			long[] results = getTables().getTypeTable().findRecords(
@@ -106,14 +105,11 @@ abstract class ArchiveRttiRecordWorker extends
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			releaseLock();
 		}
 		return INVALID_KEY;
 	}
 
 	public final long getVtableKey(String symbolName) {
-		acquireLock();
 		try {
 			StringField field = new StringField(symbolName);
 			long[] results = getTables().getVtableTable().findRecords(
@@ -123,8 +119,6 @@ abstract class ArchiveRttiRecordWorker extends
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			releaseLock();
 		}
 		return INVALID_KEY;
 	}
@@ -166,7 +160,6 @@ abstract class ArchiveRttiRecordWorker extends
 		if (symbolName.isBlank() || !symbolName.startsWith(MANGLED_TYPEINFO_PREFIX)) {
 			return null;
 		}
-		acquireLock();
 		try {
 			db.Field f = new StringField(symbolName);
 			long[] keys = getTables().getTypeTable().findRecords(
@@ -176,8 +169,6 @@ abstract class ArchiveRttiRecordWorker extends
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			releaseLock();
 		}
 		return null;
 	}

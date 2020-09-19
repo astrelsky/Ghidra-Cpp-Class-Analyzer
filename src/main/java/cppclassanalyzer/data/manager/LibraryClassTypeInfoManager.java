@@ -16,7 +16,6 @@ import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
 import cppclassanalyzer.database.utils.TransactionHandler;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
-import db.DBHandle;
 
 import ghidra.program.database.DatabaseObject;
 import ghidra.program.model.data.DataTypeManager;
@@ -37,12 +36,12 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 	private String name;
 
 	LibraryClassTypeInfoManager(ProjectClassTypeInfoManager manager, ArchivedRttiTablePair tables,
-			DBHandle dbHandle, String name) {
+			String name) {
 		this.manager = manager;
-		this.treeNodeManager =
-			new TypeInfoTreeNodeManager(this, dbHandle, name);
 		this.worker = new RttiRecordWorker(tables, new ArchivedRttiCachePair());
 		this.name = name;
+		this.treeNodeManager = new TypeInfoTreeNodeManager(manager.getPlugin(), this);
+		treeNodeManager.generateTree();
 	}
 
 	ArchivedRttiTablePair getTables() {
@@ -154,16 +153,6 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 
 		RttiRecordWorker(ArchivedRttiTablePair tables, ArchivedRttiCachePair caches) {
 			super(LibraryClassTypeInfoManager.this, tables, caches, getHandler());
-		}
-
-		@Override
-		void acquireLock() {
-			manager.acquireLock();
-		}
-
-		@Override
-		void releaseLock() {
-			manager.releaseLock();
 		}
 
 		@Override

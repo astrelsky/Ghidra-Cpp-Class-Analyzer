@@ -45,9 +45,6 @@ public interface ClassTypeInfoManagerService {
 
 	public List<ClassTypeInfoManager> getManagers();
 
-	public void managerAdded(ClassTypeInfoManager manager);
-	public void managerRemoved(ClassTypeInfoManager manager);
-
 	public GTree getTree();
 
 	public static boolean isEnabled(Program program) {

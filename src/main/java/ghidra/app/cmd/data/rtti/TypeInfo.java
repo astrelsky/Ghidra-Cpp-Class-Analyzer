@@ -25,7 +25,7 @@ public interface TypeInfo {
 	 * Gets the namespace for this TypeInfo
 	 * @return the TypeInfo's namespace
 	 */
-	 Namespace getNamespace();
+	Namespace getNamespace();
 
 	/**
 	 * Gets The TypeInfo's typename string

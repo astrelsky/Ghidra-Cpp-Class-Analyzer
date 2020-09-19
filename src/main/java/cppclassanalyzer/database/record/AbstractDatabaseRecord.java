@@ -84,168 +84,168 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 	}
 
 	@Override
-	public final byte[] getBinaryData(T type) {
+	public final synchronized byte[] getBinaryData(T type) {
 		return record.getBinaryData(type.getIndex());
 	}
 
 	@Override
-	public final boolean getBooleanValue(T type) {
+	public final synchronized boolean getBooleanValue(T type) {
 		return record.getBooleanValue(type.getIndex());
 	}
 
 	@Override
-	public final byte getByteValue(T type) {
+	public final synchronized byte getByteValue(T type) {
 		return record.getByteValue(type.getIndex());
 	}
 
 	@Override
-	public final int getColumnCount() {
+	public final synchronized int getColumnCount() {
 		return record.getColumnCount();
 	}
 
 	@Override
-	public final Field getFieldValue(T type) {
+	public final synchronized Field getFieldValue(T type) {
 		return record.getFieldValue(type.getIndex());
 	}
 
 	@Override
-	public final int getIntValue(T type) {
+	public final synchronized int getIntValue(T type) {
 		return record.getIntValue(type.getIndex());
 	}
 
 	@Override
-	public final long getKey() {
+	public final synchronized long getKey() {
 		return record.getKey();
 	}
 
 	@Override
-	public final Field getKeyField() {
+	public final synchronized Field getKeyField() {
 		return record.getKeyField();
 	}
 
 	@Override
-	public final long getLongValue(T type) {
+	public final synchronized long getLongValue(T type) {
 		return record.getLongValue(type.getIndex());
 	}
 
 	@Override
-	public final short getShortValue(T type) {
+	public final synchronized short getShortValue(T type) {
 		return record.getShortValue(type.getIndex());
 	}
 
 	@Override
-	public final String getStringValue(T type) {
+	public final synchronized String getStringValue(T type) {
 		return record.getString(type.getIndex());
 	}
 
 	@Override
-	public final long[] getLongArray(T type) {
+	public final synchronized long[] getLongArray(T type) {
 		ByteBuffer buf = getBuffer(type);
 		return getLongArray(buf);
 	}
 
 	@Override
-	public final int[] getIntArray(T type) {
+	public final synchronized int[] getIntArray(T type) {
 		ByteBuffer buf = getBuffer(type);
 		return getIntArray(buf);
 	}
 
 	@Override
-	public final int hashCode() {
+	public final synchronized int hashCode() {
 		return record.hashCode();
 	}
 
 	@Override
-	public final boolean hasSameSchema(db.Record other) {
+	public final synchronized boolean hasSameSchema(db.Record other) {
 		return other.hasSameSchema(getSchema());
 	}
 
 	@Override
-	public final boolean hasSameSchema(Schema schema) {
+	public final synchronized boolean hasSameSchema(Schema schema) {
 		return record.hasSameSchema(schema);
 	}
 
 	@Override
-	public final boolean isDirty() {
+	public final synchronized boolean isDirty() {
 		return record.isDirty();
 	}
 
 	@Override
-	public final int length() {
+	public final synchronized int length() {
 		return record.length();
 	}
 
 	@Override
-	public final void read(Buffer buf, int offset) throws IOException {
+	public final synchronized void read(Buffer buf, int offset) throws IOException {
 		record.read(buf, offset);
 	}
 
 	@Override
-	public final void setBinaryData(T type, byte[] bytes) {
+	public final synchronized void setBinaryData(T type, byte[] bytes) {
 		record.setBinaryData(type.getIndex(), bytes);
 	}
 
 	@Override
-	public final void setBooleanValue(T type, boolean value) {
+	public final synchronized void setBooleanValue(T type, boolean value) {
 		record.setBooleanValue(type.getIndex(), value);
 	}
 
 	@Override
-	public final void setByteValue(T type, byte value) {
+	public final synchronized void setByteValue(T type, byte value) {
 		record.setByteValue(type.getIndex(), value);
 	}
 
 	@Override
-	public final void setFieldValue(T type, Field field) {
+	public final synchronized void setFieldValue(T type, Field field) {
 		record.setField(type.getIndex(), field);
 	}
 
 	@Override
-	public final void setIntValue(T type, int value) {
+	public final synchronized void setIntValue(T type, int value) {
 		record.setIntValue(type.getIndex(), value);
 	}
 
 	@Override
-	public final void setKey(long key) {
+	public final synchronized void setKey(long key) {
 		record.setKey(key);
 	}
 
 	@Override
-	public final void setKey(Field key) {
+	public final synchronized void setKey(Field key) {
 		record.setKey(key);
 	}
 
 	@Override
-	public final void setLongValue(T type, long value) {
+	public final synchronized void setLongValue(T type, long value) {
 		record.setLongValue(type.getIndex(), value);
 	}
 
 	@Override
-	public final void setShortValue(T type, short value) {
+	public final synchronized void setShortValue(T type, short value) {
 		record.setShortValue(type.getIndex(), value);
 	}
 
 	@Override
-	public final void setStringValue(T type, String value) {
+	public final synchronized void setStringValue(T type, String value) {
 		record.setString(type.getIndex(), value);
 	}
 
 	@Override
-	public final void setLongArray(T type, long[] values) {
+	public final synchronized void setLongArray(T type, long[] values) {
 		ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES + Long.BYTES * values.length);
 		setLongArray(buf, values);
 		record.setBinaryData(type.getIndex(), buf.array());
 	}
 
 	@Override
-	public final void setIntArray(T type, int[] values) {
+	public final synchronized void setIntArray(T type, int[] values) {
 		ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES + Integer.BYTES * values.length);
 		setIntArray(buf, values);
 		record.setBinaryData(type.getIndex(), buf.array());
 	}
 
 	@Override
-	public final void write(Buffer buf, int offset) throws IOException {
+	public final synchronized void write(Buffer buf, int offset) throws IOException {
 		record.write(buf, offset);
 	}
 

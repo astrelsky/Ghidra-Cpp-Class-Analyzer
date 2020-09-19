@@ -48,6 +48,7 @@ Inheritance Modeling via the Type Info Tree
 Class Type Info Color Coding
 ----------------------------
 
+![#FFFF00](https://via.placeholder.com/15/ffff00/000000?text=+) - Nested Class  
 ![#28a745](https://via.placeholder.com/15/28a745/000000?text=+) - Basic Class  
 ![#d73a49](https://via.placeholder.com/15/d73a49/000000?text=+) - Abstract Class  
 ![#0366d6](https://via.placeholder.com/15/0366d6/000000?text=+) - Virtual Class  

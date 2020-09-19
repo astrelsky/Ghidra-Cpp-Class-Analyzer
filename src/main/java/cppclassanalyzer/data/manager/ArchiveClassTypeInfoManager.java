@@ -27,7 +27,6 @@ import ghidra.program.model.data.StandAloneDataTypeManager;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
-import ghidra.util.Lock;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
@@ -58,7 +57,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	private final File file;
 	private final ClassTypeInfoManagerPlugin plugin;
 	private final RttiRecordWorker worker;
-	private final Lock lock;
 	private final TypeInfoTreeNodeManager treeNodeManager;
 
 	private ArchiveClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin,
@@ -66,8 +64,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		super(new ResourceFile(file), openMode);
 		this.plugin = plugin;
 		this.file = file;
-		lock = new Lock(getClass().getSimpleName());
-		this.treeNodeManager = new TypeInfoTreeNodeManager(this, dbHandle);
 		ArchivedClassTypeInfoDatabaseTable classTable = getClassTable();
 		ArchivedGnuVtableDatabaseTable vtableTable = getVtableTable();
 		if (classTable == null) {
@@ -80,6 +76,8 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		ArchivedRttiTablePair tables = new ArchivedRttiTablePair(classTable, vtableTable);
 		this.worker = new RttiRecordWorker(tables, caches);
 		this.name = FilenameUtils.removeExtension(file.getName());
+		this.treeNodeManager = new TypeInfoTreeNodeManager(plugin, this);
+		treeNodeManager.generateTree();
 	}
 
 	@Override
@@ -146,7 +144,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 
 	@Override
 	public void close() {
-		lock.acquire();
 		try {
 			if (dbHandle.isChanged()) {
 				File tmp = new File(file.getParentFile(), file.getName() + "_tmp");
@@ -162,24 +159,16 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 			throw new AssertException(e);
 		} catch (IOException ioe) {
 			worker.dbError(ioe);
-		} finally {
-			lock.release();
 		}
 	}
 
 	@Override
 	public boolean isChanged() {
-		lock.acquire();
-		try {
-			return dbHandle.isChanged();
-		} finally {
-			lock.release();
-		}
+		return dbHandle.isChanged();
 	}
 
 	@Override
 	public void save() {
-		lock.acquire();
 		try {
 			if (dbHandle.isChanged()) {
 				((PackedDBHandle) dbHandle).save(TaskMonitor.DUMMY);
@@ -188,8 +177,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 			worker.dbError(e);
 		} catch (CancelledException ce) {
 			throw new AssertException(ce);
-		} finally {
-			lock.release();
 		}
 	}
 
@@ -231,7 +218,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 
 	public void populate(ProgramClassTypeInfoManager manager, TaskMonitor monitor)
 			throws CancelledException {
-		lock.acquire();
 		long id = dbHandle.startTransaction();
 		try {
 			monitor.initialize(manager.getTypeCount());
@@ -252,19 +238,12 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 			dbHandle.endTransaction(id, true);
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			lock.release();
 		}
 	}
 
 	@Override
 	public int getTypeCount() {
-		lock.acquire();
-		try {
-			return worker.getTables().getTypeTable().getRecordCount();
-		} finally {
-			lock.release();
-		}
+		return worker.getTables().getTypeTable().getRecordCount();
 	}
 
 	@Override
@@ -319,16 +298,6 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 
 		RttiRecordWorker(ArchivedRttiTablePair tables, ArchivedRttiCachePair caches) {
 			super(ArchiveClassTypeInfoManager.this, tables, caches, getHandler());
-		}
-
-		@Override
-		void acquireLock() {
-			lock.acquire();
-		}
-
-		@Override
-		void releaseLock() {
-			lock.release();
 		}
 
 		@Override

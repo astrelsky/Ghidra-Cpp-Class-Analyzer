@@ -35,11 +35,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		this.caches = caches;
 		this.handler = handler;
 	}
-
-	abstract void acquireLock();
-
-	abstract void releaseLock();
-
 	abstract long getTypeKey(ClassTypeInfo type);
 
 	abstract long getVtableKey(Vtable vtable);
@@ -55,30 +50,19 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 	abstract ClassTypeInfoManagerPlugin getPlugin();
 
 	private T3 createTypeRecord(long key) throws IOException {
-		acquireLock();
-		try {
-			T3 record = tables.getTypeSchema().getNewRecord(key);
-			tables.getTypeTable().putRecord(record.getRecord());
-			return record;
-		} finally {
-			releaseLock();
-		}
+		T3 record = tables.getTypeSchema().getNewRecord(key);
+		tables.getTypeTable().putRecord(record.getRecord());
+		return record;
 	}
 
 	private T4 createVtableRecord(long key) throws IOException {
-		acquireLock();
-		try {
-			T4 record = tables.getVtableSchema().getNewRecord(key);
-			tables.getVtableTable().putRecord(record.getRecord());
-			return record;
-		} finally {
-			releaseLock();
-		}
+		T4 record = tables.getVtableSchema().getNewRecord(key);
+		tables.getVtableTable().putRecord(record.getRecord());
+		return record;
 	}
 
 	@Override
 	public final T3 getTypeRecord(long key) {
-		acquireLock();
 		try {
 			db.Record record = tables.getTypeTable().getRecord(key);
 			if (record != null) {
@@ -86,15 +70,12 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			releaseLock();
 		}
 		return null;
 	}
 
 	@Override
 	public final T4 getVtableRecord(long key) {
-		acquireLock();
 		try {
 			db.Record record = tables.getVtableTable().getRecord(key);
 			if (record != null) {
@@ -102,8 +83,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			}
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			releaseLock();
 		}
 		return null;
 	}
@@ -113,7 +92,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		if (!record.isDirty()) {
 			return;
 		}
-		acquireLock();
 		try {
 			handler.startTransaction("Updating Record");
 			if (record.hasSameSchema(tables.getTypeSchema())) {
@@ -128,7 +106,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			dbError(e);
 		} finally {
 			handler.endTransaction();
-			releaseLock();
 		}
 	}
 
@@ -156,7 +133,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		if (key != INVALID_KEY) {
 			return getType(key);
 		}
-		acquireLock();
 		try {
 			handler.startTransaction();
 			key = getClassKey();
@@ -175,7 +151,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			dbError(e);
 		} finally {
 			handler.endTransaction();
-			releaseLock();
 		}
 		return null;
 	}
@@ -186,7 +161,6 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 		if (key != INVALID_KEY) {
 			return getVtable(key);
 		}
-		acquireLock();
 		try {
 			handler.startTransaction();
 			key = getVtableKey();
@@ -196,63 +170,42 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			dbError(e);
 		} finally {
 			handler.endTransaction();
-			releaseLock();
 		}
 		return null;
 	}
 
 	@Override
 	public final T1 getType(long key) {
-		acquireLock();
-		try {
-			T3 record = getTypeRecord(key);
-			if (record == null) {
-				return null;
-			}
-			T1 type = caches.getTypeCache().get(record.getRecord());
-			if (type == null) {
-				type = buildType(record);
-			}
-			return type;
-		} finally {
-			releaseLock();
+		T3 record = getTypeRecord(key);
+		if (record == null) {
+			return null;
 		}
+		T1 type = caches.getTypeCache().get(record.getRecord());
+		if (type == null) {
+			type = buildType(record);
+		}
+		return type;
 	}
 
 	@Override
 	public final T2 getVtable(long key) {
-		acquireLock();
-		try {
-			T4 record = getVtableRecord(key);
-			if (record == null) {
-				return null;
-			}
-			T2 vtable = caches.getVtableCache().get(record.getRecord());
-			if (vtable == null) {
-				vtable = buildVtable(record);
-			}
-			return vtable;
-		} finally {
-			releaseLock();
+		T4 record = getVtableRecord(key);
+		if (record == null) {
+			return null;
 		}
+		T2 vtable = caches.getVtableCache().get(record.getRecord());
+		if (vtable == null) {
+			vtable = buildVtable(record);
+		}
+		return vtable;
 	}
 
 	final long getClassKey() {
-		acquireLock();
-		try {
-			return tables.getTypeTable().getKey();
-		} finally {
-			releaseLock();
-		}
+		return tables.getTypeTable().getKey();
 	}
 
 	final long getVtableKey() {
-		acquireLock();
-		try {
-			return tables.getVtableTable().getKey();
-		} finally {
-			releaseLock();
-		}
+		return tables.getVtableTable().getKey();
 	}
 
 	final Stream<ClassTypeInfoDB> getTypeStream() {

@@ -86,8 +86,8 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		this.archive = archive;
 		this.plugin = plugin;
 		setDataTypeArchive(getDB(archive));
+		this.treeNodeManager = new TypeInfoTreeNodeManager(plugin, this);
 		this.libMap = new LibraryMap();
-		this.treeNodeManager = new TypeInfoTreeNodeManager(this, getDBHandle(archive));
 	}
 
 	private static DataTypeArchiveDB getDB(ProjectArchive archive) {
@@ -113,77 +113,49 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	private ArchivedClassTypeInfoDatabaseTable getClassTable(String name)
 			throws IOException {
-		acquireLock();
-		try {
-			return new ArchivedClassTypeInfoDatabaseTable(dbHandle.getTable(name));
-		} finally {
-			releaseLock();
-		}
+		return new ArchivedClassTypeInfoDatabaseTable(dbHandle.getTable(name));
 	}
 
 	private ArchivedGnuVtableDatabaseTable getVtableTable(String name)
 			throws IOException {
-		acquireLock();
-		try {
-			return new ArchivedGnuVtableDatabaseTable(dbHandle.getTable(name));
-		} finally {
-			releaseLock();
-		}
+		return new ArchivedGnuVtableDatabaseTable(dbHandle.getTable(name));
 	}
 
 	private ArchivedClassTypeInfoDatabaseTable createClassTable(String name) throws IOException {
-		acquireLock();
-		try {
-			Table classTable = dbHandle.createTable(
-				name + " " + ArchivedClassTypeInfo.TABLE_NAME,
-				ArchivedClassTypeInfoSchema.SCHEMA,
-				ArchivedClassTypeInfoSchema.INDEXED_COLUMNS);
-			return new ArchivedClassTypeInfoDatabaseTable(classTable);
-		} finally {
-			releaseLock();
-		}
+		Table classTable = dbHandle.createTable(
+			name + " " + ArchivedClassTypeInfo.TABLE_NAME,
+			ArchivedClassTypeInfoSchema.SCHEMA,
+			ArchivedClassTypeInfoSchema.INDEXED_COLUMNS);
+		return new ArchivedClassTypeInfoDatabaseTable(classTable);
 	}
 
 	private ArchivedGnuVtableDatabaseTable createVtableTable(String name) throws IOException {
-		acquireLock();
-		try {
-			Table vtableTable = dbHandle.createTable(
-				name + " " + ArchivedGnuVtable.TABLE_NAME,
-				ArchivedGnuVtableSchema.SCHEMA,
-				ArchivedGnuVtableSchema.INDEXED_COLUMNS);
-			return new ArchivedGnuVtableDatabaseTable(vtableTable);
-		} finally {
-			releaseLock();
-		}
+		Table vtableTable = dbHandle.createTable(
+			name + " " + ArchivedGnuVtable.TABLE_NAME,
+			ArchivedGnuVtableSchema.SCHEMA,
+			ArchivedGnuVtableSchema.INDEXED_COLUMNS);
+		return new ArchivedGnuVtableDatabaseTable(vtableTable);
 	}
 
 	private void checkForManager(Program program) throws UnresolvedClassTypeInfoException {
-		acquireLock();
-		try {
-			if (!libMap.containsKey(program.getName())) {
-				throw new UnresolvedClassTypeInfoException(program);
-			}
-		} finally {
-			releaseLock();
+		if (!libMap.containsKey(program.getName())) {
+			throw new UnresolvedClassTypeInfoException(program);
 		}
 	}
 
 	private LibraryClassTypeInfoManager getManager(String name) {
-		acquireLock();
 		try {
 			if (!(libMap.containsKey(name))) {
 				ArchivedClassTypeInfoDatabaseTable classTable = createClassTable(name);
 				ArchivedGnuVtableDatabaseTable vtableTable = createVtableTable(name);
 				ArchivedRttiTablePair pair = new ArchivedRttiTablePair(classTable, vtableTable);
 				LibraryClassTypeInfoManager manager =
-					new LibraryClassTypeInfoManager(this, pair, dbHandle, name);
+					new LibraryClassTypeInfoManager(this, pair, name);
 				libMap.put(name, manager);
 			}
 			return libMap.get(name);
 		} catch (IOException e) {
 			dbError(e);
-		} finally {
-			releaseLock();
 		}
 		return null;
 	}
@@ -228,20 +200,15 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	@Override
 	public ClassTypeInfoDB getType(String symbolName) throws UnresolvedClassTypeInfoException {
-		acquireLock();
-		try {
-			for (LibraryClassTypeInfoManager manager : libMap.values()) {
-				ClassTypeInfoDB type = manager.getType(symbolName);
-				if (type != null) {
-					return type;
-				}
+		for (LibraryClassTypeInfoManager manager : libMap.values()) {
+			ClassTypeInfoDB type = manager.getType(symbolName);
+			if (type != null) {
+				return type;
 			}
-			String msg =
-				"Unable to locate an archived ClassTypeInfo with symbol name " + symbolName;
-			throw new UnresolvedClassTypeInfoException(msg);
-		} finally {
-			releaseLock();
 		}
+		String msg =
+			"Unable to locate an archived ClassTypeInfo with symbol name " + symbolName;
+		throw new UnresolvedClassTypeInfoException(msg);
 	}
 
 	@Override
@@ -251,35 +218,17 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	@Override
 	public Stream<ClassTypeInfoDB> getTypeStream() {
-		acquireLock();
-		try {
-			return libMap.values()
-					.stream()
-					.flatMap(ClassTypeInfoManager::getTypeStream);
-		} finally {
-			releaseLock();
-		}
+		return libMap.values()
+			.stream()
+			.flatMap(ClassTypeInfoManager::getTypeStream);
 	}
 
 	@Override
 	public int getTypeCount() {
-		acquireLock();
-		try {
-			return libMap.values()
-				.stream()
-				.mapToInt(ClassTypeInfoManager::getTypeCount)
-				.sum();
-		} finally {
-			releaseLock();
-		}
-	}
-
-	void acquireLock() {
-		getDB(archive).getLock().acquire();
-	}
-
-	void releaseLock() {
-		getDB(archive).getLock().release();
+		return libMap.values()
+			.stream()
+			.mapToInt(ClassTypeInfoManager::getTypeCount)
+			.sum();
 	}
 
 	@Override
@@ -364,10 +313,8 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		for (ClassTypeInfoManager manager : managers) {
 			monitor.checkCanceled();
 			String msg = String.format(format, manager.getName(), ++i, size);
-			//int id = startTransaction(msg);
 			monitor.setMessage(msg);
 			doInsert(manager, monitor);
-			//endTransaction(id, true);
 		}
 	}
 
@@ -381,17 +328,11 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			return;
 		}
 		LibraryClassTypeInfoManager libManager = getManager(manager.getName());
-		plugin.managerAdded(libManager);
-		acquireLock();
-		try {
-			monitor.initialize(manager.getTypeCount());
-			for (ClassTypeInfo type : manager.getTypes()) {
-				monitor.checkCanceled();
-				libManager.resolve(type);
-				monitor.incrementProgress(1);
-			}
-		} finally {
-			releaseLock();
+		monitor.initialize(manager.getTypeCount());
+		for (ClassTypeInfo type : manager.getTypes()) {
+			monitor.checkCanceled();
+			libManager.resolve(type);
+			monitor.incrementProgress(1);
 		}
 	}
 
@@ -412,6 +353,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	@Override
 	public void close() {
 		archive.close();
+		treeNodeManager.dispose();
 	}
 
 	/**
@@ -512,7 +454,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		private static final String NAME = "LibraryMap";
 		private static final int NAME_ORDINAL = 0;
 
-		private final HashMap<String, LibraryClassTypeInfoManager> libMap;
+		private final Map<String, LibraryClassTypeInfoManager> libMap;
 		private final Table table;
 
 		LibraryMap() {
@@ -525,7 +467,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				}
 			}
 			this.table = tmp;
-			this.libMap = new HashMap<>(table.getRecordCount());
+			this.libMap = Collections.synchronizedMap(new HashMap<>(table.getRecordCount()));
 			fillMap();
 		}
 
@@ -545,16 +487,10 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 					String name = record.getString(0);
 					String typeTableName = record.getString(1);
 					String vtableTableName = record.getString(2);
-					ArchivedRttiTablePair tables =
-						new ArchivedRttiTablePair(
-							getClassTable(typeTableName),
-							getVtableTable(vtableTableName));
-					LibraryClassTypeInfoManager man =
-						new LibraryClassTypeInfoManager(
-							ProjectClassTypeInfoManager.this,
-							tables,
-							dbHandle,
-							name);
+					ArchivedRttiTablePair tables = new ArchivedRttiTablePair(
+						getClassTable(typeTableName), getVtableTable(vtableTableName));
+					LibraryClassTypeInfoManager man = new LibraryClassTypeInfoManager(
+						ProjectClassTypeInfoManager.this, tables, name);
 					libMap.put(name, man);
 				}
 			} catch (IOException e) {
@@ -567,7 +503,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		}
 
 		void put(String name, LibraryClassTypeInfoManager man) {
-			acquireLock();
 			try {
 				libMap.put(name, man);
 				ArchivedRttiTablePair tables = man.getTables();
@@ -578,13 +513,10 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				table.putRecord(record);
 			} catch (IOException e) {
 				dbError(e);
-			} finally {
-				releaseLock();
 			}
 		}
 
 		db.Record getRecord(String name) {
-			acquireLock();
 			try {
 				StringField nameField = new StringField(name);
 				long[] keys = table.findRecords(nameField, NAME_ORDINAL);
@@ -596,8 +528,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				}
 			} catch (IOException e) {
 				dbError(e);
-			} finally {
-				releaseLock();
 			}
 			return null;
 		}
@@ -615,7 +545,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			}
 			int id = startTransaction("Renaming "+oldName+" to "+newName);
 			boolean success = false;
-			acquireLock();
 			try {
 				db.Record record = getRecord(oldName);
 				if (record == null) {
@@ -631,7 +560,6 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 				dbError(e);
 			} finally {
 				endTransaction(id, success);
-				releaseLock();
 			}
 		}
 	}
@@ -657,14 +585,9 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		}
 
 		private void rename(Table table, int index) throws DuplicateNameException {
-			acquireLock();
-			try {
-				String oldName = table.getName();
-				table.setName(oldName.replace(manager.getName(), name));
-				record.setString(index, table.getName());
-			} finally {
-				releaseLock();
-			}
+			String oldName = table.getName();
+			table.setName(oldName.replace(manager.getName(), name));
+			record.setString(index, table.getName());
 		}
 
 		LibraryClassTypeInfoManager getManager() {

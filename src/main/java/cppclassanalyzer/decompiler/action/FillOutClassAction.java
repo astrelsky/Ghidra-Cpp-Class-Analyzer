@@ -33,7 +33,7 @@ public class FillOutClassAction extends AbstractNonPackageDecompilerAction {
 		if (manager == null) {
 			return false;
 		}
-		return manager.lockAndRun(() -> manager.getType(context.getFunction()) != null, false);
+		return manager.getType(context.getFunction()) != null;
 	}
 
 	@Override
