@@ -40,7 +40,13 @@ public final class EnumTypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private EnumTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new EnumTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public EnumTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

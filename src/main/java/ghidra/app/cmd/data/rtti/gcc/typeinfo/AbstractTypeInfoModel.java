@@ -8,7 +8,7 @@ import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.app.util.demangler.DemangledDataType;
 import ghidra.app.util.demangler.DemangledFunctionReference;
 import ghidra.app.util.demangler.DemangledObject;
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.manager.ItaniumAbiClassTypeInfoManager;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.address.Address;
@@ -39,7 +39,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 
 	protected final Program program;
 	protected final Address address;
-	protected final ProgramClassTypeInfoManager manager;
+	protected final ItaniumAbiClassTypeInfoManager manager;
 	private DataType dataType = null;
 
 	protected String typeName = DEFAULT_TYPENAME;
@@ -53,7 +53,7 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 	private static final Pattern FUNCTION_PATTERN = Pattern.compile("(.*)\\S*?\\((.*)\\)");
 
 	protected AbstractTypeInfoModel(Program program, Address address) {
-		this.manager = CppClassAnalyzerUtils.getManager(program);
+		this.manager = (ItaniumAbiClassTypeInfoManager) CppClassAnalyzerUtils.getManager(program);
 		this.program = program;
 		this.address = address;
 		this.buf = new MemoryBufferImpl(program.getMemory(), address);

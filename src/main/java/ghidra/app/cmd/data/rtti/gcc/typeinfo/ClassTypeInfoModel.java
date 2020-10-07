@@ -37,7 +37,13 @@ public final class ClassTypeInfoModel extends AbstractClassTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private ClassTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new ClassTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public ClassTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

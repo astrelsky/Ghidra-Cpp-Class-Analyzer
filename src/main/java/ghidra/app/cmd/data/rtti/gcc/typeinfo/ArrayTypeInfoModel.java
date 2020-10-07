@@ -21,10 +21,10 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
 
 	public static final String ID_STRING = "N10__cxxabiv117__array_type_infoE";
 	private static final Pattern ARRAY_PATTERN = Pattern.compile(".*A(\\d*)_(.*)");
-	
+
 	private DataType dataType;
 	private DataType typeInfoDataType;
-	
+
 	/**
 	 * Gets a new ArrayTypeInfoModel
 	 * @param program the program containing the {@value #STRUCTURE_NAME}
@@ -42,7 +42,13 @@ public final class ArrayTypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private ArrayTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new ArrayTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public ArrayTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

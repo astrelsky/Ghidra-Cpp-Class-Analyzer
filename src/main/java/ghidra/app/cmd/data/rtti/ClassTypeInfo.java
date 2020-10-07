@@ -59,7 +59,7 @@ public interface ClassTypeInfo extends TypeInfo {
 	 */
 	Vtable findVtable(TaskMonitor monitor) throws CancelledException;
 
-/**
+	/**
 	 * Locates the TypeInfo's Vtable Model using the DUMMY TaskMonitor
 	 * @return The TypeInfo's Vtable Model or {@link Vtable#NO_VTABLE} if none exists
 	 * or the search is cancelled

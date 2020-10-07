@@ -65,16 +65,17 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private VmiClassTypeInfoModel(Program program, Address address) throws InvalidDataTypeException {
+	/**
+	 * Constructs a new VmiClassTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public VmiClassTypeInfoModel(Program program, Address address) {
 		super(program, address);
-		if (!typeName.equals(DEFAULT_TYPENAME)) {
-			this.helper = new BaseClassTypeInfoHelper(program, address);
-			this.bases = helper.getBases();
-			this.flags = getFlags(getBuffer());
-		} else {
-			throw new InvalidDataTypeException(
-				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
-		}
+		this.helper = new BaseClassTypeInfoHelper(program, address);
+		this.bases = helper.getBases();
+		this.flags = getFlags(getBuffer());
 	}
 
 	/**

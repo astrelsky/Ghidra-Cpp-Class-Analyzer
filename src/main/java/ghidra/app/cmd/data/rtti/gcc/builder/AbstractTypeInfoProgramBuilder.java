@@ -74,7 +74,8 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 			for (Long offset : functionOffsets) {
 				try {
 					setBytes(addr(offset).toString(), getReturnInstruction(), true);
-				} catch (Exception e) {}
+				} catch (Exception e) {
+				}
 			}
 			if (GnuUtils.hasFunctionDescriptors(program)) {
 				MemoryBlock block = program.getMemory().getBlock(".opd");
@@ -90,6 +91,16 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 		}
 		buildTypes();
 		endTransaction();
+	}
+
+	@Override
+	public final void startTransaction() {
+		super.startTransaction();
+	}
+
+	@Override
+	public final void endTransaction() {
+		super.endTransaction();
 	}
 
 	protected abstract Map<Long, String> getTypeInfoMap();

@@ -3,7 +3,6 @@ package cppclassanalyzer.data;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.data.Structure;
 
 /**
  * Manager for {@link TypeInfo}
@@ -25,13 +24,5 @@ public interface TypeInfoManager {
 	 * @return true if the data is a valid TypeInfo
 	 */
 	boolean isTypeInfo(Address address);
-
-	/**
-	 * Reflectively invokes getDataType on the TypeInfo containing the specified typename
-	 * @param typename the type_info class's typename
-	 * @return the TypeInfo structure for the typename
-	 * @see TypeInfo#getDataType()
-	 */
-	Structure getDataType(String typename);
 
 }

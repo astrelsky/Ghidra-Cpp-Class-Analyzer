@@ -1,25 +1,23 @@
 package ghidra.app.plugin.prototype;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
+
 import ghidra.framework.options.Options;
-import ghidra.app.util.XReferenceUtil;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.docking.settings.SettingsDefinition;
 
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.manager.ItaniumAbiClassTypeInfoManager;
+import cppclassanalyzer.scanner.RttiScanner;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
-import util.CollectionUtils;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.program.model.mem.Memory;
-import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.symbol.*;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
@@ -35,8 +33,8 @@ import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.*;
 
-import static ghidra.program.model.data.DataTypeConflictHandler.REPLACE_HANDLER;
 import static ghidra.app.cmd.data.rtti.GnuVtable.PURE_VIRTUAL_FUNCTION_NAME;
+import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
 public class GccRttiAnalyzer extends AbstractAnalyzer {
 
@@ -49,12 +47,13 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	private static final String OPTION_FUNDAMENTAL_DESCRIPTION =
 		"Turn on to scan for __fundamental_type_info and its derivatives.";
 
-	private boolean fundamentalOption;
+	private static final String OPTION_BOOKMARKS_NAME = "Create Bookmarks";
+	private static final boolean OPTION_DEFAULT_BOOKMARKS = true;
+	private static final String OPTION_BOOKMARKS_DESCRIPTION =
+		"Turn on to create bookmarks at located RTTI metadata";
 
-	private Program program;
-	private TaskMonitor monitor;
-	private MessageLog log;
-	private CancelOnlyWrappingTaskMonitor dummy;
+	private boolean fundamentalOption;
+	private boolean createBookmarks;
 
 	// The only one excluded is BaseClassTypeInfoModel
 	private static final List<String> CLASS_TYPESTRINGS = List.of(
@@ -63,19 +62,13 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		VmiClassTypeInfoModel.ID_STRING
 	);
 
-	private static final List<String> FUNDAMENTAL_TYPESTRINGS = List.of(
-		FundamentalTypeInfoModel.ID_STRING,
-		PBaseTypeInfoModel.ID_STRING,
-		PointerToMemberTypeInfoModel.ID_STRING,
-		PointerTypeInfoModel.ID_STRING,
-		ArrayTypeInfoModel.ID_STRING,
-		EnumTypeInfoModel.ID_STRING,
-		FunctionTypeInfoModel.ID_STRING,
-		IosFailTypeInfoModel.ID_STRING
-	);
-
-	private ProgramClassTypeInfoManager manager;
-	private boolean relocatable;
+	private Program program;
+	private BookmarkManager bMan;
+	private TaskMonitor monitor;
+	private MessageLog log;
+	private CancelOnlyWrappingTaskMonitor dummy;
+	private Set<Relocation> relocations;
+	private ItaniumAbiClassTypeInfoManager manager;
 	private AddressSet set;
 
 	// if a typename contains this, vftable components index >= 2 point to __cxa_pure_virtual
@@ -104,50 +97,33 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
 		throws CancelledException {
 			this.program = program;
+			this.bMan = program.getBookmarkManager();
 			this.set = new AddressSet();
 			this.monitor = monitor;
+			this.dummy = new CancelOnlyWrappingTaskMonitor(monitor);
 			this.log = log;
-			this.manager = CppClassAnalyzerUtils.getManager(program);
+			this.manager =
+				(ItaniumAbiClassTypeInfoManager) CppClassAnalyzerUtils.getManager(program);
 			if (this.manager == null) {
 				return false;
 			}
-
-			this.relocatable = program.getRelocationTable().isRelocatable();
-			Set<Relocation> relocations = getRelocations(CLASS_TYPESTRINGS);
-			if (relocations.size() == CLASS_TYPESTRINGS.size()) {
-				relocatable = true;
-				if (fundamentalOption) {
-					relocations.addAll(getRelocations(FUNDAMENTAL_TYPESTRINGS));
-				}
-				createOffcutVtableRefs(relocations);
-			}
-
-			dummy = new CancelOnlyWrappingTaskMonitor(monitor);
-			for (String typeString : CLASS_TYPESTRINGS) {
-				if (!getDynamicReferences(typeString).isEmpty()) {
-					relocatable = true;
-					break;
-				}
-			}
-			if (!relocatable) {
-				if (TypeInfoUtils.findTypeInfo(
-					program, set, TypeInfoModel.ID_STRING, dummy) == null) {
-						return false;
-					}
-			}
-
 			try {
-				/* Create the vmi replacement base to prevent a
-				   placeholder struct from being generated  */
-				addDataTypes();
+				RttiScanner scanner = RttiScanner.getScanner(program);
 				if (fundamentalOption) {
-					for (String typeString : FUNDAMENTAL_TYPESTRINGS) {
-						applyTypeInfoTypes(typeString);
+					for (Address addr : scanner.scanFundamentals(log, monitor)) {
+						monitor.checkCanceled();
+						TypeInfo type = manager.getTypeInfo(addr);
+						applyTypeInfo(type);
 					}
 				}
-				applyTypeInfoTypes(TypeInfoModel.ID_STRING);
-				for (String typeString : CLASS_TYPESTRINGS) {
-					applyTypeInfoTypes(typeString);
+				scanner.scan(log, monitor);
+				monitor.initialize(manager.getTypeCount());
+				monitor.setMessage("Creating ClassTypeInfo's");
+				for (ClassTypeInfo type : manager.getTypes()) {
+					monitor.checkCanceled();
+					applyTypeInfo(type);
+					this.set.add(type.getAddress());
+					monitor.incrementProgress(1);
 				}
 				createVtables();
 				createVtts();
@@ -161,15 +137,13 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			}
 	}
 
-	private void createOffcutVtableRefs(Set<Relocation> relocs) throws CancelledException {
-		Listing listing = program.getListing();
-		AddressSet addresses = new AddressSet();
-		relocs.stream()
-			.map(Relocation::getAddress)
-			.map(listing::getDataAt)
-			.filter(Objects::nonNull)
-			.forEach(d -> addresses.add(d.getMinAddress(), d.getMaxAddress()));
-		addReferences(addresses);
+	@Override
+	public boolean removed(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
+			throws CancelledException {
+		relocations.clear();
+		relocations = null;
+		// this is the default result
+		return false;
 	}
 
 	private void addReferences(AddressSet addresses) throws CancelledException {
@@ -191,11 +165,6 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 					RefType.DATA, SourceType.ANALYSIS, 0);
 			}
 		}
-	}
-
-	private void addDataTypes() {
-		DataTypeManager dtm = program.getDataTypeManager();
-		dtm.resolve(VmiClassTypeInfoModel.getDataType(dtm), REPLACE_HANDLER);
 	}
 
 	private boolean checkTableAddresses(Function[][] functionTables) {
@@ -261,6 +230,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		CreateVtableBackgroundCmd vtableCmd = new CreateVtableBackgroundCmd(vtable);
 		vtableCmd.applyTo(program, dummy);
 		markDataAsConstant(vtable.getAddress());
+		if (createBookmarks) {
+			bMan.setBookmark(
+				vtable.getAddress(), BookmarkType.ANALYSIS,
+				BookmarkType.ANALYSIS, "vtable located");
+		}
 		if (!vtable.getTypeInfo().isAbstract()) {
 			for (Address tableAddress : vtable.getTableAddresses()) {
 				markDataAsConstant(tableAddress);
@@ -319,6 +293,17 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		CreateVttBackgroundCmd cmd =
 			new CreateVttBackgroundCmd(vtt, type);
 		cmd.applyTo(program, dummy);
+		markDataAsConstant(vtt.getAddress());
+		if (createBookmarks) {
+			bMan.setBookmark(
+				vtt.getAddress(), BookmarkType.ANALYSIS,
+				BookmarkType.ANALYSIS, "vtt located");
+			for (GnuVtable vtable : vtt.getConstructionVtableModels()) {
+				bMan.setBookmark(
+					vtable.getAddress(), BookmarkType.ANALYSIS,
+					BookmarkType.ANALYSIS, "construction vtable located");
+			}
+		}
 	}
 
 	private void createVtables() throws Exception {
@@ -340,123 +325,32 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
-	private Set<Address> getStaticReferences(String typeString) throws Exception {
-		try {
-			ClassTypeInfo typeinfo = (ClassTypeInfo) TypeInfoUtils.findTypeInfo(
-				program, typeString, dummy);
-			monitor.setMessage("Locating vtable for "+typeinfo.getName());
-			Vtable vtable = typeinfo.findVtable(dummy);
-			if (!Vtable.isValid(vtable)) {
-				throw new Exception("Vtable for "+typeinfo.getFullName()+" not found");
-			}
-			return GnuUtils.getDirectDataReferences(
-				program, vtable.getTableAddresses()[0], dummy);
-		} catch (NullPointerException e) {
-			return Collections.emptySet();
+	private void applyTypeInfo(TypeInfo type) {
+		CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
+		cmd.applyTo(program, dummy);
+		markDataAsConstant(type.getAddress());
+		if (createBookmarks) {
+			Address typenameAddress = getAbsoluteAddress(
+				program, type.getAddress().add(program.getDefaultPointerSize()));
+			bMan.setBookmark(
+				type.getAddress(), BookmarkType.ANALYSIS,
+				BookmarkType.ANALYSIS, "typeinfo located");
+			bMan.setBookmark(
+					typenameAddress, BookmarkType.ANALYSIS,
+					BookmarkType.ANALYSIS, "typeinfo-name located");
 		}
 	}
-
-	private AddressSetView getDataAddressSet() {
-		AddressSet set = new AddressSet();
-		for (MemoryBlock block : CppClassAnalyzerUtils.getAllDataBlocks(program)) {
-			set.add(block.getStart(), block.getEnd());
-		}
-		return set;
-	}
-
-	private Set<Address> getClangDynamicReferences(Address address) throws CancelledException {
-		Data data = program.getListing().getDataContaining(address);
-		if (data == null) {
-			log.appendMsg("Null data at clang relocation");
-			return null;
-		}
-		return Arrays.stream(XReferenceUtil.getOffcutXReferences(data, -1))
-			.filter(r -> r.getReferenceType().isData())
-			.map(Reference::getFromAddress)
-			.collect(Collectors.toSet());
-	}
-
-	private Set<Address> getDynamicReferences(String typeString) throws CancelledException {
-		String target = VtableModel.MANGLED_PREFIX+typeString;
-		Iterator<Relocation> relocations = program.getRelocationTable()
-			.getRelocations(getDataAddressSet());
-		Set<Address> result = CollectionUtils.asStream(relocations)
-			.filter(r -> r.getSymbolName() != null && r.getSymbolName().equals(target))
-			.map(Relocation::getAddress)
-			.collect(Collectors.toSet());
-		if (result.size() == 1) {
-			return getClangDynamicReferences(result.toArray(Address[]::new)[0]);
-		}
-		return result;
-	}
-
-	private Set<Relocation> getRelocations(List<String> names) {
-		Set<String> symbols = names.stream()
-			.map(n -> VtableModel.MANGLED_PREFIX+n)
-			.collect(Collectors.toSet());
-		Iterator<Relocation> relocations = program.getRelocationTable()
-			.getRelocations(getDataAddressSet());
-		return CollectionUtils.asStream(relocations)
-			.filter(r -> r.getSymbolName() != null && symbols.contains(r.getSymbolName()))
-			.collect(Collectors.toSet());
-	}
-
-	private Set<Address> getReferences(String typeString) throws Exception {
-		if (relocatable) {
-			return getDynamicReferences(typeString);
-		}
-		return getStaticReferences(typeString);
-	}
-
-	private void applyTypeInfoTypes(String typeString) throws Exception {
-		Listing listing = program.getListing();
-		boolean isClass = CLASS_TYPESTRINGS.contains(typeString);
-		Set<Address> types = getReferences(typeString);
-		if (types.isEmpty()) {
-			return;
-		}
-		Namespace typeClass = TypeInfoUtils.getNamespaceFromTypeName(program, typeString);
-		monitor.initialize(types.size());
-		monitor.setMessage(
-				"Creating "+typeClass.getName()+" structures");
-		for (Address reference : types) {
-			monitor.checkCanceled();
-			try {
-				TypeInfo type = manager.getTypeInfo(reference);
-				if (type != null) {
-					if (isClass) {
-						ClassTypeInfo classType = ((ClassTypeInfo) type);
-						manager.resolve(classType);
-						classType.getGhidraClass();
-					}
-					Data data = listing.getDataAt(reference);
-					if (data == null || !data.getDataType().isEquivalent(type.getDataType())) {
-						set.add(reference);
-					}
-					CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
-					cmd.applyTo(program, dummy);
-					markDataAsConstant(type.getAddress());
-				}
-			} catch (UnresolvedClassTypeInfoException e) {
-				log.appendMsg(e.getMessage());
-			} catch (Exception e) {
-				if (e instanceof IndexOutOfBoundsException) {
-					e.printStackTrace();
-				}
-				//log.appendException(e);
-			}
-			monitor.incrementProgress(1);
-		}
-	}
-
 
 	@Override
 	public void optionsChanged(Options options, Program program) {
 		super.optionsChanged(options, program);
 		options.registerOption(OPTION_FUNDAMENTAL_NAME, OPTION_DEFAULT_FUNDAMENTAL, null,
 			OPTION_FUNDAMENTAL_DESCRIPTION);
-
+		options.registerOption(OPTION_BOOKMARKS_NAME, OPTION_DEFAULT_BOOKMARKS, null,
+			OPTION_BOOKMARKS_DESCRIPTION);
 		fundamentalOption =
 			options.getBoolean(OPTION_FUNDAMENTAL_NAME, OPTION_DEFAULT_FUNDAMENTAL);
+		createBookmarks =
+			options.getBoolean(OPTION_BOOKMARKS_NAME, OPTION_DEFAULT_BOOKMARKS);
 	}
 }

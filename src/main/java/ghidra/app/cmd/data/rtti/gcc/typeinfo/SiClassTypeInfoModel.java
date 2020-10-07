@@ -37,7 +37,13 @@ public final class SiClassTypeInfoModel extends AbstractSiClassTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private SiClassTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new SiClassTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public SiClassTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

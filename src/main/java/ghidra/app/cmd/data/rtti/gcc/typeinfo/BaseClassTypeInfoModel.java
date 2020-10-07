@@ -1,6 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc.typeinfo;
 
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.manager.ItaniumAbiClassTypeInfoManager;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.address.Address;
@@ -38,12 +38,12 @@ public final class BaseClassTypeInfoModel {
 	static final String STRUCTURE_NAME = "__base_class_type_info";
 	static final int FLAGS_ORDINAL = 1;
 
-	private final ProgramClassTypeInfoManager manager;
+	private final ItaniumAbiClassTypeInfoManager manager;
 	private MemoryBufferImpl buf;
 	private DataTypeManager dtm;
 
 	BaseClassTypeInfoModel(Program program, Address address) {
-		this.manager = CppClassAnalyzerUtils.getManager(program);
+		this.manager = (ItaniumAbiClassTypeInfoManager) CppClassAnalyzerUtils.getManager(program);
 		this.buf = new MemoryBufferImpl(program.getMemory(), address);
 		this.dtm = program.getDataTypeManager();
 	}

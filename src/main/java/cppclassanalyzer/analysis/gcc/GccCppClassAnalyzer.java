@@ -7,7 +7,7 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 
-import cppclassanalyzer.analysis.cmd.AbstractCppClassAnalyzer;
+import cppclassanalyzer.analysis.AbstractCppClassAnalyzer;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;

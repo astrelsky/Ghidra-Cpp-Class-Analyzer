@@ -20,6 +20,7 @@ public final class TypeInfoModel extends AbstractTypeInfoModel {
 
 	protected static final int NAME_ORDINAL = 1;
 
+	/** The typename for type_info */
 	public static final String ID_STRING = "St9type_info";
 
 	/**
@@ -39,7 +40,14 @@ public final class TypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private TypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new TypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+
+	public TypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

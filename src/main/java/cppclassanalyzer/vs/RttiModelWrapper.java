@@ -6,7 +6,6 @@ import java.util.stream.*;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.*;
-import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.*;
@@ -190,7 +189,7 @@ public final class RttiModelWrapper implements VsClassTypeInfo {
 
 	@Override
 	public String getIdentifier() {
-		return RttiAnalyzer.TYPE_INFO_STRING;
+		return RttiUtil.TYPE_INFO_STRING;
 	}
 
 	@Override

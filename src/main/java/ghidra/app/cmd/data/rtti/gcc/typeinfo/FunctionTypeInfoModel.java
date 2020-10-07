@@ -39,7 +39,13 @@ public final class FunctionTypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private FunctionTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new FunctionTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public FunctionTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 
@@ -70,7 +76,7 @@ public final class FunctionTypeInfoModel extends AbstractTypeInfoModel {
 
 	/**
 	 * Gets the function signature of the Function this __function_type_info represents.
-	 * 
+	 *
 	 * @return the represented functions signature.
 	 */
 	public String getFunctionSignature() {

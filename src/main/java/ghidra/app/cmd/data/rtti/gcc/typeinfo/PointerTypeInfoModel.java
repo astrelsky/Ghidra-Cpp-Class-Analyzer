@@ -38,7 +38,13 @@ public final class PointerTypeInfoModel extends AbstractPBaseTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private PointerTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new PointerTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public PointerTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

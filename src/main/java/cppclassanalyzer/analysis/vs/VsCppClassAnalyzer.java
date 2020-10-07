@@ -3,7 +3,7 @@ package cppclassanalyzer.analysis.vs;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import cppclassanalyzer.analysis.cmd.AbstractCppClassAnalyzer;
+import cppclassanalyzer.analysis.AbstractCppClassAnalyzer;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;

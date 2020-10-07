@@ -37,7 +37,13 @@ public final class IosFailTypeInfoModel extends AbstractSiClassTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private IosFailTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new IosFailTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public IosFailTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

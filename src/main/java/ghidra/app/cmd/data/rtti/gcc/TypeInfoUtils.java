@@ -12,6 +12,7 @@ import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import util.CollectionUtils;
 
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemBuffer;
@@ -62,27 +63,31 @@ public class TypeInfoUtils {
 	 * @return the TypeInfo's typename string or "" if invalid
 	 */
 	public static String getTypeName(Program program, Address address) {
-		int pointerSize = program.getDefaultPointerSize();
-		Address nameAddress = getAbsoluteAddress(program, address.add(pointerSize));
-		if (nameAddress == null) {
-			return "";
-		}
-		DataType dt = TerminatedStringDataType.dataType;
-		Settings settings = dt.getDefaultSettings();
-		MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), nameAddress);
-		StringDataInstance string = new StringDataInstance(dt, settings, buf, -1);
-		if (string.getStringLength() != -1) {
-			string = new StringDataInstance(dt, settings, buf, string.getStringLength());
-			String result = string.getStringValue();
-
-			/*
-			 * Some anonymous namespaces typename strings start with * Unfortunately the *
-			 * causes issues with demangling so exclude it
-			 */
-			result = result.startsWith("*") ? result.substring(1) : result;
-			if (isValidTypeName(result)) {
-				return result;
+		try {
+			int pointerSize = program.getDefaultPointerSize();
+			Address nameAddress = getAbsoluteAddress(program, address.add(pointerSize));
+			if (nameAddress == null) {
+				return "";
 			}
+			DataType dt = TerminatedStringDataType.dataType;
+			Settings settings = dt.getDefaultSettings();
+			MemoryBufferImpl buf = new MemoryBufferImpl(program.getMemory(), nameAddress);
+			StringDataInstance string = new StringDataInstance(dt, settings, buf, -1);
+			if (string.getStringLength() != -1) {
+				string = new StringDataInstance(dt, settings, buf, string.getStringLength());
+				String result = string.getStringValue();
+
+				/*
+				 * Some anonymous namespaces typename strings start with * Unfortunately the *
+				 * causes issues with demangling so exclude it
+				 */
+				result = result.startsWith("*") ? result.substring(1) : result;
+				if (isValidTypeName(result)) {
+					return result;
+				}
+			}
+		} catch (AddressOutOfBoundsException e) {
+			// occured while reading assumed string, not a problem
 		}
 		return "";
 	}
@@ -337,19 +342,6 @@ public class TypeInfoUtils {
 			throw new AssertException("Global Namespace returned!");
 		}
 		return ns;
-	}
-
-	/**
-	 * Invokes getDataType on the TypeInfo containing the specified typename
-	 * @param program the program containing the TypeInfo
-	 * @param typename the type_info class's typename
-	 * @return the TypeInfo structure for the typename
-	 * @deprecated please use {@link TypeInfoManager#getDataType(String)}
-	 */
-	@Deprecated(since = "1.5", forRemoval = true)
-	public static Structure getDataType(Program program, String typename) {
-		TypeInfoManager manager = CppClassAnalyzerUtils.getManager(program);
-		return manager.getDataType(typename);
 	}
 
 	/**

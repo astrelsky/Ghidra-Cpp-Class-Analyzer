@@ -1,4 +1,4 @@
-package cppclassanalyzer.data.manager;
+package cppclassanalyzer.scanner;
 
 import java.util.Map;
 import java.util.function.Function;

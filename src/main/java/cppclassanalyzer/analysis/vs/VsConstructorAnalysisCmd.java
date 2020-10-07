@@ -7,7 +7,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.function.CreateFunctionCmd;
 import ghidra.app.util.XReferenceUtil;
-import ghidra.app.util.bin.format.pdb.PdbProgramAttributes;
+import ghidra.app.util.pdb.PdbProgramAttributes;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;

@@ -36,7 +36,13 @@ public final class FundamentalTypeInfoModel extends AbstractTypeInfoModel {
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private FundamentalTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new FundamentalTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public FundamentalTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

@@ -5,7 +5,6 @@ import java.util.stream.Stream;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
-import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.model.DomainObjectListener;
 
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
@@ -14,8 +13,6 @@ import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.UniversalID;
-import ghidra.util.exception.CancelledException;
-import ghidra.util.task.TaskMonitor;
 
 /**
  * {@link ClassTypeInfoManager} for a {@link Program}
@@ -102,26 +99,6 @@ public interface ProgramClassTypeInfoManager extends TypeInfoManager, ClassTypeI
 	 * @return a stream of all the managed Vtables
 	 */
 	Stream<Vtable> getVtableStream();
-
-	/**
-	 * Gets the external ClassTypeInfo at the specified address.
-	 * The provided address must be the address of a copy relocation or within the
-	 * {@code <EXTERNAL>} AddressSpace. In order for the ClassTypeInfo to be retreived
-	 * a ProjectClassTypeInfoManager containing the symbol at the address must be open
-	 * in the {@link cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager
-	 * TypeInfoTreeNodeManager}
-	 * @param address the address of the external ClassTypeInfo symbol
-	 * @return the ClassTypeInfo at the specified address or null if the data was not found
-	 * @see #getTreeNodeManager
-	 */
-	ClassTypeInfoDB getExternalClassTypeInfo(Address address);
-
-	/**
-	 * Attempts to locate the vtables for all of the managed ClassTypeInfos
-	 * @param monitor the TaskMonitor used to monitor the progress
-	 * @throws CancelledException if the task is cancelled
-	 */
-	void findVtables(TaskMonitor monitor, MessageLog log) throws CancelledException;
 
 	/**
 	 * Returns a ClassTypeInfo that is managed by this ClassTypeInfoManager.

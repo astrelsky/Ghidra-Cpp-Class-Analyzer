@@ -1,4 +1,4 @@
-package cppclassanalyzer.analysis.cmd;
+package cppclassanalyzer.analysis;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
@@ -16,6 +16,7 @@ import ghidra.program.model.listing.*;
 import ghidra.util.exception.*;
 import ghidra.util.task.TaskMonitor;
 
+import cppclassanalyzer.analysis.cmd.AbstractConstructorAnalysisCmd;
 import cppclassanalyzer.cmd.ApplyVtableDefinitionsBackgroundCmd;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;

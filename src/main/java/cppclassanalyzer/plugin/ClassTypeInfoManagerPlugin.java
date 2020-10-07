@@ -19,17 +19,16 @@ import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import cppclassanalyzer.plugin.typemgr.TypeInfoTreeProvider;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoNode;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
+import cppclassanalyzer.service.RttiManagerProvider;
 
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.services.GoToService;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
-import ghidra.program.database.ProgramDB;
 import cppclassanalyzer.data.manager.ArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.ArchivedRttiData;
 import cppclassanalyzer.data.ClassTypeInfoManager;
-import cppclassanalyzer.data.manager.ClassTypeInfoManagerDB;
 import cppclassanalyzer.data.manager.FileArchiveClassTypeInfoManager;
 import cppclassanalyzer.data.manager.LibraryClassTypeInfoManager;
 import cppclassanalyzer.data.manager.ProjectClassTypeInfoManager;
@@ -105,7 +104,11 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	@Override
 	protected void programOpened(Program program) {
 		try {
-			managers.add(new ClassTypeInfoManagerDB(this, (ProgramDB) program));
+			RttiManagerProvider provider =
+				ClassTypeInfoManagerService.getManagerProvider(program);
+			if (provider != null) {
+				managers.add(provider.getManager(program));
+			}
 		} catch (SchemaMismatchException e) {
 			Msg.showInfo(this, null, "Ghidra C++ Class Analyzer", e.getMessage());
 		} catch (UnsupportedOperationException e) {

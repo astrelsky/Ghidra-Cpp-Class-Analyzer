@@ -42,7 +42,13 @@ public final class PointerToMemberTypeInfoModel extends AbstractPBaseTypeInfoMod
 				TypeInfoUtils.getErrorMessage(program, address, ID_STRING));
 	}
 
-	private PointerToMemberTypeInfoModel(Program program, Address address) {
+	/**
+	 * Constructs a new PointerToMemberTypeInfoModel
+	 * NOTE: This is only for pre-validated data
+	 * @param program the program
+	 * @param address the typeinfo address
+	 */
+	public PointerToMemberTypeInfoModel(Program program, Address address) {
 		super(program, address);
 	}
 

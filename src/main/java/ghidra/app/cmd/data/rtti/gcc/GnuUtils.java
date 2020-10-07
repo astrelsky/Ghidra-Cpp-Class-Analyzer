@@ -18,6 +18,7 @@ import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.symbol.*;
 import ghidra.program.model.listing.Library;
+import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.*;
 import ghidra.program.model.lang.Processor;
@@ -172,6 +173,11 @@ public final class GnuUtils {
 			if (pointee == null) {
 				return false;
 			}
+		}
+		Listing listing = program.getListing();
+		if (listing.getFunctionAt(pointee) != null) {
+			// takes care of external functions
+			return true;
 		}
 		MemoryBlock block = program.getMemory().getBlock(pointee);
 		return block != null ? block.isExecute() : false;

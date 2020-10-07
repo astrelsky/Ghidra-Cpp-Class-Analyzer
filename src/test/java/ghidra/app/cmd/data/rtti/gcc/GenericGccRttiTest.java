@@ -32,11 +32,19 @@ public abstract class GenericGccRttiTest extends AbstractProgramBasedTest {
 	@Override
 	protected void initialize() throws Exception {
 		super.initialize();
-		env.addPlugin(ClassTypeInfoManagerPlugin.class);
+		addPlugin(tool, ClassTypeInfoManagerPlugin.class);
 		AutoAnalysisManager man = AutoAnalysisManager.getAnalysisManager(program);
 		// dispose it so the available analyzers are refreshed
 		man.dispose();
 		builder.init();
+		builder.startTransaction();
+	}
+
+	@Override
+	public final void tearDown() throws Exception {
+		builder.endTransaction();
+		builder.dispose();
+		super.tearDown();
 	}
 
 	protected final ProgramClassTypeInfoManager getManager() {

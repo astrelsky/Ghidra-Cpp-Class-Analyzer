@@ -19,6 +19,7 @@ import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import docking.widgets.tree.GTree;
 
 import ghidra.program.model.listing.Program;
+import ghidra.util.classfinder.ClassSearcher;
 
 //@formatter:off
 @ServiceInfo(
@@ -63,5 +64,14 @@ public interface ClassTypeInfoManagerService {
 	public DecompilerAPI getDecompilerAPI(Program program);
 
 	public ProgramClassTypeInfoManager getCurrentManager();
+
+	public static RttiManagerProvider getManagerProvider(Program program) {
+		for (RttiManagerProvider p : ClassSearcher.getInstances(RttiManagerProvider.class)) {
+			if (p.canProvideManager(program)) {
+				return p;
+			}
+		}
+		return null;
+	}
 
 }
