@@ -6,7 +6,6 @@ import ghidra.program.database.ProgramDB;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.InvalidDataTypeException;
-import ghidra.program.model.data.Structure;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.VariableUtilities;
