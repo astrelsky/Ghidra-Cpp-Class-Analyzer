@@ -220,28 +220,28 @@ public class VtableUtils {
 			tableSize++;
 			try {
 				buf.advance(pointerSize);
-			}
-			catch (AddressOverflowException e) {
+			} catch (AddressOverflowException e) {
 				return 0;
 			}
 		}
 		while (GnuUtils.isFunctionPointer(program, buf.getAddress())) {
+			if (isDefinedData(program, buf.getAddress())) {
+				break;
+			}
 			tableSize++;
 			try {
 				buf.advance(pointerSize);
-			}
-			catch (AddressOverflowException e) {
+			} catch (AddressOverflowException e) {
 				// Assume table ends at end of address set
 				break;
 			}
 		}
-		if (TypeInfoUtils.isTypeInfoPointer(program, buf.getAddress())) {
-			if (GnuUtils.isNullPointer(program, buf.getAddress().subtract(pointerSize))) {
-				// Prevent colliding with another vtable prefix
-				tableSize--;
-			}
-		}
 		return tableSize;
+	}
+
+	private static boolean isDefinedData(Program program, Address address) {
+		Data data = program.getListing().getDataAt(address);
+		return data != null && data.isDefined();
 	}
 
 	/**
