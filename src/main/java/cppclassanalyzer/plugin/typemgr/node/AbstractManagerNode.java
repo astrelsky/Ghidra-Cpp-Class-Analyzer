@@ -4,6 +4,8 @@ import javax.swing.Icon;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+import docking.widgets.tree.GTree;
 import docking.widgets.tree.GTreeNode;
 
 abstract class AbstractManagerNode extends AbstractSortedNode implements TypeInfoArchiveNode {
@@ -52,5 +54,20 @@ abstract class AbstractManagerNode extends AbstractSortedNode implements TypeInf
 	@Override
 	public final boolean isProgramNode() {
 		return getTypeManager() instanceof ProgramClassTypeInfoManager;
+	}
+
+	@Override
+	public GTree getTree() {
+		GTree tree = super.getTree();
+		if (tree == null) {
+			// circumvent race condition it'll get set eventually
+			// all tasks requiring the tree end up in the end of the swing queue
+			if (isProgramNode()) {
+				ProgramClassTypeInfoManager manager =
+					(ProgramClassTypeInfoManager) getTypeManager();
+				tree = CppClassAnalyzerUtils.getService(manager.getProgram()).getTree();
+			}
+		}
+		return tree;
 	}
 }

@@ -117,18 +117,22 @@ public final class CppClassAnalyzerUtils {
 		return function;
 	}
 
+	public static ClassTypeInfoManagerService getService(Program program) {
+		PluginTool tool = getTool(program);
+		if (tool == null) {
+			return null;
+		}
+		return tool.getService(ClassTypeInfoManagerService.class);
+	}
+
 	/**
 	 * Gets the ClassTypeInfoManager for the specified program
 	 * @param program the program
 	 * @return the program's ClassTypeInfoManager
 	 */
 	public static ProgramClassTypeInfoManager getManager(Program program) {
-		PluginTool tool = getTool(program);
-		if (tool == null) {
-			return null;
-		}
-		ClassTypeInfoManagerService service = tool.getService(ClassTypeInfoManagerService.class);
-		return service.getManager(program);
+		ClassTypeInfoManagerService service = getService(program);
+		return service != null ? service.getManager(program) : null;
 	}
 
 	/**
@@ -174,11 +178,11 @@ public final class CppClassAnalyzerUtils {
 			.flatMap(Arrays::stream)
 			.anyMatch(checker);
 	}
-	
+
 	private static final class AbstractFunctionChecker implements Predicate<Function> {
-		
+
 		private final String fName;
-		
+
 		AbstractFunctionChecker(String fName) {
 			this.fName = fName;
 		}
