@@ -69,7 +69,7 @@ public final class VsClassTypeInfoManager extends ClassTypeInfoManagerDB {
 
 	@Override
 	public TypeInfo getTypeInfo(Address address, boolean resolve) {
-		TypeInfo ti = super.getTypeInfo(address);
+		TypeInfo ti = super.getTypeInfo(address, resolve);
 		if (ti == null) {
 			TypeDescriptorModel model =
 				new TypeDescriptorModel(program, address, VsClassTypeInfo.DEFAULT_OPTIONS);

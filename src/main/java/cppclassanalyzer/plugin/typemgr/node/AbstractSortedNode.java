@@ -17,8 +17,10 @@ abstract class AbstractSortedNode extends GTreeNode {
 			index = Collections.binarySearch(kids, node);
 		}
 		if (index >= 0) {
-			String msg = "Child node "+node.getName()+" already exists in "+getName();
-			throw new AssertException(msg);
+			//String msg = "Child node "+node.getName()+" already exists in "+getName();
+			//throw new AssertException(msg);
+			//TODO fixme
+			return;
 		}
 		addNode(-(index + 1), node);
 	}

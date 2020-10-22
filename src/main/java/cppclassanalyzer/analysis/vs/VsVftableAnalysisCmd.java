@@ -64,7 +64,8 @@ public class VsVftableAnalysisCmd extends BackgroundCommand {
 			monitor.checkCanceled();
 			for (Function f : functionTable) {
 				monitor.checkCanceled();
-				if (f.isThunk()) {
+				CppClassAnalyzerUtils.createThunkFunctions(f);
+				while (f.isThunk()) {
 					f = f.getThunkedFunction(true);
 				}
 				if (f.isExternal()) {
@@ -73,7 +74,6 @@ public class VsVftableAnalysisCmd extends BackgroundCommand {
 				if (!CppClassAnalyzerUtils.isDefaultFunction(f) || isPureVirtual(f)) {
 					continue;
 				}
-				CppClassAnalyzerUtils.createThunkFunctions(f);
 				ClassTypeInfoUtils.setClassFunction(type, f);
 			}
 		}
