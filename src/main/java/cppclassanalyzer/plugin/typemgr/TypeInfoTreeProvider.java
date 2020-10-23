@@ -75,7 +75,6 @@ public class TypeInfoTreeProvider extends ComponentProviderAdapter {
 	}
 
 	public void dispose() {
-		tree.dispose();
 		mainPanel.removeAll();
 	}
 

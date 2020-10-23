@@ -32,6 +32,9 @@ public final class TypeInfoArchiveGTree extends GTree implements TypeInfoManager
 		super(new TypeInfoArchiveGTreeRootNode());
 		this.dropHandler = new TypeInfoDragNDropHandler();
 		this.plugin = plugin;
+
+		// temporarily disable filter
+		setFilteringEnabled(false);
 	}
 
 	private TypeInfoArchiveGTreeRootNode getRoot() {
