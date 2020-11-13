@@ -3,8 +3,6 @@ package cppclassanalyzer.plugin.typemgr.node;
 import java.util.Collections;
 import java.util.List;
 
-import ghidra.util.exception.AssertException;
-
 import docking.widgets.tree.GTreeNode;
 
 abstract class AbstractSortedNode extends GTreeNode {

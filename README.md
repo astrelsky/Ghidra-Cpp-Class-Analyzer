@@ -1,11 +1,6 @@
 Ghidra C++ Class and Run Time Type Information Analyzer
 =======================================================
 
-Experimental
-------------
-
-This branch is experimental and is still in development. Issues are to be expected and feedback is always welcome.
-
 Building
 --------
 
@@ -52,7 +47,7 @@ Class Type Info Color Coding
 ![#28a745](https://via.placeholder.com/15/28a745/000000?text=+) - Basic Class  
 ![#d73a49](https://via.placeholder.com/15/d73a49/000000?text=+) - Abstract Class  
 ![#0366d6](https://via.placeholder.com/15/0366d6/000000?text=+) - Virtual Class  
-![#6f42c1](https://via.placeholder.com/15/6f42c1/000000?text=+) - Virtual Abstract Class  
+![#6f42c1](https://via.placeholder.com/15/6f42c1/000000?text=+) - Virtual Abstract Class
 
 CppClassAnalyzerGhidraScript
 ----------------------------
@@ -72,11 +67,11 @@ For GNU binaries a project archive will need to be created to provide data requi
 Compatibility
 -------------
 
-It is compatible with current builds of 9.2
+Ghidra 9.2
 
 TODO
 ----
 
 * Graphing
-* Utilize extension points for compiler differences
+* Type Info Tree filter
 * Help Documentation
