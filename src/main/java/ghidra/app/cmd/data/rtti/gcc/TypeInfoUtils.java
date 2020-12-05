@@ -15,9 +15,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.listing.Program;
-import ghidra.program.model.mem.MemBuffer;
-import ghidra.program.model.mem.MemoryBlock;
-import ghidra.program.model.mem.MemoryBufferImpl;
+import ghidra.program.model.mem.*;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.symbol.*;
@@ -33,12 +31,11 @@ import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.FundamentalTypeInfoModel;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.TypeInfoModel;
 import ghidra.app.util.NamespaceUtils;
+import ghidra.app.util.datatype.microsoft.MSDataTypeUtils;
 import ghidra.app.util.demangler.Demangled;
 import ghidra.app.util.demangler.DemangledObject;
 import ghidra.app.util.demangler.DemanglerUtil;
 import ghidra.docking.settings.Settings;
-
-import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 
 public class TypeInfoUtils {
 
@@ -415,6 +412,18 @@ public class TypeInfoUtils {
 			.filter(TypeInfoUtils::isMangled)
 			.findFirst()
 			.orElse("_ZTI" + type.getTypeName());
+	}
+
+	private static Address getAbsoluteAddress(Program program, Address address) {
+		Memory mem = program.getMemory();
+		if (!mem.contains(address)) {
+			return null;
+		}
+		Address pointee = MSDataTypeUtils.getAbsoluteAddress(program, address);
+		if (pointee != null && mem.contains(pointee)) {
+			return pointee;
+		}
+		return null;
 	}
 
 }
