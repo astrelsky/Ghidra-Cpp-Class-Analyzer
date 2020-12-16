@@ -283,6 +283,7 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 				Arrays.stream(vmi.getBases())
 					.filter(Predicate.not(BaseClassTypeInfoModel::isVirtual))
 					.map(BaseClassTypeInfoModel::getClassModel)
+					.filter(Objects::nonNull)
 					.map(manager::resolve)
 					.mapToLong(DatabaseObject::getKey)
 					.toArray();

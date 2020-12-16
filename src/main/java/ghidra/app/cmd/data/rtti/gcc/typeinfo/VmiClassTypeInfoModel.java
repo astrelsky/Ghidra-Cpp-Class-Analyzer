@@ -127,15 +127,12 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
     private List<ClassTypeInfo> getParents() {
         List<ClassTypeInfo> parents = new ArrayList<>();
         for (BaseClassTypeInfoModel base : bases) {
-            if (!base.isVirtual()) {
-                parents.add(base.getClassModel());
+        	ClassTypeInfo parent = base.getClassModel();
+            if (parent != null && !base.isVirtual()) {
+                parents.add(parent);
             }
         }
-        try {
-            parents.addAll(getInheritableVirtualParents());
-        } catch (NullPointerException e) {
-            throw e;
-        }
+        parents.addAll(getInheritableVirtualParents());
         return parents;
     }
 
@@ -146,25 +143,19 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 
 	@Override
 	public Set<ClassTypeInfo> getVirtualParents() {
-		Set<ClassTypeInfo> result = new LinkedHashSet<>();
-		for (BaseClassTypeInfoModel base : bases) {
-			ClassTypeInfo parent = base.getClassModel();
-			if (base.isVirtual()) {
-				result.add(parent);
-			}
-			result.addAll(parent.getVirtualParents());
-		}
-		return result;
+		return getInheritableVirtualParents();
 	}
 
 	private Set<ClassTypeInfo> getInheritableVirtualParents() {
 		Set<ClassTypeInfo> result = new LinkedHashSet<>();
 		for (BaseClassTypeInfoModel base : bases) {
 			ClassTypeInfo parent = base.getClassModel();
-			if (base.isVirtual()) {
-				result.add(parent);
+			if (parent != null) {
+				if (base.isVirtual()) {
+					result.add(parent);
+				}
+				result.addAll(parent.getVirtualParents());
 			}
-			result.addAll(parent.getVirtualParents());
 		}
 		return result;
 	}

@@ -141,7 +141,7 @@ public final class BaseClassTypeInfoModel {
 	 * @see ClassTypeInfo#getName()
 	 */
 	public String getName() {
-		return getClassModel().getName();
+		return getClassModel().getName();	// FIXME: NPE
 	}
 
 	/**
