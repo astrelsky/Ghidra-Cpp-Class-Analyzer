@@ -261,7 +261,11 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 			.map(Relocation::getAddress)
 			.collect(Collectors.toSet());
 		if (result.size() == 1) {
-			return getClangDynamicReferences(result.toArray(Address[]::new)[0]);
+			Set<Address> clangResults =
+				getClangDynamicReferences(result.toArray(Address[]::new)[0]);
+			if (!clangResults.isEmpty()) {
+				return clangResults;
+			}
 		}
 		return result;
 	}
