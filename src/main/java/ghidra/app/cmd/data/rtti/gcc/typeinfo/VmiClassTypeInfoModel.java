@@ -128,7 +128,9 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
         List<ClassTypeInfo> parents = new ArrayList<>();
         for (BaseClassTypeInfoModel base : bases) {
         	ClassTypeInfo parent = base.getClassModel();
-            if (parent != null && !base.isVirtual()) {
+        	if (parent == null) {
+        		Msg.warn(getClass(), "getParents(): null getClassModel() at 0x" + base.getAddress());
+        	} else if (parent != null && !base.isVirtual()) {
                 parents.add(parent);
             }
         }
@@ -155,6 +157,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 					result.add(parent);
 				}
 				result.addAll(parent.getVirtualParents());
+			} else {
+				Msg.warn(getClass(), "getInheritableVirtualParents(): null getClassModel() at 0x" + base.getAddress());
 			}
 		}
 		return result;

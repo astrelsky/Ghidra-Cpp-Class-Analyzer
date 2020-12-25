@@ -22,7 +22,7 @@ import ghidra.program.model.symbol.Namespace;
 
 import cppclassanalyzer.data.ClassTypeInfoManager;
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
-
+import ghidra.util.Msg;
 import ghidra.util.datastruct.LongArrayList;
 import ghidra.util.datastruct.LongIntHashtable;
 
@@ -283,6 +283,14 @@ public class GnuClassTypeInfoDB extends AbstractClassTypeInfoDB {
 				Arrays.stream(vmi.getBases())
 					.filter(Predicate.not(BaseClassTypeInfoModel::isVirtual))
 					.map(BaseClassTypeInfoModel::getClassModel)
+					.map((m) -> {
+						if (m == null) {
+							for (BaseClassTypeInfoModel base : vmi.getBases()) {
+								Msg.warn(getClass(), "possible null getClassModel() at 0x" + base.getAddress());
+							}
+						}
+						return m;
+					})
 					.filter(Objects::nonNull)
 					.map(manager::resolve)
 					.mapToLong(DatabaseObject::getKey)
