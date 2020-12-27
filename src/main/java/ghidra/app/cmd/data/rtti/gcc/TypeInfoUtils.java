@@ -419,9 +419,13 @@ public class TypeInfoUtils {
 		if (!mem.contains(address)) {
 			return null;
 		}
-		Address pointee = MSDataTypeUtils.getAbsoluteAddress(program, address);
-		if (pointee != null && mem.contains(pointee)) {
-			return pointee;
+		try {
+			Address pointee = MSDataTypeUtils.getAbsoluteAddress(program, address);
+			if (pointee != null && mem.contains(pointee)) {
+				return pointee;
+			}
+		} catch (NullPointerException e) {
+			// don't care
 		}
 		return null;
 	}
