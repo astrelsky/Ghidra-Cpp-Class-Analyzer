@@ -216,11 +216,15 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		if (pureVirtual == null) {
 			return;
 		}
-		String cc = GenericCallingConvention.stdcall.getDeclarationName();
 		pureVirtual.setName(PURE_VIRTUAL_FUNCTION_NAME, SourceType.IMPORTED);
 		pureVirtual.setNoReturn(true);
 		pureVirtual.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
-		pureVirtual.setCallingConvention(cc);
+		try {
+			String cc = GenericCallingConvention.stdcall.getDeclarationName();
+			pureVirtual.setCallingConvention(cc);
+		} catch (Exception e) {
+			// compiler spec doesn't have __stdcall
+		}
 	}
 
 	private void createVtable(GnuVtable vtable) throws Exception {
