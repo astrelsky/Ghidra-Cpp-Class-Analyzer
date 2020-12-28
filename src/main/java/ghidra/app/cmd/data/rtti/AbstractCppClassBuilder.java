@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
@@ -25,10 +26,10 @@ public abstract class AbstractCppClassBuilder {
 
 	protected static final String SUPER = "super_";
 
-	private Program program;
+	private final Program program;
 	protected Structure struct;
-	private CategoryPath path;
-	private ClassTypeInfo type;
+	private final CategoryPath path;
+	private final ClassTypeInfo type;
 
 	private Map<CompositeDataTypeElementInfo, String> dtComps = Collections.emptyMap();
 
@@ -38,17 +39,13 @@ public abstract class AbstractCppClassBuilder {
 		this.program = gc.getSymbol().getProgram();
 		this.struct = ClassTypeInfoUtils.getPlaceholderStruct(type, program.getDataTypeManager());
 		this.struct = resolveStruct(struct);
-		this.path = new CategoryPath(struct.getCategoryPath(), type.getName());
+		this.path = new CategoryPath(TypeInfoUtils.getCategoryPath(type), type.getName());
 	}
 
 	protected abstract AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent);
 
 	protected ClassTypeInfo getType() {
 		return type;
-	}
-
-	protected CategoryPath getPath() {
-		return path;
 	}
 
 	protected final Program getProgram() {

@@ -355,23 +355,10 @@ public class ClassTypeInfoUtils {
 	 * @return the ClassTypeInfo's _vptr DataType
 	 */
 	public static DataType getVptrDataType(Program program, ClassTypeInfo type) {
-		return getVptrDataType(program, type, null);
-	}
-
-	/**
-	 * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
-	 * @param program the program containing the ClassTypeInfo
-	 * @param type the ClassTypeInfo
-	 * @param path The category path to place the datatype in.
-	 * @return the ClassTypeInfo's _vptr DataType
-	 */
-	public static DataType getVptrDataType(Program program, ClassTypeInfo type, CategoryPath path) {
 		try {
 			Vtable vtable = type.getVtable();
-			if (path == null) {
-				path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
-			}
-			path = new CategoryPath(path, type.getName());
+			CategoryPath path =
+				new CategoryPath(TypeInfoUtils.getCategoryPath(type), type.getName());
 			DataTypeManager dtm = program.getDataTypeManager();
 			Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);
 			Function[][] functionTable = vtable.getFunctionTables();
@@ -404,6 +391,19 @@ public class ClassTypeInfoUtils {
 		} catch (DuplicateNameException e) {
 			throw new AssertException("Ghidra-Cpp-Class-Analyzer: "+e.getMessage(), e);
 		}
+	}
+
+	/**
+	 * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
+	 * @param program the program containing the ClassTypeInfo
+	 * @param type the ClassTypeInfo
+	 * @param path The category path to place the datatype in.
+	 * @return the ClassTypeInfo's _vptr DataType
+	 * @deprecated the path parameter is now ignored
+	 */
+	@Deprecated(forRemoval=true)
+	public static DataType getVptrDataType(Program program, ClassTypeInfo type, CategoryPath path) {
+		return getVptrDataType(program, type);
 	}
 
 	public static Map<ClassTypeInfo, Integer> getBaseOffsets(ClassTypeInfo type) {
