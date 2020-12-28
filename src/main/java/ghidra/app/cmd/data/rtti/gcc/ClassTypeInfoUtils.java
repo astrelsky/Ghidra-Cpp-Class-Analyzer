@@ -184,19 +184,39 @@ public class ClassTypeInfoUtils {
 			VariableUtilities.findOrCreateClassStruct(type.getGhidraClass(), dtm);
 		ClassTypeInfo otherType = manager.getType(thiscallStruct.getUniversalID());
 		if (otherType != null && !otherType.equals(type)) {
-			String msg = "Variable Utils returned wrong class structure! " + type.getName();
-			Msg.warn(ClassTypeInfoUtils.class, msg);
-			int id = dtm.startTransaction("getting placeholder struct for "+type.getName());
+			return getFixedIncorrectStructure(type, dtm);
+		}
+		CategoryPath path = TypeInfoUtils.getCategoryPath(type);
+		CategoryPath otherPath = thiscallStruct.getCategoryPath();
+		if (!path.isRoot() && !otherPath.isRoot()) {
+			if (path.equals(otherPath)) {
+				return (Structure) thiscallStruct;
+			}
+		}
+		if (path.isRoot() && !otherPath.isRoot()) {
+			// assume VariableUtilities found the type from debug info
+			return (Structure) thiscallStruct;
+		}
+		return getFixedIncorrectStructure(type, dtm); 
+	}
+	
+	private static Structure getFixedIncorrectStructure(ClassTypeInfo type, DataTypeManager dtm) {
+		String msg = "Variable Utils returned wrong class structure! " + type.getName();
+		Msg.warn(ClassTypeInfoUtils.class, msg);
+		int id = dtm.startTransaction("getting placeholder struct for "+type.getName());
+		boolean success = false;
+		try {
 			CategoryPath path = TypeInfoUtils.getDataTypePath(type).getCategoryPath();
 			DataType struct = dtm.getDataType(path, type.getName());
 			if (struct == null) {
 				struct = new StructureDataType(path, type.getName(), 0, dtm);
 				struct = dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
 			}
-			dtm.endTransaction(id, true);
+			success = true;
 			return (Structure) struct;
+		} finally {
+			dtm.endTransaction(id, success);
 		}
-		return (Structure) thiscallStruct;
 	}
 
 	/**
@@ -297,7 +317,7 @@ public class ClassTypeInfoUtils {
 	 * @param program the program containing the list of ClassTypeInfo
 	 * @param classes the list of ClassTypeInfo
 	 * @param monitor the task monitor
-	 * @throws CancelledException is the operation is cancelled
+	 * @throws CancelledException if the operation is cancelled
 	 */
 	public static void sortByMostDerived(Program program, List<ClassTypeInfo> classes,
 		TaskMonitor monitor) throws CancelledException {

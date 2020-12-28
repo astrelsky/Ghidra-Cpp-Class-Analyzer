@@ -11,9 +11,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
+import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.util.NamespaceUtils;
 import ghidra.app.util.SymbolPath;
 import ghidra.program.model.data.*;
+import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
 
@@ -79,14 +81,18 @@ public final class ClassBuilderTest extends X86GccRttiTest {
 	@Test
 	public void vtableStructureTest() throws Exception {
 		initialize();
-        DataTypeManager dtm = program.getDataTypeManager();
-		List<DataType> vtables = new LinkedList<>();
+		ProgramClassTypeInfoManager manager = getManager();
         runGccRttiAnalyzer(program);
         runClassAnalyzer(program);
-		dtm.findDataTypes("vtable", vtables);
-		for (DataType dt : vtables) {
-			Structure struct = (Structure) dt;
-			assert struct.getNumComponents() > 0 : dt.getDataTypePath().toString() + " is empty";
+		for (Vtable vtable : manager.getVtables()) {
+            Function[][] table = vtable.getFunctionTables();
+			if (table.length == 0 || table[0].length == 0) {
+				continue;
+			}
+			ClassTypeInfo type = vtable.getTypeInfo();
+			Pointer ptr = (Pointer) ClassTypeInfoUtils.getVptrDataType(program, type);
+			Structure struct = (Structure) ptr.getDataType();
+			assert struct.getNumComponents() > 0 : struct.getDataTypePath().toString() + " is empty";
 		}
 	}
 

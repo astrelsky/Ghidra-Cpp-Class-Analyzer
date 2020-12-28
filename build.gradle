@@ -47,10 +47,12 @@ dependencies {
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
+	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Debug', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Extensions',
 						 include: "**/*.jar", exclude: project.name)
 	runtimeOnly fileTree(dir: ghidraUserDir + "/Extensions",
 						 include: "**/*.jar", exclude: project.name)
+	runtimeOnly	fileTree(dir: projectDir.getCanonicalPath() + '/data')
 }
 
 eclipse {

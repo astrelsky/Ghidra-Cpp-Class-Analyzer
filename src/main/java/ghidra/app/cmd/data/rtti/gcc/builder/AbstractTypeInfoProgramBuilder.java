@@ -114,21 +114,21 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 
 	public List<TypeInfo> getTypeInfoList() {
 		return typeMap.keySet().stream()
-							   .map(this::addr)
-							   .map(manager::getTypeInfo)
-							   .collect(Collectors.toList());
+		   .map(this::addr)
+		   .map(manager::getTypeInfo)
+		   .collect(Collectors.toList());
 	}
 
 	public Stream<TypeInfo> getTypeInfoStream() {
 		return typeMap.keySet().stream()
-							   .map(this::addr)
-							   .map(manager::getTypeInfo);
+		   .map(this::addr)
+		   .map(manager::getTypeInfo);
 	}
 
 	private void buildTypes() {
 		typeMap.keySet().stream()
-						.map(this::addr)
-						.forEach(manager::getTypeInfo);
+			.map(this::addr)
+			.forEach(manager::getTypeInfo);
 	}
 
 	public List<GnuVtable> getVtableList() {

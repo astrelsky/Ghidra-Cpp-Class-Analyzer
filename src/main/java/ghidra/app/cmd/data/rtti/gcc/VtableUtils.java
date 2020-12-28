@@ -225,7 +225,7 @@ public class VtableUtils {
 			}
 		}
 		while (GnuUtils.isFunctionPointer(program, buf.getAddress())) {
-			if (isDefinedData(program, buf.getAddress())) {
+			if (isNotDefinedPointerData(program, buf.getAddress())) {
 				break;
 			}
 			tableSize++;
@@ -239,9 +239,12 @@ public class VtableUtils {
 		return tableSize;
 	}
 
-	private static boolean isDefinedData(Program program, Address address) {
+	private static boolean isNotDefinedPointerData(Program program, Address address) {
 		Data data = program.getListing().getDataAt(address);
-		return data != null && data.isDefined();
+		if (data != null && data.isDefined()) {
+			return !data.isPointer();
+		}
+		return false;
 	}
 
 	/**

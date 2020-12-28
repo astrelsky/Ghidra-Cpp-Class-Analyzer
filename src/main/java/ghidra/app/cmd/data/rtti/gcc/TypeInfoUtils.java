@@ -340,13 +340,13 @@ public class TypeInfoUtils {
 		}
 		return ns;
 	}
-
+	
 	/**
-	 * Retrieves the DataTypePath for the represented datatype
+	 * Retrieves the CategoryPath for the represented datatype
 	 * @param type the TypeInfo
-	 * @return the TypeInfo's datatype DataTypePath
+	 * @return the TypeInfo's datatype CategoryPath
 	 */
-	public static DataTypePath getDataTypePath(TypeInfo type) {
+	public static CategoryPath getCategoryPath(TypeInfo type) {
 		Namespace ns = type.getNamespace().getParentNamespace();
 		String path;
 		if (ns.isGlobal()) {
@@ -355,7 +355,16 @@ public class TypeInfoUtils {
 			path = Namespace.DELIMITER+ns.getName(true);
 		}
 		path = path.replaceAll(Namespace.DELIMITER, CategoryPath.DELIMITER_STRING);
-		return new DataTypePath(path, type.getName());
+		return new CategoryPath(path);
+	}
+
+	/**
+	 * Retrieves the DataTypePath for the represented datatype
+	 * @param type the TypeInfo
+	 * @return the TypeInfo's datatype DataTypePath
+	 */
+	public static DataTypePath getDataTypePath(TypeInfo type) {
+		return new DataTypePath(getCategoryPath(type), type.getName());
 	}
 
 	/**

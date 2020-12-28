@@ -7,6 +7,7 @@ import java.util.Collections;
 import docking.Tool;
 import ghidra.program.model.data.DataType;
 import ghidra.app.cmd.data.rtti.GnuVtable;
+import ghidra.app.util.datatype.microsoft.MSDataTypeUtils;
 import ghidra.app.util.demangler.*;
 import ghidra.framework.main.AppInfo;
 import ghidra.framework.model.DomainFile;
@@ -29,7 +30,6 @@ import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
-import static ghidra.app.util.datatype.microsoft.MSDataTypeUtils.getAbsoluteAddress;
 import static ghidra.app.util.demangler.DemanglerUtil.demangle;
 import static ghidra.plugins.fsbrowser.FSBUtils.getProgramManager;
 import static ghidra.program.model.data.DataTypeConflictHandler.KEEP_HANDLER;
@@ -344,6 +344,22 @@ public final class GnuUtils {
 		Memory mem = program.getMemory();
 		MemoryBlock block = mem.getBlock(address);
 		return block.getName().equals(MemoryBlock.EXTERNAL_BLOCK_NAME);
+	}
+
+	private static Address getAbsoluteAddress(Program program, Address address) {
+		Memory mem = program.getMemory();
+		if (!mem.contains(address)) {
+			return null;
+		}
+		try {
+			Address pointee = MSDataTypeUtils.getAbsoluteAddress(program, address);
+			if (pointee != null && mem.contains(pointee)) {
+				return pointee;
+			}
+		} catch (NullPointerException e) {
+			// don't care
+		}
+		return null;
 	}
 
 }
