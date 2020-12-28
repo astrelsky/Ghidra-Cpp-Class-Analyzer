@@ -1,6 +1,6 @@
 package cppclassanalyzer.analysis.vs;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import cppclassanalyzer.analysis.AbstractCppClassAnalyzer;
@@ -34,7 +34,9 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	private static final String NAME = "Windows C++ Class Analyzer";
 	private static final String SYMBOL_NAME = "RTTI_Type_Descriptor";
-	private static final String CLASS = "class";
+	
+	// union doesn't really do much good but it isn't included for completion
+	private static final Set<String> REF_TYPES = Set.of("class", "struct", "union");
 	private static final String GUARD_FUNCTION = "_guard_check_icall";
 	private static final String CFG_WARNING =
 		"Control Flow Guard (CFG) detected. Vftables not analyzed.";
@@ -185,7 +187,7 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 		void process(TypeDescriptorModel descriptor) throws CancelledException {
 			try {
-				if (!descriptor.getRefType().equals(CLASS)) {
+				if (!REF_TYPES.contains(descriptor.getRefType())) {
 					return;
 				}
 				descriptor.validate();
