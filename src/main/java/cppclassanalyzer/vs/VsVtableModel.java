@@ -70,9 +70,9 @@ public class VsVtableModel implements Vtable {
 	}
 
 	private Function[] getFunctions(VfTableModel vftable) {
-		List<Function> functions = new ArrayList<>(vftable.getCount());
+		List<Function> functions = new ArrayList<>(vftable.getElementCount());
 		FunctionManager manager = program.getFunctionManager();
-		for (int i = 0; i < vftable.getCount(); i++) {
+		for (int i = 0; i < vftable.getElementCount(); i++) {
 			Function f = manager.getFunctionAt(vftable.getVirtualFunctionPointer(i));
 			if (f == null) {
 				break;
