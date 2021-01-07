@@ -9,6 +9,7 @@ import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import cppclassanalyzer.vs.RttiModelWrapper;
+import db.DBRecord;
 
 import ghidra.app.cmd.data.rtti.*;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
@@ -272,7 +273,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	@Override
-	protected boolean refresh(db.Record record) {
+	protected boolean refresh(DBRecord record) {
 		return refresh(new ClassTypeInfoRecord(record));
 	}
 

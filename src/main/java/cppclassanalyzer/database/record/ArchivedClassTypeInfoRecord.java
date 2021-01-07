@@ -2,9 +2,7 @@ package cppclassanalyzer.database.record;
 
 import cppclassanalyzer.database.schema.ArchivedClassTypeInfoSchema;
 import cppclassanalyzer.database.schema.fields.ArchivedClassTypeInfoSchemaFields;
-import db.Field;
-import db.Schema;
-import db.Table;
+import db.*;
 
 public final class ArchivedClassTypeInfoRecord
 		extends AbstractDatabaseRecord<ArchivedClassTypeInfoSchemaFields> {
@@ -17,7 +15,7 @@ public final class ArchivedClassTypeInfoRecord
 		super(table);
 	}
 
-	public ArchivedClassTypeInfoRecord(db.Record record) {
+	public ArchivedClassTypeInfoRecord(DBRecord record) {
 		super(record);
 	}
 

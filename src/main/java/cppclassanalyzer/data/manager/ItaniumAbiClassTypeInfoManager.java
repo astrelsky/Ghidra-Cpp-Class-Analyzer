@@ -32,9 +32,7 @@ import cppclassanalyzer.database.utils.LongStack;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.scanner.ItaniumAbiRttiScanner;
 import cppclassanalyzer.scanner.RttiScanner;
-import db.DBHandle;
-import db.RecordIterator;
-import db.Table;
+import db.*;
 
 public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB {
 

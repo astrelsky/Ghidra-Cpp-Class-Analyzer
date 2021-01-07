@@ -2,9 +2,7 @@ package cppclassanalyzer.database.record;
 
 import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.schema.fields.ArchivedGnuVtableSchemaFields;
-import db.Field;
-import db.Schema;
-import db.Table;
+import db.*;
 
 public final class ArchivedGnuVtableRecord extends AbstractDatabaseRecord<ArchivedGnuVtableSchemaFields> {
 
@@ -16,7 +14,7 @@ public final class ArchivedGnuVtableRecord extends AbstractDatabaseRecord<Archiv
 		super(table);
 	}
 
-	public ArchivedGnuVtableRecord(db.Record record) {
+	public ArchivedGnuVtableRecord(DBRecord record) {
 		super(record);
 	}
 

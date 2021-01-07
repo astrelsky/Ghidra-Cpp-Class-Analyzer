@@ -4,8 +4,7 @@ import java.io.IOException;
 
 import cppclassanalyzer.database.record.VtableRecord;
 import cppclassanalyzer.database.schema.VtableSchema;
-import db.Field;
-import db.Table;
+import db.*;
 
 public class VtableDatabaseTable extends AbstractDatabaseTable<VtableSchema> {
 
@@ -21,7 +20,7 @@ public class VtableDatabaseTable extends AbstractDatabaseTable<VtableSchema> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public final VtableRecord getRecord(long key) throws IOException {
-		db.Record record = getRawRecord(key);
+		DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return VtableSchema.SCHEMA.getRecord(record);
 		}
@@ -31,7 +30,7 @@ public class VtableDatabaseTable extends AbstractDatabaseTable<VtableSchema> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public VtableRecord getRecord(Field key) throws IOException {
-		db.Record record = getRawRecord(key);
+		DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return VtableSchema.SCHEMA.getRecord(record);
 		}

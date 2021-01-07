@@ -45,12 +45,7 @@ import cppclassanalyzer.database.tables.ArchivedClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.ArchivedGnuVtableDatabaseTable;
 import cppclassanalyzer.database.utils.TransactionHandler;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
-import db.DBConstants;
-import db.DBHandle;
-import db.RecordIterator;
-import db.Schema;
-import db.StringField;
-import db.Table;
+import db.*;
 import resources.ResourceManager;
 
 /**
@@ -481,7 +476,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 		private void fillMap() {
 			try {
-				db.Record record;
+				DBRecord record;
 				for (RecordIterator it = table.iterator(); it.hasNext();) {
 					record = it.next();
 					String name = record.getString(0);
@@ -506,7 +501,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			try {
 				libMap.put(name, man);
 				ArchivedRttiTablePair tables = man.getTables();
-				db.Record record = SCHEMA.createRecord(table.getKey());
+				DBRecord record = SCHEMA.createRecord(table.getKey());
 				record.setString(NAME_INDEX, name);
 				record.setString(TYPE_INDEX, tables.getTypeTable().getName());
 				record.setString(VTABLE_INDEX, tables.getVtableTable().getName());
@@ -516,15 +511,15 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			}
 		}
 
-		db.Record getRecord(String name) {
+		DBRecord getRecord(String name) {
 			try {
 				StringField nameField = new StringField(name);
-				long[] keys = table.findRecords(nameField, NAME_ORDINAL);
+				Field[] keys = table.findRecords(nameField, NAME_ORDINAL);
 				if (keys.length > 1) {
 					throw new AssertException("Duplicate library "+name+" detected");
 				}
 				if (keys.length == 1) {
-					return table.getRecord(keys[0]);
+					return table.getRecord(keys[0].getLongValue());
 				}
 			} catch (IOException e) {
 				dbError(e);
@@ -546,7 +541,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 			int id = startTransaction("Renaming "+oldName+" to "+newName);
 			boolean success = false;
 			try {
-				db.Record record = getRecord(oldName);
+				DBRecord record = getRecord(oldName);
 				if (record == null) {
 					throw new AssertException("Library "+oldName+" does not exist");
 				}
@@ -567,9 +562,9 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	private class Renamer {
 		private final LibraryClassTypeInfoManager manager;
 		private final String name;
-		private final db.Record record;
+		private final DBRecord record;
 
-		Renamer(LibraryClassTypeInfoManager manager, String name, db.Record record) {
+		Renamer(LibraryClassTypeInfoManager manager, String name, DBRecord record) {
 			this.manager = manager;
 			this.name = name;
 			this.record = record;

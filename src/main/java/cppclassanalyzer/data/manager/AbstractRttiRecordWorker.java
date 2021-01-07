@@ -19,6 +19,7 @@ import cppclassanalyzer.database.utils.TransactionHandler;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord.ChangeType;
+import db.DBRecord;
 import db.util.ErrorHandler;
 
 public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
@@ -64,7 +65,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 	@Override
 	public final T3 getTypeRecord(long key) {
 		try {
-			db.Record record = tables.getTypeTable().getRecord(key);
+			DBRecord record = tables.getTypeTable().getRecord(key);
 			if (record != null) {
 				return tables.getTypeSchema().getRecord(record);
 			}
@@ -77,7 +78,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 	@Override
 	public final T4 getVtableRecord(long key) {
 		try {
-			db.Record record = tables.getVtableTable().getRecord(key);
+			DBRecord record = tables.getVtableTable().getRecord(key);
 			if (record != null) {
 				return tables.getVtableSchema().getRecord(record);
 			}

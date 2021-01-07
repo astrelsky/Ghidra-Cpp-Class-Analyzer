@@ -7,14 +7,11 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 import cppclassanalyzer.database.schema.fields.FieldEnum;
-import db.Buffer;
-import db.Field;
-import db.Schema;
-import db.Table;
+import db.*;
 
 abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRecord<T> {
 
-	private final db.Record record;
+	private final DBRecord record;
 
 	AbstractDatabaseRecord(Field key, Table table) {
 		this.record = getSchema().createRecord(key);
@@ -25,7 +22,7 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 		this.record = getSchema().createRecord(key);
 	}
 
-	AbstractDatabaseRecord(db.Record record) {
+	AbstractDatabaseRecord(DBRecord record) {
 		this.record = record;
 	}
 
@@ -48,8 +45,8 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 	public static int[] getIntArray(ByteBuffer buf) {
 		int size = buf.getInt();
 		return IntStream.generate(buf::getInt)
-				.limit(size)
-				.toArray();
+			.limit(size)
+			.toArray();
 	}
 
 	public static long[] getLongArray(ByteBuffer buf) {
@@ -156,7 +153,7 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 	}
 
 	@Override
-	public final synchronized boolean hasSameSchema(db.Record other) {
+	public final synchronized boolean hasSameSchema(DBRecord other) {
 		return other.hasSameSchema(getSchema());
 	}
 
@@ -250,7 +247,7 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 	}
 
 	@Override
-	public final db.Record getRecord() {
+	public final DBRecord getRecord() {
 		return record;
 	}
 }

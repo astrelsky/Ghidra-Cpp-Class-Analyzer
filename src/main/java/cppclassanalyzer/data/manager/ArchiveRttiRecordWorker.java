@@ -32,6 +32,7 @@ import cppclassanalyzer.database.record.ArchivedGnuVtableRecord;
 import cppclassanalyzer.database.schema.fields.ArchivedClassTypeInfoSchemaFields;
 import cppclassanalyzer.database.schema.fields.ArchivedGnuVtableSchemaFields;
 import cppclassanalyzer.database.utils.TransactionHandler;
+import db.Field;
 import db.StringField;
 
 abstract class ArchiveRttiRecordWorker extends
@@ -98,10 +99,10 @@ abstract class ArchiveRttiRecordWorker extends
 	public final long getTypeKey(String symbolName) {
 		try {
 			StringField field = new StringField(symbolName);
-			long[] results = getTables().getTypeTable().findRecords(
+			Field[] results = getTables().getTypeTable().findRecords(
 				field, ArchivedClassTypeInfoSchemaFields.MANGLED_SYMBOL.ordinal());
 			if (results.length == 1) {
-				return results[0];
+				return results[0].getLongValue();
 			}
 		} catch (IOException e) {
 			dbError(e);
@@ -112,10 +113,10 @@ abstract class ArchiveRttiRecordWorker extends
 	public final long getVtableKey(String symbolName) {
 		try {
 			StringField field = new StringField(symbolName);
-			long[] results = getTables().getVtableTable().findRecords(
+			Field[] results = getTables().getVtableTable().findRecords(
 				field, ArchivedGnuVtableSchemaFields.MANGLED_SYMBOL.ordinal());
 			if (results.length == 1) {
-				return results[0];
+				return results[0].getLongValue();
 			}
 		} catch (IOException e) {
 			dbError(e);
@@ -162,10 +163,10 @@ abstract class ArchiveRttiRecordWorker extends
 		}
 		try {
 			db.Field f = new StringField(symbolName);
-			long[] keys = getTables().getTypeTable().findRecords(
+			Field[] keys = getTables().getTypeTable().findRecords(
 				f, ArchivedClassTypeInfoSchemaFields.MANGLED_SYMBOL.ordinal());
 			if (keys.length == 1) {
-				return getType(keys[0]);
+				return getType(keys[0].getLongValue());
 			}
 		} catch (IOException e) {
 			dbError(e);

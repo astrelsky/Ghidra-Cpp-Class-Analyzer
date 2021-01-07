@@ -10,6 +10,7 @@ import javax.swing.Icon;
 import ghidra.app.cmd.data.rtti.*;
 
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+import db.*;
 
 import ghidra.program.database.ManagerDB;
 import ghidra.program.database.ProgramDB;
@@ -43,9 +44,6 @@ import cppclassanalyzer.database.utils.TransactionHandler;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord.ChangeType;
-import db.DBHandle;
-import db.LongField;
-import db.Table;
 import resources.ResourceManager;
 import util.CollectionUtils;
 
@@ -153,13 +151,13 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 	public final long getTypeKey(Address address) {
 		try {
 			long addrKey = encodeAddress(address);
-			long[] keys = worker.getTables()
+			Field[] keys = worker.getTables()
 				.getTypeTable()
 				.findRecords(
 					new LongField(addrKey),
 					ClassTypeInfoSchemaFields.ADDRESS.ordinal());
 			if (keys.length == 1) {
-				return keys[0];
+				return keys[0].getLongValue();
 			}
 			if (keys.length > 1) {
 				throw new AssertException(
@@ -174,12 +172,12 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 	public final long getVtableKey(Address address) {
 		try {
 			long addrKey = encodeAddress(address);
-			long[] keys = worker.getTables()
+			Field[] keys = worker.getTables()
 				.getVtableTable()
 				.findRecords(
 					new LongField(addrKey), VtableSchemaFields.ADDRESS.ordinal());
 			if (keys.length == 1) {
-				return keys[0];
+				return keys[0].getLongValue();
 			}
 			if (keys.length > 1) {
 				throw new AssertException(
@@ -301,7 +299,7 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 			int ordinal = ClassTypeInfoSchemaFields.ADDRESS.ordinal();
 			for (long key : getTypeKeys(fromAddr, endAddr, monitor)) {
 				monitor.checkCanceled();
-				db.Record record = table.getRecord(key);
+				DBRecord record = table.getRecord(key);
 				Address addr = decodeAddress(record.getLongValue(ordinal));
 				long offset = addr.subtract(fromAddr);
 				record.setLongValue(ordinal, encodeAddress(toAddr.add(offset)));
@@ -310,7 +308,7 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 			ordinal = VtableSchemaFields.ADDRESS.ordinal();
 			for (long key : getVtableKeys(fromAddr, endAddr, monitor)) {
 				monitor.checkCanceled();
-				db.Record record = table.getRecord(key);
+				DBRecord record = table.getRecord(key);
 				Address addr = decodeAddress(record.getLongValue(ordinal));
 				long offset = addr.subtract(fromAddr);
 				record.setLongValue(ordinal, encodeAddress(toAddr.add(offset)));
@@ -514,10 +512,10 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		try {
 			Table table = worker.getTables().getTypeTable();
 			LongField field = new LongField(id.getValue());
-			long[] keys =
+			Field[] keys =
 				table.findRecords(field, ClassTypeInfoSchemaFields.DATATYPE_ID.ordinal());
 			if (keys.length == 1) {
-				return worker.getType(keys[0]);
+				return worker.getType(keys[0].getLongValue());
 			}
 		} catch (IOException e) {
 			dbError(e);

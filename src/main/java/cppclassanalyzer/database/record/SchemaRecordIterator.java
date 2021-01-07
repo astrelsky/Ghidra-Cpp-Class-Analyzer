@@ -5,14 +5,14 @@ import java.util.function.Function;
 
 import cppclassanalyzer.database.schema.fields.FieldEnum;
 
-import db.RecordIterator;
+import db.*;
 
 public class SchemaRecordIterator<T extends DatabaseRecord<? extends FieldEnum>>  {
 
 	private final RecordIterator iter;
-	private final Function<db.Record, T> constructor;
+	private final Function<DBRecord, T> constructor;
 
-	public SchemaRecordIterator(RecordIterator iter, Function<db.Record, T> constructor) {
+	public SchemaRecordIterator(RecordIterator iter, Function<DBRecord, T> constructor) {
 		this.iter = iter;
 		this.constructor = constructor;
 	}

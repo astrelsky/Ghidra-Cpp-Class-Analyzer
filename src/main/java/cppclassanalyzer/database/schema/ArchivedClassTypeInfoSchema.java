@@ -2,6 +2,7 @@ package cppclassanalyzer.database.schema;
 
 import cppclassanalyzer.database.record.ArchivedClassTypeInfoRecord;
 import cppclassanalyzer.database.schema.fields.ArchivedClassTypeInfoSchemaFields;
+import db.DBRecord;
 
 public final class ArchivedClassTypeInfoSchema
 		extends AbstractSchema<ArchivedClassTypeInfoRecord> {
@@ -21,7 +22,7 @@ public final class ArchivedClassTypeInfoSchema
 	}
 
 	@Override
-	public ArchivedClassTypeInfoRecord getRecord(db.Record record) {
+	public ArchivedClassTypeInfoRecord getRecord(DBRecord record) {
 		return new ArchivedClassTypeInfoRecord(record);
 	}
 

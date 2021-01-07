@@ -2,11 +2,11 @@ package cppclassanalyzer.database.record;
 
 import cppclassanalyzer.database.schema.ClassTypeInfoSchema;
 import cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields;
-import db.Schema;
+import db.*;
 
 public final class ClassTypeInfoRecord extends AbstractDatabaseRecord<ClassTypeInfoSchemaFields> {
 
-	public ClassTypeInfoRecord(db.Record record) {
+	public ClassTypeInfoRecord(DBRecord record) {
 		super(record);
 	}
 

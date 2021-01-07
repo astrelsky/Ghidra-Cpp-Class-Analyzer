@@ -4,8 +4,7 @@ import java.io.IOException;
 
 import cppclassanalyzer.database.record.ArchivedGnuVtableRecord;
 import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
-import db.Field;
-import db.Table;
+import db.*;
 
 public class ArchivedGnuVtableDatabaseTable extends AbstractDatabaseTable<ArchivedGnuVtableSchema> {
 
@@ -21,7 +20,7 @@ public class ArchivedGnuVtableDatabaseTable extends AbstractDatabaseTable<Archiv
 	@Override
 	@SuppressWarnings("unchecked")
 	public final ArchivedGnuVtableRecord getRecord(long key) throws IOException {
-		db.Record record = getRawRecord(key);
+		DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return getSchema().getRecord(record);
 		}
@@ -31,7 +30,7 @@ public class ArchivedGnuVtableDatabaseTable extends AbstractDatabaseTable<Archiv
 	@Override
 	@SuppressWarnings("unchecked")
 	public ArchivedGnuVtableRecord getRecord(Field key) throws IOException {
-		db.Record record = getRawRecord(key);
+		DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return getSchema().getRecord(record);
 		}

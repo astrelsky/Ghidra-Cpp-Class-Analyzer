@@ -4,8 +4,7 @@ import java.io.IOException;
 
 import cppclassanalyzer.database.record.DatabaseRecord;
 import cppclassanalyzer.database.schema.AbstractSchema;
-import db.Field;
-import db.Table;
+import db.*;
 
 public interface DatabaseTable<T extends AbstractSchema<?>> {
 	T getSchema();

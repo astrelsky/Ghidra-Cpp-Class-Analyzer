@@ -4,8 +4,7 @@ import java.io.IOException;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
 import cppclassanalyzer.database.schema.ClassTypeInfoSchema;
-import db.Field;
-import db.Table;
+import db.*;
 
 public class ClassTypeInfoDatabaseTable extends AbstractDatabaseTable<ClassTypeInfoSchema> {
 
@@ -21,7 +20,7 @@ public class ClassTypeInfoDatabaseTable extends AbstractDatabaseTable<ClassTypeI
 	@Override
 	@SuppressWarnings("unchecked")
 	public final ClassTypeInfoRecord getRecord(long key) throws IOException {
-		db.Record record = getRawRecord(key);
+		DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return ClassTypeInfoSchema.SCHEMA.getRecord(record);
 		}
@@ -31,7 +30,7 @@ public class ClassTypeInfoDatabaseTable extends AbstractDatabaseTable<ClassTypeI
 	@Override
 	@SuppressWarnings("unchecked")
 	public ClassTypeInfoRecord getRecord(Field key) throws IOException {
-		db.Record record = getRawRecord(key);
+		DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return ClassTypeInfoSchema.SCHEMA.getRecord(record);
 		}

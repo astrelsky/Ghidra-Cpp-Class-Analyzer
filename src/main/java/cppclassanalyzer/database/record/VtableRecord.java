@@ -2,9 +2,7 @@ package cppclassanalyzer.database.record;
 
 import cppclassanalyzer.database.schema.VtableSchema;
 import cppclassanalyzer.database.schema.fields.VtableSchemaFields;
-import db.Field;
-import db.Schema;
-import db.Table;
+import db.*;
 
 public final class VtableRecord extends AbstractDatabaseRecord<VtableSchemaFields> {
 
@@ -16,7 +14,7 @@ public final class VtableRecord extends AbstractDatabaseRecord<VtableSchemaField
 		super(table);
 	}
 
-	public VtableRecord(db.Record record) {
+	public VtableRecord(DBRecord record) {
 		super(record);
 	}
 

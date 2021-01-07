@@ -2,9 +2,7 @@ package cppclassanalyzer.database.record;
 
 import java.io.IOException;
 
-import db.Buffer;
-import db.Field;
-import db.Schema;
+import db.*;
 import cppclassanalyzer.database.schema.fields.FieldEnum;
 
 public interface DatabaseRecord<T extends FieldEnum> {
@@ -38,7 +36,7 @@ public interface DatabaseRecord<T extends FieldEnum> {
 
 	int[] getIntArray(T type);
 
-	boolean hasSameSchema(db.Record other);
+	boolean hasSameSchema(DBRecord other);
 
 	boolean hasSameSchema(Schema schema);
 
@@ -74,7 +72,7 @@ public interface DatabaseRecord<T extends FieldEnum> {
 
 	void write(Buffer buf, int offset) throws IOException;
 
-	db.Record getRecord();
+	DBRecord getRecord();
 
 	public interface ByteConvertable {
 		byte[] toBytes();

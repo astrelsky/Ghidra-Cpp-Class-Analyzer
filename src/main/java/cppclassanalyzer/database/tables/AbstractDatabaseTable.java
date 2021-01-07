@@ -5,8 +5,7 @@ import java.io.IOException;
 import ghidra.util.exception.AssertException;
 
 import cppclassanalyzer.database.schema.AbstractSchema;
-import db.Field;
-import db.Table;
+import db.*;
 
 abstract class AbstractDatabaseTable<T extends AbstractSchema<?>> implements DatabaseTable<T> {
 
@@ -29,11 +28,11 @@ abstract class AbstractDatabaseTable<T extends AbstractSchema<?>> implements Dat
 		return table.getName();
 	}
 
-	protected final db.Record getRawRecord(long key) throws IOException {
+	protected final DBRecord getRawRecord(long key) throws IOException {
 		return table.getRecord(key);
 	}
 
-	protected final db.Record getRawRecord(Field key) throws IOException {
+	protected final DBRecord getRawRecord(Field key) throws IOException {
 		return table.getRecord(key);
 	}
 
