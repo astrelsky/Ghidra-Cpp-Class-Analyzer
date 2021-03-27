@@ -155,8 +155,8 @@ public final class CppClassAnalyzerUtils {
 	}
 
 	private static boolean isDataBlockName(MemoryBlock block) {
-		String name = block.getName();
-		return name.contains("data") || name.equals(".bss");
+		String name = block.getName().toLowerCase();
+		return name.contains("data") || name.equals(".bss") || name.contains("__const");
 	}
 
 	/**

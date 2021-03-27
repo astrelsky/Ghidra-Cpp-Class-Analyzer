@@ -51,9 +51,9 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 		IosFailTypeInfoModel.ID_STRING
 	);
 
-	private final ItaniumAbiClassTypeInfoManager manager;
-	private TaskMonitor monitor;
-	private MessageLog log;
+	protected final ItaniumAbiClassTypeInfoManager manager;
+	protected TaskMonitor monitor;
+	protected MessageLog log;
 	private Set<Relocation> relocations;
 	private boolean relocatable;
 
@@ -128,6 +128,10 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 				return false;
 			}
 		}
+		return doScan(log, monitor);
+	}
+
+	protected boolean doScan(MessageLog log, TaskMonitor monitor) throws CancelledException {
 		try {
 			/* Create the vmi replacement base to prevent a
 			   placeholder struct from being generated  */
@@ -270,7 +274,7 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 		return result;
 	}
 
-	private Set<Address> getReferences(String typeString) throws Exception {
+	protected Set<Address> getReferences(String typeString) throws Exception {
 		if (relocatable) {
 			return getDynamicReferences(typeString);
 		}

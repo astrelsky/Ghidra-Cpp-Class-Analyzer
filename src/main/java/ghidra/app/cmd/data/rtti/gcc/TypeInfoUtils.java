@@ -39,7 +39,8 @@ import ghidra.docking.settings.Settings;
 
 public class TypeInfoUtils {
 
-	private static Pattern LAMBDA_PATTERN = Pattern.compile("[\\$\\.]_");
+	private static final Pattern LAMBDA_PATTERN = Pattern.compile("[\\$\\.]_");
+	private static final String DYNLIB_VTABLE_PREFIX = "_"+VtableModel.MANGLED_PREFIX;
 
 	private TypeInfoUtils() {
 	}
@@ -176,6 +177,16 @@ public class TypeInfoUtils {
 		return null;
 	}
 
+	private static String externalSymbolToID(Program program, Address address) {
+		SymbolTable table = program.getSymbolTable();
+		for (Symbol symbol : table.getSymbols(address)) {
+			if (symbol.getName().startsWith(DYNLIB_VTABLE_PREFIX)) {
+				return symbol.getName().substring(DYNLIB_VTABLE_PREFIX.length());
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * Gets the identifier string for the {@value TypeInfoModel#STRUCTURE_NAME}
 	 * at the specified address.
@@ -214,6 +225,10 @@ public class TypeInfoUtils {
 							return name;
 						}
 					}
+				}
+				String name = externalSymbolToID(program, relocAddress);
+				if (name != null) {
+					return name;
 				}
 			}
 		}
