@@ -56,6 +56,7 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 	protected MessageLog log;
 	private Set<Relocation> relocations;
 	private boolean relocatable;
+	private boolean reportedMissingRtti = false;
 
 	public ItaniumAbiRttiScanner(Program program) {
 		this.manager =
@@ -224,7 +225,12 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 					}
 				}
 			} catch (UnresolvedClassTypeInfoException e) {
-				log.appendMsg(e.getMessage());
+				if (!reportedMissingRtti) {
+					log.appendMsg(
+						"Missing dynamic RTTI detected. Not all RTTI created.\n"
+						+ "See README for more information on how to fix this.");
+					reportedMissingRtti = true;
+				}
 			} catch (Exception e) {
 				if (e instanceof IndexOutOfBoundsException) {
 					e.printStackTrace();
