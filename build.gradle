@@ -39,15 +39,14 @@ def ghidraUserDir = System.getProperty("user.home") + "/.ghidra/.${DISTRO_PREFIX
 repositories { mavenCentral() }
 
 dependencies {
-	testCompile "org.hamcrest:hamcrest-all:1.3"
-	testCompile "org.jmockit:jmockit:1.44"
-	testCompile "junit:junit:4.12"
+	testImplementation "org.hamcrest:hamcrest-all:1.3"
+	testImplementation "org.jmockit:jmockit:1.44"
+	testImplementation "junit:junit:4.12"
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/patch', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Configurations', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Features', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Framework', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Processors', include: "**/*.jar")
-	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Debug', include: "**/*.jar")
 	runtimeOnly fileTree(dir: ghidraInstallDir + '/Ghidra/Extensions',
 						 include: "**/*.jar", exclude: project.name)
 	runtimeOnly fileTree(dir: ghidraUserDir + "/Extensions",
