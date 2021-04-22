@@ -74,4 +74,9 @@ public abstract class ClassTypeInfoDB extends DatabaseObject implements ClassTyp
 		return superStruct != null ? (Structure) superStruct : struct;
 	}
 
+	@Override
+	public boolean checkIsValid() {
+		return super.checkIsValid();
+	}
+
 }
