@@ -81,8 +81,8 @@ abstract class AbstractPBaseTypeInfoModel extends AbstractTypeInfoModel {
 		struct.add(getFlags(dtm), "__flags", null);
 		struct.add(PointerDataType.getPointer(TypeInfoModel.getDataType(dtm), dtm), "__pointee", null);
 		struct.setDescription(PBaseTypeInfoModel.DESCRIPTION);
-		struct.setInternallyAligned(true);
-		struct.adjustInternalAlignment();
+		struct.setPackingEnabled(true);
+		struct.repack();
 		DataType result = dtm.resolve(struct, KEEP_HANDLER);
 		return result.getLength() <= 1 ? dtm.resolve(struct, REPLACE_HANDLER) : result;
 	}

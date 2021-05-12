@@ -94,8 +94,8 @@ abstract class AbstractTypeInfoModel implements TypeInfo {
 	}
 
 	protected static DataType alignDataType(StructureDataType struct, DataTypeManager dtm) {
-		struct.setInternallyAligned(true);
-		struct.adjustInternalAlignment();
+		struct.setPackingEnabled(true);
+		struct.repack();
 		DataType result = dtm.resolve(struct, KEEP_HANDLER);
 		return result.getLength() <= 1 ? dtm.resolve(struct, REPLACE_HANDLER) : result;
 	}

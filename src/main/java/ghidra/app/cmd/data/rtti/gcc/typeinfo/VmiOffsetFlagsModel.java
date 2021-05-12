@@ -10,8 +10,6 @@ import ghidra.program.model.data.DataOrganization;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.data.EnumDataType;
-import ghidra.program.model.data.LongDataType;
-import ghidra.program.model.data.LongLongDataType;
 import ghidra.program.model.data.Structure;
 import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.Enum;
@@ -114,11 +112,8 @@ public final class VmiOffsetFlagsModel {
 			struct.add(getFlags(dtm), "__flags", null);
 			struct.add(getOffsetFlags(dtm), "__offset", null);
 		}
-		struct.setInternallyAligned(true);
-		DataType base = GnuUtils.isLLP64(dtm) ? LongLongDataType.dataType.clone(dtm)
-			: LongDataType.dataType.clone(dtm);
-		int alignment = dtm.getDataOrganization().getAlignment(base, struct.getLength());
-		struct.setMinimumAlignment(alignment);
+		struct.setPackingEnabled(true);
+		struct.setToMachineAligned();
 		struct.setDescription(DESCRIPTION);
 		return dtm.resolve(struct, KEEP_HANDLER);
 	}
@@ -129,7 +124,7 @@ public final class VmiOffsetFlagsModel {
 			: (org.getLongSize());
 		return AbstractIntegerDataType.getSignedDataType(size - 1, dtm);
 	}
-	
+
 	private static DataType getFlags(DataTypeManager dtm) {
 		EnumDataType flags =
 			new EnumDataType(VmiClassTypeInfoModel.SUB_PATH, "offset_flags", 1, dtm);

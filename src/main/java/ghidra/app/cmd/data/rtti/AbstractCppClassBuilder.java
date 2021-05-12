@@ -208,8 +208,8 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	private void stashComponents() {
-		if (struct.isInternallyAligned()) {
-			struct.setInternallyAligned(false);
+		if (struct.isPackingEnabled()) {
+			struct.setPackingEnabled(false);
 		}
 		if(dtComps.isEmpty()) {
 			dtComps = new HashMap<>(struct.getNumDefinedComponents());

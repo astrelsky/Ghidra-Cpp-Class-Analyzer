@@ -197,9 +197,9 @@ public class ClassTypeInfoUtils {
 			// assume VariableUtilities found the type from debug info
 			return (Structure) thiscallStruct;
 		}
-		return getFixedIncorrectStructure(type, dtm); 
+		return getFixedIncorrectStructure(type, dtm);
 	}
-	
+
 	private static Structure getFixedIncorrectStructure(ClassTypeInfo type, DataTypeManager dtm) {
 		String msg = "Variable Utils returned wrong class structure! " + type.getName();
 		Msg.warn(ClassTypeInfoUtils.class, msg);
@@ -384,8 +384,8 @@ public class ClassTypeInfoUtils {
 					}
 				}
 			}
-			struct.setInternallyAligned(true);
-			struct.setToMachineAlignment();
+			struct.setPackingEnabled(true);
+			struct.setToMachineAligned();
 			struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
 			return dtm.getPointer(struct);
 		} catch (DuplicateNameException e) {
