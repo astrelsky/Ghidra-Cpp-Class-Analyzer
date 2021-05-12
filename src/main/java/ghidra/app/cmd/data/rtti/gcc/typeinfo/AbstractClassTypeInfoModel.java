@@ -128,8 +128,9 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel
 	@Override
 	public GhidraClass getGhidraClass() {
 		if (!(namespace instanceof GhidraClass)) {
+			Integer id = null;
+			boolean success = false;
 			try {
-				Integer id = null;
 				if (program.getCurrentTransaction() == null) {
 					id = program.startTransaction("creating GhidraClass for "+getName());
 				}
@@ -139,12 +140,14 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel
 					namespace = TypeInfoUtils.getNamespaceFromTypeName(program, typeName);
 					namespace = NamespaceUtils.convertNamespaceToClass(namespace);
 				}
-				if (id != null) {
-					program.endTransaction(id, true);
-				}
+				success = true;
 			} catch (InvalidInputException e) {
 				Msg.error(this, e);
 				return null;
+			} finally {
+				if (id != null) {
+					program.endTransaction(id, success);
+				}
 			}
 		} return (GhidraClass) namespace;
 	}
