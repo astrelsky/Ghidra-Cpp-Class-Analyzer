@@ -17,7 +17,8 @@ import ghidra.docking.settings.Settings;
 public class TypeInfoFactoryDataType extends FactoryStructureDataType {
 
 	private static final String DATA_TYPE_NAME = "TypeInfo";
-	private static final String DESCRIPTION = "Automatically applies the correct typeinfo structure upon creation";
+	private static final String DESCRIPTION =
+		"Automatically applies the correct typeinfo structure upon creation";
 
 	public TypeInfoFactoryDataType() {
 		this(null);
@@ -33,7 +34,7 @@ public class TypeInfoFactoryDataType extends FactoryStructureDataType {
 	}
 
 	@Override
-	public boolean isDynamicallySized() {
+	public boolean hasLanguageDependantLength() {
 		return true;
 	}
 
