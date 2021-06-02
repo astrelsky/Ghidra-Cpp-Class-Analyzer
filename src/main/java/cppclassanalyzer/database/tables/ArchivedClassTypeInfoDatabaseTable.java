@@ -22,7 +22,7 @@ public class ArchivedClassTypeInfoDatabaseTable
 	@Override
 	@SuppressWarnings("unchecked")
 	public final ArchivedClassTypeInfoRecord getRecord(long key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return getSchema().getRecord(record);
 		}
@@ -32,7 +32,7 @@ public class ArchivedClassTypeInfoDatabaseTable
 	@Override
 	@SuppressWarnings("unchecked")
 	public ArchivedClassTypeInfoRecord getRecord(Field key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return getSchema().getRecord(record);
 		}

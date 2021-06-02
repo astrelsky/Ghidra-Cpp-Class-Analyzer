@@ -21,7 +21,7 @@ public class ArchivedGnuVtableDatabaseTable extends AbstractDatabaseTable<Archiv
 	@Override
 	@SuppressWarnings("unchecked")
 	public final ArchivedGnuVtableRecord getRecord(long key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return getSchema().getRecord(record);
 		}
@@ -31,7 +31,7 @@ public class ArchivedGnuVtableDatabaseTable extends AbstractDatabaseTable<Archiv
 	@Override
 	@SuppressWarnings("unchecked")
 	public ArchivedGnuVtableRecord getRecord(Field key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return getSchema().getRecord(record);
 		}

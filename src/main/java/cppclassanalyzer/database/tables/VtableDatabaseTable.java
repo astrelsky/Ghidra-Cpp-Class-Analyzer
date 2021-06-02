@@ -21,7 +21,7 @@ public class VtableDatabaseTable extends AbstractDatabaseTable<VtableSchema> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public final VtableRecord getRecord(long key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return VtableSchema.SCHEMA.getRecord(record);
 		}
@@ -31,7 +31,7 @@ public class VtableDatabaseTable extends AbstractDatabaseTable<VtableSchema> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public VtableRecord getRecord(Field key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return VtableSchema.SCHEMA.getRecord(record);
 		}

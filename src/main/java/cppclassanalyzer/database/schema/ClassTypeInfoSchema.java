@@ -19,7 +19,7 @@ public final class ClassTypeInfoSchema extends AbstractSchema<ClassTypeInfoRecor
 	}
 
 	@Override
-	public ClassTypeInfoRecord getRecord(db.Record record) {
+	public ClassTypeInfoRecord getRecord(db.DBRecord record) {
 		return new ClassTypeInfoRecord(record);
 	}
 

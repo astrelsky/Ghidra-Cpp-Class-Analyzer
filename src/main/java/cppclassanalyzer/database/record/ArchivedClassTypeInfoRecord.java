@@ -17,7 +17,7 @@ public final class ArchivedClassTypeInfoRecord
 		super(table);
 	}
 
-	public ArchivedClassTypeInfoRecord(db.Record record) {
+	public ArchivedClassTypeInfoRecord(db.DBRecord record) {
 		super(record);
 	}
 

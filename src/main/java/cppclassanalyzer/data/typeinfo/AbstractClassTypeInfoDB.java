@@ -272,7 +272,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	}
 
 	@Override
-	protected boolean refresh(db.Record record) {
+	protected boolean refresh(db.DBRecord record) {
 		return refresh(new ClassTypeInfoRecord(record));
 	}
 
@@ -326,7 +326,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			return record;
 		}
 		throw new AssertException(
-			String.format("Ghidra-Cpp-Class-Analyzer: %s db record no longer exists",
+			String.format("Ghidra-Cpp-Class-Analyzer: %s db.DBRecord no longer exists",
 			getName()));
 	}
 
@@ -435,6 +435,10 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 	@Override
 	public final boolean isModifiable() {
 		return true;
+	}
+
+	public boolean isValid(db.DBRecord record) {
+		return this.checkIsValid(record);
 	}
 
 	public static enum TypeId {

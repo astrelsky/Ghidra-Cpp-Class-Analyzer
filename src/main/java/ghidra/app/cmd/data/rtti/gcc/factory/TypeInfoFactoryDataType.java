@@ -33,7 +33,7 @@ public class TypeInfoFactoryDataType extends FactoryStructureDataType {
 	}
 
 	@Override
-	public boolean isDynamicallySized() {
+	public boolean hasLanguageDependantLength() {
 		return true;
 	}
 

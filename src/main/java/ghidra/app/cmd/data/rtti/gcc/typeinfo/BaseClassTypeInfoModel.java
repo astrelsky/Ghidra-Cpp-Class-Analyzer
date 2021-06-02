@@ -115,8 +115,7 @@ public final class BaseClassTypeInfoModel {
 		StructureDataType struct = new StructureDataType(superDt.getCategoryPath(), STRUCTURE_NAME, 0, dtm);
 		struct.add(superDt, superDt.getLength(), "super___class_type_info", null);
 		struct.add(flags, flags.getLength(), "__offset_flags", null);
-		struct.setInternallyAligned(true);
-		struct.adjustInternalAlignment();
+		struct.setPackingEnabled(true);
 		struct.setDescription(DESCRIPTION);
 		DataType result = dtm.resolve(struct, KEEP_HANDLER);
 		return result.getLength() <= 1 ? dtm.resolve(struct, REPLACE_HANDLER) : result;

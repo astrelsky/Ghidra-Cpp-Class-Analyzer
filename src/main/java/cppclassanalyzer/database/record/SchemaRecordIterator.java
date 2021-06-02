@@ -10,9 +10,9 @@ import db.RecordIterator;
 public class SchemaRecordIterator<T extends DatabaseRecord<? extends FieldEnum>>  {
 
 	private final RecordIterator iter;
-	private final Function<db.Record, T> constructor;
+	private final Function<db.DBRecord, T> constructor;
 
-	public SchemaRecordIterator(RecordIterator iter, Function<db.Record, T> constructor) {
+	public SchemaRecordIterator(RecordIterator iter, Function<db.DBRecord, T> constructor) {
 		this.iter = iter;
 		this.constructor = constructor;
 	}

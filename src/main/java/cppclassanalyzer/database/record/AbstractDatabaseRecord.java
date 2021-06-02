@@ -14,7 +14,7 @@ import db.Table;
 
 abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRecord<T> {
 
-	private final db.Record record;
+	private final db.DBRecord record;
 
 	AbstractDatabaseRecord(Field key, Table table) {
 		this.record = getSchema().createRecord(key);
@@ -25,7 +25,7 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 		this.record = getSchema().createRecord(key);
 	}
 
-	AbstractDatabaseRecord(db.Record record) {
+	AbstractDatabaseRecord(db.DBRecord record) {
 		this.record = record;
 	}
 
@@ -156,7 +156,7 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 	}
 
 	@Override
-	public final synchronized boolean hasSameSchema(db.Record other) {
+	public final synchronized boolean hasSameSchema(db.DBRecord other) {
 		return other.hasSameSchema(getSchema());
 	}
 
@@ -250,7 +250,7 @@ abstract class AbstractDatabaseRecord<T extends FieldEnum> implements DatabaseRe
 	}
 
 	@Override
-	public final db.Record getRecord() {
+	public final db.DBRecord getRecord() {
 		return record;
 	}
 }

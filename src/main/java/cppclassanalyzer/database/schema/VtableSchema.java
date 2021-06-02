@@ -18,7 +18,7 @@ public final class VtableSchema extends AbstractSchema<VtableRecord> {
 	}
 
 	@Override
-	public VtableRecord getRecord(db.Record record) {
+	public VtableRecord getRecord(db.DBRecord record) {
 		return new VtableRecord(record);
 	}
 

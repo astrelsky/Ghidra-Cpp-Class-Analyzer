@@ -114,11 +114,11 @@ public final class VmiOffsetFlagsModel {
 			struct.add(getFlags(dtm), "__flags", null);
 			struct.add(getOffsetFlags(dtm), "__offset", null);
 		}
-		struct.setInternallyAligned(true);
+		struct.setPackingEnabled(true);
 		DataType base = GnuUtils.isLLP64(dtm) ? LongLongDataType.dataType.clone(dtm)
 			: LongDataType.dataType.clone(dtm);
-		int alignment = dtm.getDataOrganization().getAlignment(base, struct.getLength());
-		struct.setMinimumAlignment(alignment);
+		int alignment = dtm.getDataOrganization().getAlignment(base);
+		struct.setExplicitMinimumAlignment(alignment);
 		struct.setDescription(DESCRIPTION);
 		return dtm.resolve(struct, KEEP_HANDLER);
 	}

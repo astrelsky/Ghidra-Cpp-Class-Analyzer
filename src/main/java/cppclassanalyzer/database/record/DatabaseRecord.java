@@ -38,7 +38,7 @@ public interface DatabaseRecord<T extends FieldEnum> {
 
 	int[] getIntArray(T type);
 
-	boolean hasSameSchema(db.Record other);
+	boolean hasSameSchema(db.DBRecord other);
 
 	boolean hasSameSchema(Schema schema);
 
@@ -74,7 +74,7 @@ public interface DatabaseRecord<T extends FieldEnum> {
 
 	void write(Buffer buf, int offset) throws IOException;
 
-	db.Record getRecord();
+	db.DBRecord getRecord();
 
 	public interface ByteConvertable {
 		byte[] toBytes();

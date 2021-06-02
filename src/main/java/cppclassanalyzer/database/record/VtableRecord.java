@@ -16,7 +16,7 @@ public final class VtableRecord extends AbstractDatabaseRecord<VtableSchemaField
 		super(table);
 	}
 
-	public VtableRecord(db.Record record) {
+	public VtableRecord(db.DBRecord record) {
 		super(record);
 	}
 

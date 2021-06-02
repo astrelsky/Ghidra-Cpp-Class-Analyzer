@@ -16,7 +16,7 @@ public final class ArchivedGnuVtableRecord extends AbstractDatabaseRecord<Archiv
 		super(table);
 	}
 
-	public ArchivedGnuVtableRecord(db.Record record) {
+	public ArchivedGnuVtableRecord(db.DBRecord record) {
 		super(record);
 	}
 

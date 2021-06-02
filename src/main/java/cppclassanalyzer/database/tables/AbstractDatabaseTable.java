@@ -29,11 +29,11 @@ abstract class AbstractDatabaseTable<T extends AbstractSchema<?>> implements Dat
 		return table.getName();
 	}
 
-	protected final db.Record getRawRecord(long key) throws IOException {
+	protected final db.DBRecord getRawRecord(long key) throws IOException {
 		return table.getRecord(key);
 	}
 
-	protected final db.Record getRawRecord(Field key) throws IOException {
+	protected final db.DBRecord getRawRecord(Field key) throws IOException {
 		return table.getRecord(key);
 	}
 

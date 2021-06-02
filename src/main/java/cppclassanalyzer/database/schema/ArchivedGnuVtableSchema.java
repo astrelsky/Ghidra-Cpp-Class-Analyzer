@@ -18,7 +18,7 @@ public final class ArchivedGnuVtableSchema extends AbstractSchema<ArchivedGnuVta
 	}
 
 	@Override
-	public ArchivedGnuVtableRecord getRecord(db.Record record) {
+	public ArchivedGnuVtableRecord getRecord(db.DBRecord record) {
 		return new ArchivedGnuVtableRecord(record);
 	}
 

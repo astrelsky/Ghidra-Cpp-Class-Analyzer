@@ -21,7 +21,7 @@ public final class ArchivedClassTypeInfoSchema
 	}
 
 	@Override
-	public ArchivedClassTypeInfoRecord getRecord(db.Record record) {
+	public ArchivedClassTypeInfoRecord getRecord(db.DBRecord record) {
 		return new ArchivedClassTypeInfoRecord(record);
 	}
 

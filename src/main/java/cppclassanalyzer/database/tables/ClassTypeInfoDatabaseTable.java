@@ -21,7 +21,7 @@ public class ClassTypeInfoDatabaseTable extends AbstractDatabaseTable<ClassTypeI
 	@Override
 	@SuppressWarnings("unchecked")
 	public final ClassTypeInfoRecord getRecord(long key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return ClassTypeInfoSchema.SCHEMA.getRecord(record);
 		}
@@ -31,7 +31,7 @@ public class ClassTypeInfoDatabaseTable extends AbstractDatabaseTable<ClassTypeI
 	@Override
 	@SuppressWarnings("unchecked")
 	public ClassTypeInfoRecord getRecord(Field key) throws IOException {
-		db.Record record = getRawRecord(key);
+		db.DBRecord record = getRawRecord(key);
 		if (record != null) {
 			return ClassTypeInfoSchema.SCHEMA.getRecord(record);
 		}

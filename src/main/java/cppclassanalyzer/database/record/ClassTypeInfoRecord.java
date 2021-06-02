@@ -6,7 +6,7 @@ import db.Schema;
 
 public final class ClassTypeInfoRecord extends AbstractDatabaseRecord<ClassTypeInfoSchemaFields> {
 
-	public ClassTypeInfoRecord(db.Record record) {
+	public ClassTypeInfoRecord(db.DBRecord record) {
 		super(record);
 	}
 
