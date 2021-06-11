@@ -10,6 +10,7 @@ import javax.swing.Icon;
 import ghidra.app.cmd.data.rtti.*;
 
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import db.*;
 
 import ghidra.program.database.ManagerDB;
@@ -55,13 +56,13 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 	};
 
 	private final AddressMap map;
-	protected final ClassTypeInfoManagerPlugin plugin;
+	protected final ClassTypeInfoManagerService plugin;
 	protected final ProgramDB program;
 	protected final RttiRecordWorker worker;
 	protected final TypeInfoTreeNodeManager treeNodeManager;
 
-	protected ClassTypeInfoManagerDB(ClassTypeInfoManagerPlugin plugin, ProgramDB program) {
-		this.plugin = plugin;
+	protected ClassTypeInfoManagerDB(ClassTypeInfoManagerService service, ProgramDB program) {
+		this.plugin = service;
 		this.program = program;
 		this.map = program.getAddressMap();
 		DBHandle handle = program.getDBHandle();
@@ -88,8 +89,13 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		ProgramRttiCachePair caches = new ProgramRttiCachePair();
 		ProgramRttiTablePair tables = new ProgramRttiTablePair(classTable, vtableTable);
 		this.worker = getWorker(tables, caches);
-		this.treeNodeManager = new TypeInfoTreeNodeManager(plugin, this);
-		treeNodeManager.generateTree();
+		if (service instanceof ClassTypeInfoManagerPlugin) {
+			ClassTypeInfoManagerPlugin plugin = (ClassTypeInfoManagerPlugin) service;
+			this.treeNodeManager = new TypeInfoTreeNodeManager(plugin, this);
+			treeNodeManager.generateTree();
+		} else {
+			this.treeNodeManager = null;
+		}
 	}
 
 	private ClassTypeInfoDatabaseTable getClassTable(DBHandle handle) {
@@ -414,7 +420,9 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		AbstractClassTypeInfoDB result = new GnuClassTypeInfoDB(worker, type, record);
 		TypeInfoArchiveChangeRecord changeRecord =
 			new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, result);
-		plugin.managerChanged(changeRecord);
+		if (plugin instanceof ClassTypeInfoManagerPlugin) {
+			((ClassTypeInfoManagerPlugin) plugin).managerChanged(changeRecord);
+		}
 		return result;
 	}
 
@@ -562,7 +570,7 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		}
 
 		@Override
-		final ClassTypeInfoManagerPlugin getPlugin() {
+		final ClassTypeInfoManagerService getPlugin() {
 			return plugin;
 		}
 

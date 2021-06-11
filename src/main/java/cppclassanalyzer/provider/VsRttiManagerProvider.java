@@ -8,10 +8,12 @@ import ghidra.program.model.listing.Program;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.manager.VsClassTypeInfoManager;
-import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
+import cppclassanalyzer.plugin.HeadlessClassTypeInfoManagerService;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.service.RttiManagerProvider;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
+
+import static ghidra.util.SystemUtilities.isInHeadlessMode;
 
 public final class VsRttiManagerProvider implements RttiManagerProvider {
 
@@ -25,12 +27,13 @@ public final class VsRttiManagerProvider implements RttiManagerProvider {
 		if (!canProvideManager(program)) {
 			return null;
 		}
-		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
-		ClassTypeInfoManagerService service = tool.getService(ClassTypeInfoManagerService.class);
-		if (service instanceof ClassTypeInfoManagerPlugin) {
-			return new VsClassTypeInfoManager(
-				(ClassTypeInfoManagerPlugin) service, (ProgramDB) program);
+		ClassTypeInfoManagerService service;
+		if (isInHeadlessMode()) {
+			service = HeadlessClassTypeInfoManagerService.getInstance();
+		} else {
+			PluginTool tool = CppClassAnalyzerUtils.getTool(program);
+			service = tool.getService(ClassTypeInfoManagerService.class);
 		}
-		return null;
+		return new VsClassTypeInfoManager(service, (ProgramDB) program);
 	}
 }

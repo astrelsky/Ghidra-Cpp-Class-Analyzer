@@ -11,6 +11,7 @@ import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObjectListener;
@@ -32,6 +33,7 @@ import ghidra.program.model.symbol.Namespace;
 import ghidra.program.util.ChangeManager;
 import ghidra.util.InvalidNameException;
 import ghidra.util.Lock;
+import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
@@ -69,19 +71,24 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	private static final int TYPE_INDEX = 1;
 	private static final int VTABLE_INDEX = 2;
 
-	private final ClassTypeInfoManagerPlugin plugin;
+	private final ClassTypeInfoManagerService plugin;
 	private final ProjectArchive archive;
 	private final LibraryMap libMap;
 	private final TypeInfoTreeNodeManager treeNodeManager;
 
-	private ProjectClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin, ProjectArchive archive)
+	private ProjectClassTypeInfoManager(ClassTypeInfoManagerService service, ProjectArchive archive)
 			throws CancelledException, VersionException, IOException {
 		super(getDBHandle(archive), DBConstants.UPDATE, getDB(archive),
 			getLock(archive), TaskMonitor.DUMMY);
 		this.archive = archive;
-		this.plugin = plugin;
+		this.plugin = service;
 		setDataTypeArchive(getDB(archive));
-		this.treeNodeManager = new TypeInfoTreeNodeManager(plugin, this);
+		if (service instanceof ClassTypeInfoManagerPlugin) {
+			this.treeNodeManager =
+				new TypeInfoTreeNodeManager((ClassTypeInfoManagerPlugin) service, this);
+		} else {
+			this.treeNodeManager = null;
+		}
 		this.libMap = new LibraryMap();
 	}
 
@@ -97,10 +104,10 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		return getDB(archive).getLock();
 	}
 
-	public static ProjectClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin,
+	public static ProjectClassTypeInfoManager open(ClassTypeInfoManagerService service,
 			ProjectArchive archive) throws IOException {
 		try {
-			return new ProjectClassTypeInfoManager(plugin, archive);
+			return new ProjectClassTypeInfoManager(service, archive);
 		} catch (VersionException | CancelledException e) {
 			throw new AssertException(e);
 		}
@@ -228,7 +235,11 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	@Override
 	public ClassTypeInfoManagerPlugin getPlugin() {
-		return plugin;
+		try {
+			return (ClassTypeInfoManagerPlugin) plugin;
+		} catch (ClassCastException e) {
+			throw new AssertException("This should be unreachable in headless mode", e);
+		}
 	}
 
 	@Override
@@ -243,7 +254,18 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	@Override
 	public void save() {
-		plugin.getDataTypeManagerHandler().save(getDB(archive));
+		if (plugin instanceof ClassTypeInfoManagerPlugin) {
+			ClassTypeInfoManagerPlugin p  = (ClassTypeInfoManagerPlugin) plugin;
+			p.getDataTypeManagerHandler().save(getDB(archive));
+		} else {
+			try {
+				getDB(archive).getDomainFile().save(TaskMonitor.DUMMY);
+			} catch (CancelledException e) {
+				throw new AssertException(e);
+			} catch (IOException e) {
+				Msg.showError(this, null, "Failed to save "+getName(), e);
+			}
+		}
 	}
 
 	/**
@@ -348,7 +370,9 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 	@Override
 	public void close() {
 		archive.close();
-		treeNodeManager.dispose();
+		if (treeNodeManager != null) {
+			treeNodeManager.dispose();
+		}
 	}
 
 	/**

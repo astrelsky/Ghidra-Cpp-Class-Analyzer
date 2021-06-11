@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.plugin.core.datamgr.archive.DuplicateIdException;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.ServiceInfo;
@@ -56,7 +55,7 @@ public interface ClassTypeInfoManagerService {
 		return tool.getService(ClassTypeInfoManagerService.class) != null;
 	}
 
-	public ClassTypeInfo getExternalClassTypeInfo(Program program, String mangled);
+	public ArchivedClassTypeInfo getExternalClassTypeInfo(Program program, String mangled);
 
 	public ArchivedClassTypeInfo getArchivedClassTypeInfo(String symbolName);
 	public ArchivedVtable getArchivedVtable(String symbolName);

@@ -20,15 +20,15 @@ import cppclassanalyzer.data.typeinfo.VsClassTypeInfoDB;
 import cppclassanalyzer.data.vtable.VftableDB;
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
 import cppclassanalyzer.database.record.VtableRecord;
-import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.vs.RttiModelWrapper;
 import cppclassanalyzer.vs.VsClassTypeInfo;
 import cppclassanalyzer.vs.VsVtableModel;
 
 public final class VsClassTypeInfoManager extends ClassTypeInfoManagerDB {
 
-	public VsClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin, ProgramDB program) {
-		super(plugin, program);
+	public VsClassTypeInfoManager(ClassTypeInfoManagerService service, ProgramDB program) {
+		super(service, program);
 	}
 
 	@Override

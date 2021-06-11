@@ -95,7 +95,7 @@ public final class DecompilerAPI implements Disposable, AutoCloseable {
 
 		DecompileOptions options;
 		options = new DecompileOptions();
-		OptionsService service = tool.getService(OptionsService.class);
+		OptionsService service = tool != null ? tool.getService(OptionsService.class) : null;
 		if (service != null) {
 			ToolOptions opt = service.getOptions("Decompiler");
 			options.grabFromToolAndProgram(null, opt, program);

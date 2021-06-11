@@ -29,16 +29,16 @@ import cppclassanalyzer.database.record.VtableRecord;
 import cppclassanalyzer.database.schema.fields.ClassTypeInfoSchemaFields;
 import cppclassanalyzer.database.tables.ClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.utils.LongStack;
-import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.scanner.ItaniumAbiRttiScanner;
 import cppclassanalyzer.scanner.RttiScanner;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import db.*;
 
 public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB {
 
 	private ItaniumAbiRttiScanner scanner;
 
-	public ItaniumAbiClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin, ProgramDB program) {
+	public ItaniumAbiClassTypeInfoManager(ClassTypeInfoManagerService plugin, ProgramDB program) {
 		super(plugin, program);
 	}
 

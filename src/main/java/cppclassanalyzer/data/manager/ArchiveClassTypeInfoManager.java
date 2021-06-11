@@ -11,6 +11,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.FileArchive;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 
 import ghidra.framework.store.db.PackedDBHandle;
 import ghidra.framework.store.db.PackedDatabase;
@@ -45,7 +46,8 @@ import db.Table;
 import generic.jar.ResourceFile;
 import resources.ResourceManager;
 
-// from cppclassanalyzer.data import ArchiveClassTypeInfoManager
+import static ghidra.util.SystemUtilities.isInHeadlessMode;
+
 public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		implements FileArchiveClassTypeInfoManager {
 
@@ -55,11 +57,11 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	};
 
 	private final File file;
-	private final ClassTypeInfoManagerPlugin plugin;
+	private final ClassTypeInfoManagerService plugin;
 	private final RttiRecordWorker worker;
 	private final TypeInfoTreeNodeManager treeNodeManager;
 
-	private ArchiveClassTypeInfoManager(ClassTypeInfoManagerPlugin plugin,
+	private ArchiveClassTypeInfoManager(ClassTypeInfoManagerService plugin,
 			File file, int openMode) throws IOException {
 		super(new ResourceFile(file), openMode);
 		this.plugin = plugin;
@@ -76,13 +78,22 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		ArchivedRttiTablePair tables = new ArchivedRttiTablePair(classTable, vtableTable);
 		this.worker = new RttiRecordWorker(tables, caches);
 		this.name = FilenameUtils.removeExtension(file.getName());
-		this.treeNodeManager = new TypeInfoTreeNodeManager(plugin, this);
-		treeNodeManager.generateTree();
+		if (!isInHeadlessMode()) {
+			this.treeNodeManager =
+				new TypeInfoTreeNodeManager((ClassTypeInfoManagerPlugin) plugin, this);
+			treeNodeManager.generateTree();
+		} else {
+			this.treeNodeManager = null;
+		}
 	}
 
 	@Override
 	public ClassTypeInfoManagerPlugin getPlugin() {
-		return plugin;
+		try {
+			return (ClassTypeInfoManagerPlugin) plugin;
+		} catch (ClassCastException e) {
+			throw new AssertException("This should be unreachable in headless mode", e);
+		}
 	}
 
 	private ArchivedClassTypeInfoDatabaseTable getClassTable() {
@@ -121,7 +132,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return new ArchivedGnuVtableDatabaseTable(vtableTable);
 	}
 
-	public static ArchiveClassTypeInfoManager createManager(ClassTypeInfoManagerPlugin plugin,
+	public static ArchiveClassTypeInfoManager createManager(ClassTypeInfoManagerService plugin,
 			File file) throws IOException {
 		return new ArchiveClassTypeInfoManager(plugin, file, DBConstants.CREATE);
 	}
@@ -136,7 +147,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		return dbHandle.canUpdate();
 	}
 
-	public static ArchiveClassTypeInfoManager open(ClassTypeInfoManagerPlugin plugin, File file,
+	public static ArchiveClassTypeInfoManager open(ClassTypeInfoManagerService plugin, File file,
 			boolean openForUpdate) throws IOException {
 		int mode = openForUpdate ? DBConstants.UPDATE : DBConstants.READ_ONLY;
 		return new ArchiveClassTypeInfoManager(plugin, file, mode);
@@ -301,7 +312,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 		}
 
 		@Override
-		ClassTypeInfoManagerPlugin getPlugin() {
+		ClassTypeInfoManagerService getPlugin() {
 			return plugin;
 		}
 

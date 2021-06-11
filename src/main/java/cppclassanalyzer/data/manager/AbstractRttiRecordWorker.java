@@ -19,6 +19,7 @@ import cppclassanalyzer.database.utils.TransactionHandler;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord;
 import cppclassanalyzer.plugin.TypeInfoArchiveChangeRecord.ChangeType;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import db.DBRecord;
 import db.util.ErrorHandler;
 
@@ -48,7 +49,7 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 
 	abstract T2 buildVtable(Vtable vtable, T4 record);
 
-	abstract ClassTypeInfoManagerPlugin getPlugin();
+	abstract ClassTypeInfoManagerService getPlugin();
 
 	private T3 createTypeRecord(long key) throws IOException {
 		T3 record = tables.getTypeSchema().getNewRecord(key);
@@ -140,9 +141,14 @@ public abstract class AbstractRttiRecordWorker<T1 extends ClassTypeInfoDB,
 			try {
 				T3 record = createTypeRecord(key);
 				T1 typeDb = buildType(type, record);
-				TypeInfoArchiveChangeRecord change =
-					new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, typeDb);
-				getPlugin().managerChanged(change);
+				ClassTypeInfoManagerService service = getPlugin();
+				if (service instanceof ClassTypeInfoManagerPlugin) {
+					ClassTypeInfoManagerPlugin plugin = (ClassTypeInfoManagerPlugin) service;
+					TypeInfoArchiveChangeRecord change =
+						new TypeInfoArchiveChangeRecord(ChangeType.TYPE_ADDED, typeDb);
+					plugin.managerChanged(change);
+				}
+
 				return typeDb;
 			} catch (RuntimeException e) {
 				getTables().getTypeTable().deleteRecord(key);
