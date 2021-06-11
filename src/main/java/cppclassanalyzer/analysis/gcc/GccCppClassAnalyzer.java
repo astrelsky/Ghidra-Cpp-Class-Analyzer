@@ -3,14 +3,11 @@ package cppclassanalyzer.analysis.gcc;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.plugin.prototype.GccRttiAnalyzer;
-import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 
 import cppclassanalyzer.analysis.AbstractCppClassAnalyzer;
 import cppclassanalyzer.decompiler.DecompilerAPI;
-import cppclassanalyzer.service.ClassTypeInfoManagerService;
-import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import static ghidra.app.cmd.data.rtti.gcc.GnuUtils.isGnuCompiler;
 
@@ -37,9 +34,8 @@ public class GccCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	@Override
 	protected void init() {
-		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
 		this.vtableAnalyzer = new GccVtableAnalysisCmd();
-		this.api = tool.getService(ClassTypeInfoManagerService.class).getDecompilerAPI(program);
+		this.api = getDecompilerAPI(program);
 		api.setMonitor(monitor);
 		api.setTimeout(getTimeout());
 		this.constructorAnalyzer = new GccDecompilerConstructorAnalysisCmd(api);

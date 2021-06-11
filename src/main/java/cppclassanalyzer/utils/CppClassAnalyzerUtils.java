@@ -19,7 +19,10 @@ import ghidra.program.model.symbol.SymbolUtilities;
 import ghidra.util.Msg;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.plugin.HeadlessClassTypeInfoManagerService;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
+
+import static ghidra.util.SystemUtilities.isInHeadlessMode;
 
 public final class CppClassAnalyzerUtils {
 
@@ -118,6 +121,9 @@ public final class CppClassAnalyzerUtils {
 	}
 
 	public static ClassTypeInfoManagerService getService(Program program) {
+		if (isInHeadlessMode()) {
+			return HeadlessClassTypeInfoManagerService.getInstance();
+		}
 		PluginTool tool = getTool(program);
 		if (tool == null) {
 			return null;
@@ -131,8 +137,13 @@ public final class CppClassAnalyzerUtils {
 	 * @return the program's ClassTypeInfoManager
 	 */
 	public static ProgramClassTypeInfoManager getManager(Program program) {
-		ClassTypeInfoManagerService service = getService(program);
-		return service != null ? service.getManager(program) : null;
+		ClassTypeInfoManagerService service;
+		if (isInHeadlessMode()) {
+			service = HeadlessClassTypeInfoManagerService.getInstance();
+		} else {
+			service = getService(program);
+		}
+		return service.getManager(program);
 	}
 
 	/**

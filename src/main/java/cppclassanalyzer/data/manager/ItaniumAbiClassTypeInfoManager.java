@@ -125,8 +125,10 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 			}
 			monitor.incrementProgress(1);
 		}
-		treeNodeManager.getRoot().removeAll();
-		treeNodeManager.generateTree();
+		if (treeNodeManager != null) {
+			treeNodeManager.getRoot().removeAll();
+			treeNodeManager.generateTree();
+		}
 	}
 
 	private boolean isValidRecord(ClassTypeInfoRecord record) {

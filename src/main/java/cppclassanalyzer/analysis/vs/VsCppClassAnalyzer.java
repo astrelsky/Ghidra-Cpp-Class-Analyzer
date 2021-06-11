@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 import cppclassanalyzer.analysis.AbstractCppClassAnalyzer;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.decompiler.DecompilerAPI;
-import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import cppclassanalyzer.vs.RttiModelWrapper;
 import cppclassanalyzer.vs.VsClassTypeInfo;
@@ -18,7 +17,6 @@ import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.PEUtil;
 import ghidra.app.plugin.prototype.MicrosoftCodeAnalyzerPlugin.RttiAnalyzer;
 import ghidra.app.util.datatype.microsoft.DataApplyOptions;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.InvalidDataTypeException;
@@ -34,7 +32,7 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	private static final String NAME = "Windows C++ Class Analyzer";
 	private static final String SYMBOL_NAME = "RTTI_Type_Descriptor";
-	
+
 	// union doesn't really do much good but it isn't included for completion
 	private static final Set<String> REF_TYPES = Set.of("class", "struct", "union");
 	private static final String GUARD_FUNCTION = "_guard_check_icall";
@@ -162,9 +160,8 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	@Override
 	protected void init() {
-		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
 		this.vfTableAnalyzer = new VsVftableAnalysisCmd();
-		this.api = tool.getService(ClassTypeInfoManagerService.class).getDecompilerAPI(program);
+		this.api = getDecompilerAPI(program);
 		api.setMonitor(monitor);
 		api.setTimeout(getTimeout());
 		this.constructorAnalyzer = new VsDecompilerConstructorAnalysisCmd(api);

@@ -9,7 +9,6 @@ import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.framework.options.Options;
-import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
@@ -22,6 +21,7 @@ import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
 import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.vtable.ArchivedVtable;
+import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
@@ -77,7 +77,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 
 	@Override
 	public boolean canAnalyze(Program program) {
-		return ClassTypeInfoManagerService.isEnabled(program);
+		return CppClassAnalyzerUtils.getManager(program) != null;
 	}
 
 	protected abstract boolean hasVtt();
@@ -199,10 +199,12 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		clearCache();
 	}
 
+	protected static DecompilerAPI getDecompilerAPI(Program program) {
+		return CppClassAnalyzerUtils.getService(program).getDecompilerAPI(program);
+	}
+
 	private void clearCache() {
-		ClassTypeInfoManagerService service =
-			CppClassAnalyzerUtils.getTool(program).getService(ClassTypeInfoManagerService.class);
-		service.getDecompilerAPI(program).clearCache();
+		getDecompilerAPI(program).clearCache();
 	}
 
 	protected int getTimeout() {
@@ -232,8 +234,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 	}
 
 	private ClassTypeInfoManagerService getService() {
-		PluginTool tool = CppClassAnalyzerUtils.getTool(program);
-		return tool.getService(ClassTypeInfoManagerService.class);
+		return CppClassAnalyzerUtils.getService(program);
 	}
 
 }

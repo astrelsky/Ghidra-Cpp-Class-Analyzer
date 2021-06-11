@@ -11,7 +11,6 @@ import ghidra.docking.settings.SettingsDefinition;
 
 import cppclassanalyzer.data.manager.ItaniumAbiClassTypeInfoManager;
 import cppclassanalyzer.scanner.RttiScanner;
-import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
 import ghidra.program.model.address.Address;
@@ -87,7 +86,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 
 	@Override
 	public boolean canAnalyze(Program program) {
-		if (ClassTypeInfoManagerService.isEnabled(program)) {
+		if (CppClassAnalyzerUtils.getManager(program) != null) {
 			return GnuUtils.isGnuCompiler(program);
 		}
 		return false;
