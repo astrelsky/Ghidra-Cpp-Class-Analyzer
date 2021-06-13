@@ -3,3 +3,7 @@ root = true
 [*.java]
 indent_style = tab
 indent_size = 4
+
+[*.gradle]
+indent_style = tab
+indent_size = 4
