@@ -143,7 +143,7 @@ public final class CppClassAnalyzerUtils {
 		} else {
 			service = getService(program);
 		}
-		return service.getManager(program);
+		return service != null ? service.getManager(program) : null;
 	}
 
 	/**
