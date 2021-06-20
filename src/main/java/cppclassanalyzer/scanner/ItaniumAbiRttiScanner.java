@@ -154,6 +154,7 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 	@Override
 	public Set<Address> scanFundamentals(MessageLog log, TaskMonitor monitor)
 			throws CancelledException {
+		this.monitor = monitor;
 		relocations.addAll(getRelocations(CLASS_TYPESTRINGS));
 		if (!relocations.isEmpty()) {
 			relocatable = true;
