@@ -64,11 +64,6 @@ Dynamic RTTI Handling
 
 For GNU binaries a project archive will need to be created to provide data required for analysis. Each library containing dynamic RTTI will need to be analyzed and copied into the project archive via the TypeInfoTree prior to analyzing the program. In the future an archive wil be distributed for libstdc++.
 
-Compatibility
--------------
-
-Ghidra 9.2
-
 TODO
 ----
 
