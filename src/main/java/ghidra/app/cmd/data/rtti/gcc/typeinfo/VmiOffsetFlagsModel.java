@@ -113,7 +113,7 @@ public final class VmiOffsetFlagsModel {
 			struct.add(getOffsetFlags(dtm), "__offset", null);
 		}
 		struct.setPackingEnabled(true);
-		struct.setToMachineAligned();
+		struct.setToDefaultAligned();
 		struct.setDescription(DESCRIPTION);
 		return dtm.resolve(struct, KEEP_HANDLER);
 	}

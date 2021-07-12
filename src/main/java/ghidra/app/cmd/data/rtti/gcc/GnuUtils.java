@@ -22,7 +22,6 @@ import ghidra.program.model.listing.Library;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.data.*;
-import ghidra.program.model.lang.Processor;
 import ghidra.program.util.ProgramMemoryUtil;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.DummyCancellableTaskMonitor;
@@ -123,11 +122,8 @@ public final class GnuUtils {
 	 * @return true if the program's language is PowerPC64
 	 */
 	public static boolean hasFunctionDescriptors(Program program) {
-		Processor processor = program.getLanguage().getProcessor();
-		if (!processor.toString().contentEquals(PPC)) {
-			return false;
-		}
-		return isLLP64(program.getDataTypeManager());
+		String[] ids = program.getLanguageID().toString().split(":");
+		return ids[0].contentEquals(PPC) && ids[2].contentEquals("64");
 	}
 
 	/**
