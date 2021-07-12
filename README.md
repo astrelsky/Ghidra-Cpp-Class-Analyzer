@@ -1,6 +1,10 @@
 Ghidra C++ Class and Run Time Type Information Analyzer
 =======================================================
 
+API Documentation
+-----------------
+A fully built and linked version of the documentation is available at https://astrelsky.github.io/Ghidra-Cpp-Class-Analyzer.
+
 Building
 --------
 
