@@ -240,6 +240,9 @@ public final class VtableModel implements GnuVtable {
 			ProgramClassTypeInfoManager manager =
 				(ProgramClassTypeInfoManager) ((ClassTypeInfoDB) type).getManager();
 			tmpType = (ClassTypeInfo) manager.getTypeInfo(type.getAddress(), false);
+			if (tmpType == null) {
+				return;
+			}
 		} else {
 			tmpType = type;
 		}
