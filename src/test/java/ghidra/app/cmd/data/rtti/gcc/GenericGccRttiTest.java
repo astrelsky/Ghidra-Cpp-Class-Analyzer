@@ -6,45 +6,36 @@ import ghidra.app.plugin.core.analysis.OneShotAnalysisCommand;
 import ghidra.app.plugin.prototype.GccRttiAnalyzer;
 import ghidra.app.services.Analyzer;
 import ghidra.program.model.listing.Program;
-import ghidra.test.AbstractProgramBasedTest;
+import ghidra.test.AbstractGhidraHeadlessIntegrationTest;
 
 import cppclassanalyzer.analysis.gcc.GccCppClassAnalyzer;
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 
-public abstract class GenericGccRttiTest extends AbstractProgramBasedTest {
+public abstract class GenericGccRttiTest extends AbstractGhidraHeadlessIntegrationTest {
 
 	protected AbstractTypeInfoProgramBuilder builder;
+	protected Program program;
 
 	protected GenericGccRttiTest() {
-		super();
 	}
 
 	protected abstract AbstractTypeInfoProgramBuilder getProgramBuilder() throws Exception;
 
-	@Override
 	protected final Program getProgram() throws Exception {
-		this.builder = getProgramBuilder();
 		return builder.getProgram();
 	}
 
-	@Override
 	protected void initialize() throws Exception {
-		super.initialize();
-		addPlugin(tool, ClassTypeInfoManagerPlugin.class);
-		AutoAnalysisManager man = AutoAnalysisManager.getAnalysisManager(program);
-		// dispose it so the available analyzers are refreshed
-		man.dispose();
+		builder = getProgramBuilder();
 		builder.init();
 		builder.startTransaction();
+		program = builder.getProgram();
 	}
 
-	@Override
 	public final void tearDown() throws Exception {
 		builder.endTransaction();
 		builder.dispose();
-		super.tearDown();
 	}
 
 	protected final ProgramClassTypeInfoManager getManager() {
