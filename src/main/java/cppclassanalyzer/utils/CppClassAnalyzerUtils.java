@@ -17,6 +17,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.SymbolUtilities;
 import ghidra.util.Msg;
+import ghidra.util.exception.AssertException;
 
 import cppclassanalyzer.data.ProgramClassTypeInfoManager;
 import cppclassanalyzer.plugin.HeadlessClassTypeInfoManagerService;
@@ -140,6 +141,12 @@ public final class CppClassAnalyzerUtils {
 		ClassTypeInfoManagerService service;
 		if (isInHeadlessMode()) {
 			service = HeadlessClassTypeInfoManagerService.getInstance();
+			if (service == null) {
+				throw new AssertException("HeadlessClassTypeInfoManagerService.getInstance() returned null");
+			}
+			if (service.getManager(program) == null) {
+				throw new AssertException("service.getManager(program) returned null");
+			}
 		} else {
 			service = getService(program);
 		}

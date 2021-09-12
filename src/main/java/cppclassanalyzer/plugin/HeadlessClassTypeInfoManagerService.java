@@ -12,6 +12,10 @@ import ghidra.framework.model.DomainObjectClosedListener;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Msg;
+import ghidra.util.classfinder.ClassSearcher;
+import ghidra.util.exception.AssertException;
+import ghidra.util.exception.CancelledException;
+import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.data.ArchivedRttiData;
 import cppclassanalyzer.data.ClassTypeInfoManager;
@@ -55,6 +59,13 @@ public final class HeadlessClassTypeInfoManagerService implements ClassTypeInfoM
 				program.addCloseListener(new ManagerRemover(program));
 				return manager;
 			}
+			try {
+				ClassSearcher.search(true, TaskMonitor.DUMMY);
+			} catch (CancelledException e) {}
+			if (ClassSearcher.getInstances(RttiManagerProvider.class).isEmpty()) {
+				throw new AssertException("Plugin provided RttiManagerProviders not loaded!");
+			}
+			throw new AssertException("Re-searching \"fixed\" it");
 		} catch (SchemaMismatchException e) {
 			Msg.showError(this, null, "Ghidra C++ Class Analyzer", e.getMessage());
 		} catch (UnsupportedOperationException e) {
