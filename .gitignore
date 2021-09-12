@@ -11,3 +11,4 @@
 /eclipse
 gradle/
 gradlew*
+!/.github

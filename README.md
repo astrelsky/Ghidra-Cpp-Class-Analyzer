@@ -1,9 +1,11 @@
+[![Run tests](https://github.com/astrelsky/Ghidra-Cpp-Class-Analyzer/actions/workflows/test.yml/badge.svg)](https://github.com/astrelsky/Ghidra-Cpp-Class-Analyzer/actions/workflows/test.yml)  
 Ghidra C++ Class and Run Time Type Information Analyzer
 =======================================================
 
 API Documentation
 -----------------
-A fully built and linked version of the documentation is available at https://astrelsky.github.io/Ghidra-Cpp-Class-Analyzer.
+
+A fully built and linked version of the documentation is available at <https://astrelsky.github.io/Ghidra-Cpp-Class-Analyzer>.
 
 Building
 --------
