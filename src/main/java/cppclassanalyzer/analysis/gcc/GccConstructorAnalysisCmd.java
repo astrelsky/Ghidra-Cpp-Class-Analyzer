@@ -1,6 +1,5 @@
 package cppclassanalyzer.analysis.gcc;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -12,7 +11,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.VttModel;
 import ghidra.app.cmd.function.AddParameterCommand;
-import ghidra.app.util.XReferenceUtil;
+import ghidra.app.util.XReferenceUtils;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
@@ -129,7 +128,7 @@ public class GccConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 			return false;
 		}
 		ClassTypeInfo typeinfo = vtable.getTypeInfo();
-		List<Reference> references = Arrays.asList(XReferenceUtil.getOffcutXReferences(data, -1));
+		List<Reference> references = XReferenceUtils.getOffcutXReferences(data, -1);
 		Collections.reverse(references);
 		Set<Address> addresses = new HashSet<>(List.of(tableAddresses));
 		addAddresses(addresses, List.of(typeinfo.getParentModels()));

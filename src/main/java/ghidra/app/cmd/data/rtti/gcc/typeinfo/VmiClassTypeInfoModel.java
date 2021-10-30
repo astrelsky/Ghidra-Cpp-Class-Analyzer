@@ -97,20 +97,19 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 	 */
 	public static Structure getDataType(DataTypeManager dtm) {
 		DataType existingDt = dtm.getDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME);
-		if (existingDt != null && existingDt.getDescription().equals(DESCRIPTION)) {
-			if (((Structure) existingDt).hasFlexibleArrayComponent()) {
-				return (Structure) existingDt;
-			}
-		}
 		StructureDataType struct =
 			new StructureDataType(GnuUtils.getCxxAbiCategoryPath(), STRUCTURE_NAME, 0, dtm);
 		struct.add(ClassTypeInfoModel.getDataType(dtm),
 			AbstractTypeInfoModel.SUPER + ClassTypeInfoModel.STRUCTURE_NAME, null);
 		struct.add(getFlags(dtm, SUB_PATH), FLAGS_NAME, null);
 		struct.add(IntegerDataType.dataType.clone(dtm), BASE_COUNT_NAME, null);
-		struct.setFlexibleArrayComponent(
-			BaseClassTypeInfoModel.getDataType(dtm), ARRAY_NAME, null);
+		DataType bdt = BaseClassTypeInfoModel.getDataType(dtm);
+		ArrayDataType adt = new ArrayDataType(bdt, 0, bdt.getLength());
+		struct.add(adt, ARRAY_NAME, null);
 		struct.setDescription(DESCRIPTION);
+		if (existingDt.isEquivalent(struct)) {
+			return (Structure) existingDt;
+		}
 		return (Structure) dtm.resolve(struct, REPLACE_HANDLER);
 	}
 
@@ -284,8 +283,8 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		}
 
 		private Address getArrayAddress(Address addr) {
-			DataTypeComponent arrayComponent =
-				getDataType(program.getDataTypeManager()).getFlexibleArrayComponent();
+			Structure dt = getDataType(program.getDataTypeManager());
+			DataTypeComponent arrayComponent = dt.getDefinedComponents()[dt.getNumDefinedComponents()-1];
 			return addr.add(arrayComponent.getOffset());
 		}
 

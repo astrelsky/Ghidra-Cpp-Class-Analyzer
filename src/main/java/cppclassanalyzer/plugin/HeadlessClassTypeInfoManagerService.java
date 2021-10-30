@@ -60,7 +60,7 @@ public final class HeadlessClassTypeInfoManagerService implements ClassTypeInfoM
 				return manager;
 			}
 			try {
-				ClassSearcher.search(true, TaskMonitor.DUMMY);
+				ClassSearcher.search(TaskMonitor.DUMMY);
 			} catch (CancelledException e) {}
 			if (ClassSearcher.getInstances(RttiManagerProvider.class).isEmpty()) {
 				throw new AssertException("Plugin provided RttiManagerProviders not loaded!");

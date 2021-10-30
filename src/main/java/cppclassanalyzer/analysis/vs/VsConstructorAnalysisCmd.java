@@ -6,7 +6,7 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.function.CreateFunctionCmd;
-import ghidra.app.util.XReferenceUtil;
+import ghidra.app.util.XReferenceUtils;
 import ghidra.app.util.pdb.PdbProgramAttributes;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
@@ -15,6 +15,7 @@ import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.symbol.FlowType;
+import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.Msg;
 
@@ -63,20 +64,19 @@ public class VsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 			}
 			ClassTypeInfo typeinfo = vtable.getTypeInfo();
 
-			List<Address> references = Arrays.asList(XReferenceUtil.getXRefList(data, -1));
+			List<Reference> references = XReferenceUtils.getXReferences(data, -1);
 			if (references.isEmpty()) {
 				return false;
 			}
 			Set<Function> functions = new LinkedHashSet<>(references.size());
 			if (!isDebugable()) {
-				Function function = fManager.getFunctionContaining(references.get(0));
+				Function function = fManager.getFunctionContaining(references.get(0).getFromAddress());
 				if (function == null) {
-					data = listing.getDataAt(references.get(0));
+					data = listing.getDataAt(references.get(0).getFromAddress());
 					if (data != null && data.isPointer()) {
-						references =
-							Arrays.asList(XReferenceUtil.getXRefList(data, -1));
+						references = XReferenceUtils.getXReferences(data, -1);
 						Collections.reverse(references);
-						Address start = getFunctionStart(references.get(0));
+						Address start = getFunctionStart(references.get(0).getFromAddress());
 						CreateFunctionCmd cmd = new CreateFunctionCmd(start, true);
 						if (cmd.applyTo(program)) {
 							function = cmd.getFunction();
@@ -90,8 +90,9 @@ public class VsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 				return true;
 			}
 			Collections.reverse(references);
-			for (Address fromAddress : references) {
+			for (Reference ref : references) {
 				monitor.checkCanceled();
+				Address fromAddress = ref.getFromAddress();
 				if(!fManager.isInFunction(fromAddress)) {
 					continue;
 				}

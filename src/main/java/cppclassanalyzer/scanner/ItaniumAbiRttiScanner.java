@@ -9,7 +9,7 @@ import ghidra.app.cmd.data.rtti.Vtable;
 import ghidra.app.cmd.data.rtti.gcc.*;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.app.plugin.core.analysis.ReferenceAddressPair;
-import ghidra.app.util.XReferenceUtil;
+import ghidra.app.util.XReferenceUtils;
 import ghidra.app.util.importer.MessageLog;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
@@ -259,7 +259,8 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 			log.appendMsg("Null data at clang relocation");
 			return null;
 		}
-		return Arrays.stream(XReferenceUtil.getOffcutXReferences(data, -1))
+		return XReferenceUtils.getOffcutXReferences(data, -1)
+			.stream()
 			.filter(r -> r.getReferenceType().isData())
 			.map(Reference::getFromAddress)
 			.collect(Collectors.toSet());
