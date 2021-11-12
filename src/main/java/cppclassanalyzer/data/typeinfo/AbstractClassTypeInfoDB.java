@@ -154,7 +154,7 @@ public abstract class AbstractClassTypeInfoDB extends ClassTypeInfoDB {
 			return Collections.emptyMap();
 		}
 		Map<ClassTypeInfoDB, Integer> map = new HashMap<>(baseKeys.length);
-		for (int i = 0; i < baseKeys.length; i++) {
+		for (int i = 0; i < baseKeys.length && i < baseOffsets.length; i++) {
 			map.put(manager.getType(baseKeys[i]), baseOffsets[i]);
 		}
 		return Collections.unmodifiableMap(map);

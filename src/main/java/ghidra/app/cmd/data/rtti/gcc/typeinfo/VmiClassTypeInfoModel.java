@@ -107,7 +107,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 		ArrayDataType adt = new ArrayDataType(bdt, 0, bdt.getLength());
 		struct.add(adt, ARRAY_NAME, null);
 		struct.setDescription(DESCRIPTION);
-		if (existingDt.isEquivalent(struct)) {
+		if (existingDt != null && existingDt.isEquivalent(struct)) {
 			return (Structure) existingDt;
 		}
 		return (Structure) dtm.resolve(struct, REPLACE_HANDLER);

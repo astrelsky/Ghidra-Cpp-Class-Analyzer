@@ -10,7 +10,6 @@ import ghidra.program.model.listing.Program;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.data.DataUtilities;
 import ghidra.util.exception.CancelledException;
-import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.TypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.VmiClassTypeInfoModel;
 import ghidra.app.util.demangler.DemangledObject;
@@ -63,13 +62,10 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 		try {
 			monitor.checkCanceled();
 			Data data = createData(type.getAddress(), type.getDataType());
-			if (type instanceof ClassTypeInfo) {
-				ClassTypeInfo cti = (ClassTypeInfo) type;
-				if (cti.getParentModels().length > 1 || !cti.getVirtualParents().isEmpty()) {
-					DataType array = VmiClassTypeInfoModel.getBaseArrayDataType(data);
-					Address arrayAddress = type.getAddress().add(data.getLength());
-					createData(arrayAddress, array);
-				}
+			if (type.getIdentifier().equals(VmiClassTypeInfoModel.ID_STRING)) {
+				DataType array = VmiClassTypeInfoModel.getBaseArrayDataType(data);
+				Address arrayAddress = type.getAddress().add(data.getLength());
+				createData(arrayAddress, array);
 			}
 			return applyTypeInfoSymbols() && data != null;
 		} catch (CodeUnitInsertionException e) {
