@@ -64,7 +64,7 @@ public class CreateExternalSymbolBackgroundCmd extends BackgroundCommand {
 		}
 		try {
 			this.location = man.addExtLocation(lib, symbol, address, SourceType.IMPORTED, true);
-		} catch (InvalidInputException | DuplicateNameException e) {
+		} catch (InvalidInputException e) {
 			throw new AssertException(e);
 		}
 		return this.location != null;
