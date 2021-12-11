@@ -122,11 +122,4 @@ public class ExternalClassTypeInfo implements ClassTypeInfo {
 		return ClassTypeInfoUtils.getPlaceholderStruct(this, program.getDataTypeManager());
 	}
 
-	@SuppressWarnings("deprecated")
-	@Override
-	public String getUniqueTypeName() {
-		throw new UnsupportedOperationException(
-			"Cannot create a unique type name for an "+getClass().getSimpleName());
-	}
-
 }

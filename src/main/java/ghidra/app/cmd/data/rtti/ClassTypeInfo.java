@@ -85,22 +85,6 @@ public interface ClassTypeInfo extends TypeInfo {
 	 */
 	Structure getClassDataType();
 
-	/**
-	 * Gets a unique typename for this ClassTypeInfo instance
-	 * The resulting string should be identical across all architectures and binaries
-	 * for a compiler.
-	 * @return a unique typename string
-	 * @deprecated this no longer serves a purpose
-	 */
-	@Deprecated(since = "1.5", forRemoval = true)
-	default String getUniqueTypeName() {
-		StringBuilder builder = new StringBuilder(getTypeName());
-		for (ClassTypeInfo parent : getParentModels()) {
-			builder.append(parent.getTypeName());
-		}
-		return builder.toString();
-	}
-
 	default boolean isExternal() {
 		return false;
 	}

@@ -11,7 +11,6 @@ import ghidra.program.model.symbol.ExternalLocation;
 import ghidra.program.model.symbol.ExternalManager;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.util.exception.AssertException;
-import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 

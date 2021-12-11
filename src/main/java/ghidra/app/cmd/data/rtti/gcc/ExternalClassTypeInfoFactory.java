@@ -104,11 +104,5 @@ public class ExternalClassTypeInfoFactory {
 			throw new UnresolvedClassTypeInfoException(address, symbol);
 		}
 
-		@SuppressWarnings("deprecated")
-		@Override
-		public String getUniqueTypeName() {
-			throw new UnresolvedClassTypeInfoException(address, symbol);
-		}
-
 	}
 }
