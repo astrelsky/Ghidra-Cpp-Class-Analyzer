@@ -23,7 +23,7 @@ public interface RttiScanner {
 
 	/**
 	 * Scans the program for Fundamental TypeInfo's
-	 * @param monitor the task monitor
+	 * @param log the log to use for logging errors
 	 * @param monitor the task monitor
 	 * @return the addresses of the fundamental type info's
 	 * @throws CancelledException if the scan is cancelled
