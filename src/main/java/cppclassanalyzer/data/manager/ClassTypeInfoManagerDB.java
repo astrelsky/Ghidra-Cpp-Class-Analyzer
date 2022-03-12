@@ -531,6 +531,13 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		return null;
 	}
 
+	@Override
+	public void dispose() {
+		if (treeNodeManager != null) {
+			treeNodeManager.dispose();
+		}
+	}
+
 	private void endTransaction(long id, boolean commit) {
 		program.endTransaction((int) id, commit);
 	}

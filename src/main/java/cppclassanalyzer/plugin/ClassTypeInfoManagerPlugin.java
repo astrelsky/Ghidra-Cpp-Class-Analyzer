@@ -120,7 +120,8 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	protected void programClosed(Program program) {
 		ClassTypeInfoManager man = getManager(program);
 		if (man != null) {
-			managers.remove(getManager(program));
+			managers.remove(man);
+			man.dispose();
 		}
 	}
 

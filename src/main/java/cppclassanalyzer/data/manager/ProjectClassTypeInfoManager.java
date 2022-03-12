@@ -375,6 +375,11 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		}
 	}
 
+	@Override
+	public void dispose() {
+		close();
+	}
+
 	/**
 	 * Initialize the {@link ProjectArchive} as a ClassTypeInfoManager
 	 * @param archive the project archive

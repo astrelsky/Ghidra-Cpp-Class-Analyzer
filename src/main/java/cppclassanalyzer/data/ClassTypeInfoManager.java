@@ -17,12 +17,13 @@ import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.symbol.Namespace;
+import ghidra.util.Disposable;
 
 /**
  * ClassTypeInfoManager manages all {@link ClassTypeInfo} within
  * a {@link ghidra.framework.model.DomainObject DomainObject}
  */
-public interface ClassTypeInfoManager extends ErrorHandler {
+public interface ClassTypeInfoManager extends Disposable, ErrorHandler {
 
 	/** The value which represents an invalid database key */
 	public static final long INVALID_KEY = AddressMap.INVALID_ADDRESS_KEY;

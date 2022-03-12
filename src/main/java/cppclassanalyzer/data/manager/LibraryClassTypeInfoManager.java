@@ -145,6 +145,13 @@ public final class LibraryClassTypeInfoManager implements ClassTypeInfoManager {
 		return name;
 	}
 
+	@Override
+	public void dispose() {
+		if (treeNodeManager != null) {
+			treeNodeManager.dispose();
+		}
+	}
+
 	DatabaseObject getArchivedData(String symbolName) {
 		return worker.getArchivedData(symbolName);
 	}

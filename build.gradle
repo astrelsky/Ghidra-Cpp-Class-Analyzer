@@ -52,7 +52,6 @@ dependencies {
 						 include: "**/*.jar", exclude: project.name)
 	runtimeOnly fileTree(dir: ghidraUserDir + "/Extensions",
 						 include: "**/*.jar", exclude: project.name)
-	runtimeOnly	fileTree(dir: projectDir.getCanonicalPath() + '/data')
 }
 
 eclipse {
@@ -75,6 +74,11 @@ eclipse {
 						}
 					}
 				}
+				entries.add(
+					new org.gradle.plugins.ide.eclipse.model.Library(
+						it.fileReference(new File(projectDir, '/data'))
+					)
+				)
 				entries.add(
 					new org.gradle.plugins.ide.eclipse.model.Library(
 						it.fileReference(new File(projectDir, '/bin'))
