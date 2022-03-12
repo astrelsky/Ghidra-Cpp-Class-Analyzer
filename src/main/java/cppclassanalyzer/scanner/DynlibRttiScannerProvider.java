@@ -6,6 +6,8 @@ import ghidra.program.model.listing.Program;
 
 public final class DynlibRttiScannerProvider implements RttiScannerProvider {
 
+	public static final DynlibRttiScannerProvider INSTANCE = new DynlibRttiScannerProvider();
+
 	@Override
 	public boolean canScan(Program program) {
 		if (program.getExecutableFormat().equals(MachoLoader.MACH_O_NAME)) {
@@ -18,5 +20,5 @@ public final class DynlibRttiScannerProvider implements RttiScannerProvider {
 	public RttiScanner getScanner(Program program) {
 		return new DynlibRttiScanner(program);
 	}
-	
+
 }

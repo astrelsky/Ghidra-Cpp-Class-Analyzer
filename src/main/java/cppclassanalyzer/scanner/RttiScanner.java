@@ -1,5 +1,6 @@
 package cppclassanalyzer.scanner;
 
+import java.util.List;
 import java.util.Set;
 
 import ghidra.app.util.importer.MessageLog;
@@ -31,12 +32,16 @@ public interface RttiScanner {
 	public Set<Address> scanFundamentals(MessageLog log, TaskMonitor monitor) throws CancelledException;
 
 	public static RttiScanner getScanner(Program program) {
-		for (RttiScannerProvider scanner : ClassSearcher.getInstances(RttiScannerProvider.class)) {
+		List<RttiScannerProvider> providers =
+			ClassSearcher.getInstances(RttiScannerProvider.class);
+		providers.add(DynlibRttiScannerProvider.INSTANCE);
+		providers.add(ItaniumAbiRttiScannerProvider.INSTANCE);
+		for (RttiScannerProvider scanner : providers) {
 			if (scanner.canScan(program)) {
 				return scanner.getScanner(program);
 			}
 		}
-		throw new AssertException();
+		return null;
 	}
 
 }

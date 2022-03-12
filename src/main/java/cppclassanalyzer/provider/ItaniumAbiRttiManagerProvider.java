@@ -16,6 +16,8 @@ import static ghidra.util.SystemUtilities.isInHeadlessMode;
 
 public final class ItaniumAbiRttiManagerProvider implements RttiManagerProvider {
 
+	public static final ItaniumAbiRttiManagerProvider INSTANCE = new ItaniumAbiRttiManagerProvider();
+
 	@Override
 	public boolean canProvideManager(Program program) {
 		return GnuUtils.isGnuCompiler(program);

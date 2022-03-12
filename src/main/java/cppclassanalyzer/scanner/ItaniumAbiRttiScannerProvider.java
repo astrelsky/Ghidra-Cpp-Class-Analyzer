@@ -5,6 +5,9 @@ import ghidra.program.model.listing.Program;
 
 public final class ItaniumAbiRttiScannerProvider implements RttiScannerProvider {
 
+	public static final ItaniumAbiRttiScannerProvider INSTANCE =
+		new ItaniumAbiRttiScannerProvider();
+
 	@Override
 	public boolean canScan(Program program) {
 		return GnuUtils.isGnuCompiler(program);
