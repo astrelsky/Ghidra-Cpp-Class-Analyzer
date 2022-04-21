@@ -114,7 +114,7 @@ public class VsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 	private Set<Function> getThunks(Function function) {
 		Set<Function> functions = new HashSet<>();
 		functions.add(function);
-		Address[] addresses = function.getFunctionThunkAddresses();
+		Address[] addresses = function.getFunctionThunkAddresses(false);
 		if (addresses == null) {
 			return functions;
 		}
