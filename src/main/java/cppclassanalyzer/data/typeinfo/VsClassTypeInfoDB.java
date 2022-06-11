@@ -8,6 +8,8 @@ import java.util.stream.LongStream;
 
 import ghidra.app.cmd.data.TypeDescriptorModel;
 import ghidra.app.cmd.data.rtti.*;
+import ghidra.app.util.NamespaceUtils;
+
 import cppclassanalyzer.data.manager.recordmanagers.ProgramRttiRecordManager;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.InvalidDataTypeException;
@@ -16,6 +18,7 @@ import ghidra.program.model.symbol.Namespace;
 import ghidra.util.datastruct.LongIntHashtable;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
 import cppclassanalyzer.database.record.ClassTypeInfoRecord;
@@ -31,13 +34,30 @@ public class VsClassTypeInfoDB extends AbstractClassTypeInfoDB implements VsClas
 
 	public VsClassTypeInfoDB(ProgramRttiRecordManager worker, ClassTypeInfoRecord record) {
 		super(worker, record);
-		this.gc = (GhidraClass) getTypeDescriptor().getDescriptorAsNamespace();
+		this.gc = doGetGhidraClass();
 	}
 
 	public VsClassTypeInfoDB(ProgramRttiRecordManager worker, VsClassTypeInfo type,
 			ClassTypeInfoRecord record) {
 		super(worker, type, record);
 		this.gc = type.getGhidraClass();
+	}
+
+	private GhidraClass doGetGhidraClass() {
+		int id = getProgram().startTransaction(getClass().getSimpleName()+": Getting GhidraClass");
+		boolean success = false;
+		try {
+			Namespace ns = getTypeDescriptor().getDescriptorAsNamespace();
+			if (!(ns instanceof GhidraClass)) {
+				ns = NamespaceUtils.convertNamespaceToClass(ns);
+			}
+			success = true;
+			return (GhidraClass) ns;
+		} catch (InvalidInputException e) {
+			throw new AssertException(e);
+		} finally {
+			getProgram().endTransaction(id, success);
+		}
 	}
 
 	private void fillRecord(ClassTypeInfoRecord record) {

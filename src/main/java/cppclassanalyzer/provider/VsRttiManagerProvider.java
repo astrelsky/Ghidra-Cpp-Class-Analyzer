@@ -17,6 +17,8 @@ import static ghidra.util.SystemUtilities.isInHeadlessMode;
 
 public final class VsRttiManagerProvider implements RttiManagerProvider {
 
+	public static final VsRttiManagerProvider INSTANCE = new VsRttiManagerProvider();
+
 	@Override
 	public boolean canProvideManager(Program program) {
 		return PEUtil.canAnalyze(program) && !GnuUtils.isGnuCompiler(program);

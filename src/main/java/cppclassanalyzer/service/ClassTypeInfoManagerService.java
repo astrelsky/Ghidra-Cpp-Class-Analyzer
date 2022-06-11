@@ -14,6 +14,8 @@ import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
 import cppclassanalyzer.data.vtable.ArchivedVtable;
 import cppclassanalyzer.decompiler.DecompilerAPI;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
+import cppclassanalyzer.provider.ItaniumAbiRttiManagerProvider;
+import cppclassanalyzer.provider.VsRttiManagerProvider;
 import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import docking.widgets.tree.GTree;
 
@@ -65,7 +67,11 @@ public interface ClassTypeInfoManagerService {
 	public ProgramClassTypeInfoManager getCurrentManager();
 
 	public static RttiManagerProvider getManagerProvider(Program program) {
-		for (RttiManagerProvider p : ClassSearcher.getInstances(RttiManagerProvider.class)) {
+		List<RttiManagerProvider> providers =
+			ClassSearcher.getInstances(RttiManagerProvider.class);
+		providers.add(ItaniumAbiRttiManagerProvider.INSTANCE);
+		providers.add(VsRttiManagerProvider.INSTANCE);
+		for (RttiManagerProvider p : providers) {
 			if (p.canProvideManager(program)) {
 				return p;
 			}
