@@ -35,7 +35,7 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 
 	// union doesn't really do much good but it isn't included for completion
 	private static final Set<String> REF_TYPES = Set.of("class", "struct", "union");
-	private static final String GUARD_FUNCTION = "_guard_check_icall";
+	private static final String GUARD_FUNCTION = "_guard_check_icall_nop";
 	private static final String CFG_WARNING =
 		"Control Flow Guard (CFG) detected. Vftables not analyzed.";
 

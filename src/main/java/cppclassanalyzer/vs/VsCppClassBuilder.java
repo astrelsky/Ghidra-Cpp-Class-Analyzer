@@ -41,7 +41,7 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 		ClassTypeInfo type = getType();
 		Program program = getProgram();
 		DataType vfptr = ClassTypeInfoUtils.getVptrDataType(program, type);
-		DataTypeComponent comp = struct.getComponentAt(offset);
+		DataTypeComponent comp = struct.getComponentContaining(offset);
 		if (comp == null || isUndefined(comp.getDataType())) {
 			replaceComponent(struct, vfptr, VFPTR, offset);
 		} else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
@@ -57,7 +57,7 @@ public class VsCppClassBuilder extends AbstractCppClassBuilder {
 		int ptrSize = program.getDefaultPointerSize();
 		DataType vbptr = dtm.getPointer(
 			MSDataTypeUtils.getPointerDisplacementDataType(program), ptrSize);
-		DataTypeComponent comp = struct.getComponentAt(offset);
+		DataTypeComponent comp = struct.getComponentContaining(offset);
 		if (comp == null || isUndefined(comp.getDataType())) {
 			replaceComponent(struct, vbptr, VBPTR, offset);
 		} else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {

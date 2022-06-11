@@ -69,39 +69,45 @@ public abstract class AbstractCppClassBuilder {
 				type, program.getDataTypeManager());
 		}
 		Integer id = null;
+		boolean success = false;
 		if (program.getCurrentTransaction() == null) {
 			id = program.startTransaction("creating datatype for "+type.getName());
 		}
-		stashComponents();
-		Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
-		boolean primaryBaseSet = false;
-		for (ClassTypeInfo parent : baseMap.keySet()) {
-			AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
-			Structure parentStruct = parentBuilder.getSuperClassDataType();
-			String memberName = SUPER + parent.getName();
-			int offset = baseMap.get(parent);
-			if (offset == 0) {
-				if (parentStruct.isNotYetDefined()) {
-					// it is an empty class, interface or essentially a namespace
+
+		try {
+			stashComponents();
+			Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
+			boolean primaryBaseSet = false;
+			for (ClassTypeInfo parent : baseMap.keySet()) {
+				AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
+				Structure parentStruct = parentBuilder.getSuperClassDataType();
+				String memberName = SUPER + parent.getName();
+				int offset = baseMap.get(parent);
+				if (offset == 0) {
+					if (parentStruct.isNotYetDefined()) {
+						// it is an empty class, interface or essentially a namespace
+						continue;
+					}
+					if (!primaryBaseSet) {
+						replaceComponent(struct, parentStruct, memberName, 0);
+						primaryBaseSet = true;
+					}
+				} else if (offset < 0) {
+					// it is contained within another base class
+					// or unable to resolve and already reported
 					continue;
+				} else {
+					replaceComponent(struct, parentStruct, memberName, offset);
 				}
-				if (!primaryBaseSet) {
-					replaceComponent(struct, parentStruct, memberName, 0);
-					primaryBaseSet = true;
-				}
-			} else if (offset < 0) {
-				// it is contained within another base class
-				// or unable to resolve and already reported
-				continue;
-			} else {
-				replaceComponent(struct, parentStruct, memberName, offset);
 			}
-		}
-		addVptr();
-		fixComponents();
-		getSuperClassDataType();
-		if (id != null) {
-			program.endTransaction(id, true);
+			addVptr();
+			fixComponents();
+			getSuperClassDataType();
+			success = true;
+		} finally {
+			if (id != null) {
+				program.endTransaction(id, success);
+			}
 		}
 		return struct;
 	}
@@ -236,7 +242,7 @@ public abstract class AbstractCppClassBuilder {
 	private void fixComponents() {
 		for (CompositeDataTypeElementInfo comp : dtComps.keySet()) {
 			int offset = comp.getDataTypeOffset();
-			DataTypeComponent replaced = struct.getComponentAt(offset);
+			DataTypeComponent replaced = struct.getComponentContaining(offset);
 			if (replaced != null && !validFieldName(replaced.getFieldName())) {
 				continue;
 			}
