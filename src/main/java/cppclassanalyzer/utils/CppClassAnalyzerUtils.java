@@ -208,7 +208,7 @@ public final class CppClassAnalyzerUtils {
 		@Override
 		public boolean test(Function f) {
 			// f can only be null if the class is abstract
-			return f != null ? f.getName().equals(fName) : true;
+			return f != null ? f.getName().contains(fName) : true;
 		}
 	}
 }
