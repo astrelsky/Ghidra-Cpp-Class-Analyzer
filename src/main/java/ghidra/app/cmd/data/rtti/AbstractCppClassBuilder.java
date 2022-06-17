@@ -7,13 +7,7 @@ import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
-import ghidra.program.model.data.CategoryPath;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.DataTypeConflictHandler;
-import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.DataTypePath;
-import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.*;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.util.CompositeDataTypeElementInfo;
@@ -76,33 +70,56 @@ public abstract class AbstractCppClassBuilder {
 
 		try {
 			stashComponents();
-			Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
-			boolean primaryBaseSet = false;
-			for (ClassTypeInfo parent : baseMap.keySet()) {
+			BaseMapper baseMap = new BaseMapper(getBaseOffsets());
+			for (ClassTypeInfo parent : baseMap.baseMap.keySet()) {
 				AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
 				Structure parentStruct = parentBuilder.getSuperClassDataType();
 				String memberName = SUPER + parent.getName();
-				int offset = baseMap.get(parent);
+				int offset = baseMap.baseMap.get(parent);
+				if (offset < 0) {
+					// it is contained within another base class
+					// or unable to resolve and already reported
+					continue;
+				}
 				if (offset == 0) {
 					if (parentStruct.isNotYetDefined()) {
 						// it is an empty class, interface or essentially a namespace
 						continue;
 					}
-					if (!primaryBaseSet) {
-						replaceComponent(struct, parentStruct, memberName, 0);
-						primaryBaseSet = true;
+					DataTypeComponent comp = struct.getComponentAt(0);
+					if (comp == null) {
+						Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
+						tmp.add(parentStruct, parent.getName(), null);
+						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, parent);
+						tmp.add(vptr, "_vptr", null);
+						replaceComponent(struct, tmp, SUPER, 0);
+					} else if (comp.getDataType() instanceof Union) {
+						Union union = (Union) comp.getDataType();
+						union.add(parentStruct, parent.getName(), null);
+					} else {
+						Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
+						tmp.add(comp.getDataType(), comp.getDataType().getName(), null);
+						tmp.add(parentStruct, parent.getName(), null);
+						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, parent);
+						tmp.add(vptr, "_vptr", null);
+						replaceComponent(struct, tmp, SUPER, 0);
 					}
-				} else if (offset < 0) {
-					// it is contained within another base class
-					// or unable to resolve and already reported
-					continue;
 				} else {
-					replaceComponent(struct, parentStruct, memberName, offset);
+					if (baseMap.vtableOrdinalMap.containsKey(parent)) {
+						int ordinal = baseMap.vtableOrdinalMap.get(parent);
+						Union tmp = new UnionDataType(path, memberName+"_", struct.getDataTypeManager());
+						tmp.add(parentStruct, parent.getName(), null);
+						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, parent, ordinal);
+						tmp.add(vptr, "_vptr", null);
+						replaceComponent(struct, tmp, memberName, offset);
+					} else {
+						replaceComponent(struct, parentStruct, memberName, offset);
+					}
 				}
 			}
 			addVptr();
 			fixComponents();
-			getSuperClassDataType();
+			//getSuperClassDataType();
 			success = true;
 		} finally {
 			if (id != null) {
@@ -248,6 +265,42 @@ public abstract class AbstractCppClassBuilder {
 			}
 			replaceComponent(struct, (DataType) comp.getDataTypeHandle(),
 							 dtComps.get(comp), offset);
+		}
+	}
+
+	private static final class BaseOffsetPair implements Comparable<BaseOffsetPair> {
+
+		private final ClassTypeInfo base;
+		private final int offset;
+
+		BaseOffsetPair(Map.Entry<ClassTypeInfo, Integer> entry) {
+			this.base = entry.getKey();
+			this.offset = entry.getValue();
+		}
+
+		@Override
+		public int compareTo(BaseOffsetPair o) {
+			return offset - o.offset;
+		}
+	}
+
+	private final class BaseMapper {
+		private final Map<ClassTypeInfo, Integer> baseMap;
+		private final Map<ClassTypeInfo, Integer> vtableOrdinalMap;
+
+		BaseMapper(Map<ClassTypeInfo, Integer> baseMap) {
+			this.baseMap = baseMap;
+			this.vtableOrdinalMap = new HashMap<>(baseMap.size());
+			BaseOffsetPair[] rMap = baseMap.entrySet()
+				.stream()
+				.map(BaseOffsetPair::new)
+				.sorted()
+				.filter(pair -> pair.offset > 0)
+				.filter(pair -> Vtable.isValid(pair.base.getVtable()))
+				.toArray(BaseOffsetPair[]::new);
+			for (int i = 0; i < rMap.length; i++) {
+				vtableOrdinalMap.put(rMap[i].base, i+1);
+			}
 		}
 	}
 
