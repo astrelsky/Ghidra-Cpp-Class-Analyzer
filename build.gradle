@@ -91,10 +91,16 @@ eclipse {
 
 javadoc.destinationDir = new File(projectDir, 'docs')
 
+copyDependencies.exclude { fileTreeElement ->
+	def fileAbsPath = fileTreeElement.getFile().getCanonicalFile().toPath()
+	return fileAbsPath.startsWith(ghidraUserDir)
+}
+
 buildExtension {
 	exclude '.vscode'
 	exclude 'gradle*'
 	exclude '.editorconfig'
+	exclude '*.github'
 }
 
 buildExtension.dependsOn(javadoc)
