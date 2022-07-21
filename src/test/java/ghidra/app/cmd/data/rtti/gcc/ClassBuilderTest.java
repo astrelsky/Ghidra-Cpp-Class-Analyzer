@@ -73,7 +73,7 @@ public final class ClassBuilderTest extends X86GccRttiTest {
                 Namespace ns = NamespaceUtils.getNonFunctionNamespace(program, clazz.getPath());
                 assert ns instanceof GhidraClass;
                 ClassTypeInfo type = manager.getType((GhidraClass) ns);
-                assert clazz.isEquivalent(type);
+                clazz.assertEquivalent(type);
             }
         }
     }
@@ -147,7 +147,7 @@ public final class ClassBuilderTest extends X86GccRttiTest {
             return path;
         }
 
-        boolean isEquivalent(ClassTypeInfo type) throws Exception {
+        void assertEquivalent(ClassTypeInfo type) throws Exception {
             String name = type.getGhidraClass().getName(true);
             Structure struct = type.getClassDataType();
             for (SerializedClassMember member : members) {
@@ -165,7 +165,6 @@ public final class ClassBuilderTest extends X86GccRttiTest {
                             "%s at offset %d does not match the expected member %s in %s\n%s",
                             fieldName, member.getOffset(), member.getFieldName(), name, struct);
             }
-            return true;
         }
 
         @Override
