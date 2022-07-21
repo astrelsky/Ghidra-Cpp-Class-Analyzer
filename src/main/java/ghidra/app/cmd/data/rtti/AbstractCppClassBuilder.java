@@ -159,9 +159,15 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	protected static void replaceComponent(Structure struct, DataType parent,
-		String name, int offset) {
-			clearComponent(struct, parent.getLength(), offset);
+			String name, int offset) {
+		int length = struct.getNumComponents() > 0 ? struct.getLength() : 0;
+		if (offset >= length) {
 			struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
+		} else {
+			struct.replaceAtOffset(offset, parent, parent.getLength(), name, null);
+		}
+		//clearComponent(struct, parent.getLength(), offset);
+		//struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
 	}
 
 	protected static void trimStructure(Structure struct) {
@@ -174,7 +180,7 @@ public abstract class AbstractCppClassBuilder {
 	}
 
 	private static void trimStructure(Structure struct, int ordinal) {
-		for (int index = struct.getNumComponents() - 1; index >= ordinal; index--) {
+		for (int index = struct.getNumDefinedComponents() - 1; index >= ordinal; index--) {
 			struct.delete(index);
 		}
 	}
