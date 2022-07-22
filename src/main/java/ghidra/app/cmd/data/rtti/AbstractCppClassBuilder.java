@@ -76,6 +76,7 @@ public abstract class AbstractCppClassBuilder {
 				Structure parentStruct = parentBuilder.getSuperClassDataType();
 				String memberName = SUPER + parent.getName();
 				int offset = baseMap.baseMap.get(parent);
+				boolean validVtable = Vtable.isValid(type.getVtable());
 				if (offset < 0) {
 					// it is contained within another base class
 					// or unable to resolve and already reported
@@ -86,26 +87,30 @@ public abstract class AbstractCppClassBuilder {
 						// it is an empty class, interface or essentially a namespace
 						continue;
 					}
-					DataTypeComponent comp = struct.getComponentAt(0);
-					if (comp == null) {
-						Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
-						tmp.add(parentStruct, parent.getName(), null);
-						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, type);
-						tmp.add(vptr, "_vptr", null);
-						replaceComponent(struct, tmp, SUPER, 0);
-					} else if (comp.getDataType() instanceof Union) {
-						Union union = (Union) comp.getDataType();
-						union.add(parentStruct, parent.getName(), null);
+					if (validVtable) {
+						DataTypeComponent comp = struct.getComponentAt(0);
+						if (comp == null) {
+							Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
+							tmp.add(parentStruct, parent.getName(), null);
+							DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, type);
+							tmp.add(vptr, "_vptr", null);
+							replaceComponent(struct, tmp, SUPER, 0);
+						} else if (comp.getDataType() instanceof Union) {
+							Union union = (Union) comp.getDataType();
+							union.add(parentStruct, parent.getName(), null);
+						} else {
+							Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
+							tmp.add(comp.getDataType(), comp.getDataType().getName(), null);
+							tmp.add(parentStruct, parent.getName(), null);
+							DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, type);
+							tmp.add(vptr, "_vptr", null);
+							replaceComponent(struct, tmp, SUPER, 0);
+						}
 					} else {
-						Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
-						tmp.add(comp.getDataType(), comp.getDataType().getName(), null);
-						tmp.add(parentStruct, parent.getName(), null);
-						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, type);
-						tmp.add(vptr, "_vptr", null);
-						replaceComponent(struct, tmp, SUPER, 0);
+						replaceComponent(struct, parentStruct, SUPER, offset);
 					}
 				} else {
-					if (baseMap.vtableOrdinalMap.containsKey(parent)) {
+					if (validVtable && baseMap.vtableOrdinalMap.containsKey(parent)) {
 						int ordinal = baseMap.vtableOrdinalMap.get(parent);
 						Union tmp = new UnionDataType(path, memberName+"_", struct.getDataTypeManager());
 						tmp.add(parentStruct, parent.getName(), null);
