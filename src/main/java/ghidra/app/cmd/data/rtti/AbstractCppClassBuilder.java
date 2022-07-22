@@ -90,7 +90,7 @@ public abstract class AbstractCppClassBuilder {
 					if (comp == null) {
 						Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
 						tmp.add(parentStruct, parent.getName(), null);
-						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, parent);
+						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, type);
 						tmp.add(vptr, "_vptr", null);
 						replaceComponent(struct, tmp, SUPER, 0);
 					} else if (comp.getDataType() instanceof Union) {
@@ -100,7 +100,7 @@ public abstract class AbstractCppClassBuilder {
 						Union tmp = new UnionDataType(path, SUPER, struct.getDataTypeManager());
 						tmp.add(comp.getDataType(), comp.getDataType().getName(), null);
 						tmp.add(parentStruct, parent.getName(), null);
-						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, parent);
+						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, type);
 						tmp.add(vptr, "_vptr", null);
 						replaceComponent(struct, tmp, SUPER, 0);
 					}
@@ -109,7 +109,7 @@ public abstract class AbstractCppClassBuilder {
 						int ordinal = baseMap.vtableOrdinalMap.get(parent);
 						Union tmp = new UnionDataType(path, memberName+"_", struct.getDataTypeManager());
 						tmp.add(parentStruct, parent.getName(), null);
-						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, parent, ordinal);
+						DataType vptr = ClassTypeInfoUtils.getVptrDataType(program, type, ordinal);
 						tmp.add(vptr, "_vptr", null);
 						replaceComponent(struct, tmp, memberName, offset);
 					} else {
