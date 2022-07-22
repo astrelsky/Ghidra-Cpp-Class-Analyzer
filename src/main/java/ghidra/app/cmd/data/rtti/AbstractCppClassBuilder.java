@@ -133,11 +133,22 @@ public abstract class AbstractCppClassBuilder {
 			Structure superStruct = (Structure) struct.copy(dtm);
 			setSuperStructureCategoryPath(superStruct);
 			superStruct = resolveStruct(superStruct);
-			deleteVirtualComponents(superStruct);
-			addVptr(superStruct);
-			if (!superStruct.isMachineAligned()) {
-				trimStructure(superStruct);
+			int ordinal = getFirstVirtualOrdinal(superStruct);
+			if (ordinal != -1) {
+				ComponentInfo[] comps = new ComponentInfo[ordinal];
+				DataTypeComponent[] dcomps = superStruct.getDefinedComponents();
+				for (int i = 0; i < ordinal; i++) {
+					comps[i] = new ComponentInfo(dcomps[i]);
+				}
+				superStruct.deleteAll();
+				for (ComponentInfo comp : comps) {
+					comp.insert(superStruct);
+				}
 			}
+			addVptr(superStruct);
+			//if (!superStruct.isMachineAligned()) {
+			//	trimStructure(superStruct);
+			//}
 			return superStruct;
 		}
 		return (Structure) dt;
@@ -160,34 +171,8 @@ public abstract class AbstractCppClassBuilder {
 
 	protected static void replaceComponent(Structure struct, DataType parent,
 			String name, int offset) {
-		int length = struct.getNumComponents() > 0 ? struct.getLength() : 0;
-		if ((offset == 0 && length == 0) || offset > length) {
-			struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
-		} else {
-			if (parent.getLength() >= struct.getLength() - offset) {
-				struct.deleteAtOffset(offset);
-				struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
-			} else {
-				struct.replaceAtOffset(offset, parent, parent.getLength(), name, null);
-			}
-		}
-		//clearComponent(struct, parent.getLength(), offset);
-		//struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
-	}
-
-	protected static void trimStructure(Structure struct) {
-		DataTypeComponent[] comps = struct.getDefinedComponents();
-		if (comps.length == 0) {
-			return;
-		}
-		int ordinal =  comps[comps.length-1].getOrdinal()+1;
-		trimStructure(struct, ordinal);
-	}
-
-	private static void trimStructure(Structure struct, int ordinal) {
-		for (int index = struct.getNumComponents() - 1; index >= ordinal; index--) {
-			struct.delete(index);
-		}
+		clearComponent(struct, parent.getLength(), offset);
+		struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
 	}
 
 	protected static Structure resolveStruct(Structure struct) {
@@ -195,21 +180,17 @@ public abstract class AbstractCppClassBuilder {
 		return (Structure) dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
 	}
 
-	protected void deleteVirtualComponents(Structure superStruct) {
+	protected int getFirstVirtualOrdinal(Structure superStruct) {
 		Set<String> parents = type.getVirtualParents()
 			.stream()
 			.map(this::getParentBuilder)
 			.map(AbstractCppClassBuilder::getSuperName)
 			.collect(Collectors.toSet());
 		DataTypeComponent[] comps = superStruct.getDefinedComponents();
-		DataTypeComponent comp = getReverseIndexStream(comps.length)
-			.mapToObj(i -> comps[i])
-			.filter(c -> parents.contains(c.getFieldName()))
+		return getReverseIndexStream(comps.length)
+			.filter(i -> parents.contains(comps[i].getFieldName()))
 			.findFirst()
-			.orElse(null);
-		if (comp != null) {
-			trimStructure(superStruct, comp.getOrdinal());
-		}
+			.orElse(-1);
 	}
 
 	private static IntStream getReverseIndexStream(int max) {
@@ -273,6 +254,24 @@ public abstract class AbstractCppClassBuilder {
 		@Override
 		public int getAsInt() {
 			return index--;
+		}
+	}
+	
+	private static class ComponentInfo {
+		final DataType type;
+		final String name;
+		final String comment;
+		final int offset;
+		
+		ComponentInfo(DataTypeComponent comp) {
+			type = comp.getDataType();
+			name = comp.getFieldName();
+			comment = comp.getComment();
+			offset = comp.getOffset();
+		}
+		
+		void insert(Structure struct) {
+			struct.insertAtOffset(offset, type, type.getLength(), name, comment);
 		}
 	}
 }
