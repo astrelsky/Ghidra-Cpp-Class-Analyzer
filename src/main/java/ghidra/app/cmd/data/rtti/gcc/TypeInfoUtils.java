@@ -17,6 +17,7 @@ import ghidra.program.model.mem.*;
 import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.program.model.symbol.*;
+import ghidra.util.Msg;
 import ghidra.util.StringUtilities;
 import ghidra.util.exception.AssertException;
 import ghidra.util.exception.CancelledException;
@@ -185,6 +186,19 @@ public class TypeInfoUtils {
 		}
 		return null;
 	}
+	
+	static Relocation getRelocation(Program program, Address address) {
+		RelocationTable table = program.getRelocationTable();
+		List<Relocation> relocs = table.getRelocations(address);
+		if (relocs.isEmpty()) {
+			return null;
+		}
+		if (relocs.size() > 1) {
+			String msg = "Multiple relocations at " + address.toString();
+			Msg.warn(TypeInfoUtils.class, msg);
+		}
+		return relocs.get(0);
+	}
 
 	/**
 	 * Gets the identifier string for the {@value TypeInfoModel#STRUCTURE_NAME}
@@ -195,8 +209,7 @@ public class TypeInfoUtils {
 	 * @see TypeInfoModel#ID_STRING
 	 */
 	public static String getIDString(Program program, Address address) {
-		RelocationTable table = program.getRelocationTable();
-		Relocation reloc = table.getRelocation(address);
+		Relocation reloc = getRelocation(program, address);
 		if (reloc != null && reloc.getSymbolName() != null) {
 			if (reloc.getSymbolName().startsWith(VtableModel.MANGLED_PREFIX)) {
 				return reloc.getSymbolName().substring(VtableModel.MANGLED_PREFIX.length());
@@ -217,7 +230,7 @@ public class TypeInfoUtils {
 			if (relocAddress != null) {
 				Data data = program.getListing().getDataContaining(relocAddress);
 				if (data != null) {
-					reloc = table.getRelocation(data.getAddress());
+					reloc = getRelocation(program, data.getAddress());
 					if (reloc != null) {
 						String name = relocationToID(reloc);
 						if (name != null) {
@@ -398,7 +411,7 @@ public class TypeInfoUtils {
 						  id))
 			   .append("Potential typename: ")
 			   .append(getTypeName(program, address));
-		Relocation reloc = program.getRelocationTable().getRelocation(address);
+		Relocation reloc = getRelocation(program, address);
 		if (reloc != null) {
 			builder.append(String.format(
 				"\nrelocation at %s to symbol %s", reloc.getAddress(), reloc.getSymbolName()));
