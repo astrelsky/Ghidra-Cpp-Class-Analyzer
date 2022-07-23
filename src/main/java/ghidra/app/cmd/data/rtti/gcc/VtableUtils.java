@@ -15,10 +15,7 @@ import ghidra.program.model.data.DataTypeManager;
 import ghidra.program.model.data.DefaultDataType;
 import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.data.Undefined;
-import ghidra.program.model.listing.Data;
-import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Listing;
-import ghidra.program.model.listing.Program;
+import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.program.model.reloc.Relocation;
@@ -279,19 +276,25 @@ public class VtableUtils {
 
 	private static Function createFunction(Program program, Address currentAddress) {
 		Listing listing = program.getListing();
-		// arm lto may do offset pointers
 		Function function = listing.getFunctionContaining(currentAddress);
 		if (function != null) {
 			return function;
 		}
-		if (listing.getInstructionContaining(currentAddress) == null) {
+		Instruction inst = listing.getInstructionContaining(currentAddress);
+		if (inst == null) {
 			// If it has not been disassembled, disassemble it first.
 			if (program.getMemory().getBlock(currentAddress).isInitialized()) {
 				DisassembleCommand cmd = new DisassembleCommand(currentAddress, null, true);
 				cmd.applyTo(program);
 			}
+			inst = listing.getInstructionContaining(currentAddress);
+			if (inst == null) {
+				return null;
+			}
 		}
-		CreateFunctionCmd cmd = new CreateFunctionCmd(currentAddress);
+		// handle thumb mode pointer offset
+		Address entry = inst.getAddress();
+		CreateFunctionCmd cmd = new CreateFunctionCmd(entry);
 		cmd.applyTo(program);
 		return cmd.getFunction();
 	}
