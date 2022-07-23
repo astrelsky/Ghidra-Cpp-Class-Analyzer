@@ -270,7 +270,7 @@ public class VtableUtils {
 	private static Address getFunctionAddress(Program program, Address currentAddress) {
 		Address functionAddress = getAbsoluteAddress(program, currentAddress);
 		if (GnuUtils.hasFunctionDescriptors(program) && functionAddress.getOffset() != 0) {
-			Relocation reloc = program.getRelocationTable().getRelocation(currentAddress);
+			Relocation reloc =TypeInfoUtils.getRelocation(program, currentAddress);
 			if (reloc == null || reloc.getSymbolName() == null) {
 				return getAbsoluteAddress(program, functionAddress);
 			}
