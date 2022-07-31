@@ -1,5 +1,6 @@
 package cppclassanalyzer.decompiler.action;
 
+import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.plugin.core.decompile.DecompilerActionContext;
 import ghidra.app.plugin.core.decompile.actions.AbstractNonPackageDecompilerAction;
 
@@ -33,7 +34,12 @@ public class FillOutClassAction extends AbstractNonPackageDecompilerAction {
 		if (manager == null) {
 			return false;
 		}
-		return manager.getType(context.getFunction()) != null;
+		try {
+			return manager.getType(context.getFunction()) != null;
+		} catch (UnresolvedClassTypeInfoException e) {
+			// allowing the use of the action will just cause the exception to be thrown again
+			return false;
+		}
 	}
 
 	@Override
