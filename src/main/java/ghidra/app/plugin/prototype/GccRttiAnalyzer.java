@@ -22,6 +22,7 @@ import ghidra.program.model.symbol.*;
 import ghidra.app.cmd.data.rtti.gcc.typeinfo.*;
 import ghidra.app.plugin.core.analysis.ReferenceAddressPair;
 import ghidra.app.services.*;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
@@ -111,6 +112,11 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				if (fundamentalOption) {
 					for (Address addr : scanner.scanFundamentals(log, monitor)) {
 						monitor.checkCanceled();
+						if (addr == null) {
+							String name = scanner.getClass().getName();
+							Msg.warn(this, name + ".scanFundamentals returned a null address");
+							continue;
+						}
 						TypeInfo type = manager.getTypeInfo(addr);
 						applyTypeInfo(type);
 					}
@@ -120,8 +126,9 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				monitor.setMessage("Creating ClassTypeInfo's");
 				for (ClassTypeInfo type : manager.getTypes()) {
 					monitor.checkCanceled();
-					applyTypeInfo(type);
-					this.set.add(type.getAddress());
+					if (applyTypeInfo(type)) {
+						this.set.add(type.getAddress());
+					}
 					monitor.incrementProgress(1);
 				}
 				createVtables();
@@ -328,9 +335,15 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		}
 	}
 
-	private void applyTypeInfo(TypeInfo type) {
+	private boolean applyTypeInfo(TypeInfo type) {
+		if (type.getAddress() == null) {
+			Msg.debug(this, "Attempted to create typeinfo with null address");
+			return false;
+		}
 		CreateTypeInfoBackgroundCmd cmd = new CreateTypeInfoBackgroundCmd(type);
-		cmd.applyTo(program, dummy);
+		if (!cmd.applyTo(program, dummy)) {
+			return false;
+		}
 		markDataAsConstant(type.getAddress());
 		if (createBookmarks) {
 			Address typenameAddress = getAbsoluteAddress(
@@ -342,6 +355,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 					typenameAddress, BookmarkType.ANALYSIS,
 					BookmarkType.ANALYSIS, "typeinfo-name located");
 		}
+		return true;
 	}
 
 	@Override

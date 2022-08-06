@@ -9,7 +9,6 @@ import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.mem.MemoryBufferImpl;
 import ghidra.util.Msg;
 import ghidra.util.datastruct.LongArrayList;
-import ghidra.util.exception.AssertException;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Program;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -266,7 +265,7 @@ public final class VmiClassTypeInfoModel extends AbstractClassTypeInfoModel {
 			return new ArrayDataType(dt, baseCount, dt.getLength(), dtm);
 		} catch (MemoryAccessException e) {
 			// shouldn't occur
-			throw new AssertException(e);
+			throw new RuntimeException(e);
 		}
 	}
 

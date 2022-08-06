@@ -7,6 +7,7 @@ import ghidra.program.model.data.DataType;
 import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.program.model.data.DataUtilities;
 import ghidra.util.exception.CancelledException;
@@ -70,8 +71,18 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 			return applyTypeInfoSymbols() && data != null;
 		} catch (CodeUnitInsertionException e) {
 			Msg.error(this, e);
-			return false;
+		} catch (RuntimeException e) {
+			Throwable cause = e.getCause();
+			if (cause instanceof MemoryAccessException) {
+				Address addr = type.getAddress();
+				if (addr != null) {
+					Msg.error(this, "Failed to apply typeinfo at "+type.getAddress().toString(), cause);
+				} else {
+					Msg.error(this, "Failed to apply typeinfo because it's address is null", cause);
+				}
+			}
 		}
+		return false;
 	}
 
 	private Data createData(Address address, DataType dt) throws CodeUnitInsertionException {
