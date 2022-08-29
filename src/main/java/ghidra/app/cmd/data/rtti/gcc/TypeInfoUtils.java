@@ -197,39 +197,40 @@ public class TypeInfoUtils {
 	 */
 	public static String getIDString(Program program, Address address) {
 		RelocationTable table = program.getRelocationTable();
-		Relocation reloc = table.getRelocation(address);
-		if (reloc != null && reloc.getSymbolName() != null) {
-			if (reloc.getSymbolName().startsWith(VtableModel.MANGLED_PREFIX)) {
-				return reloc.getSymbolName().substring(VtableModel.MANGLED_PREFIX.length());
-			}
-			Address relocationAddress = getAbsoluteAddress(program, address);
-			if (relocationAddress == null || relocationAddress.getOffset() == 0) {
-				return "";
-			}
-			MemoryBlock block = program.getMemory().getBlock(relocationAddress);
-			if (block == null || !block.isInitialized()) {
-				String name = relocationToID(reloc);
-				if (name != null) {
-					return name;
+		List<Relocation> relocs = table.getRelocations(address);
+		for (Relocation reloc : relocs) {
+			if (reloc.getSymbolName() != null) {
+				if (reloc.getSymbolName().startsWith(VtableModel.MANGLED_PREFIX)) {
+					return reloc.getSymbolName().substring(VtableModel.MANGLED_PREFIX.length());
 				}
-			}
-		} else {
-			Address relocAddress = getAbsoluteAddress(program, address);
-			if (relocAddress != null) {
-				Data data = program.getListing().getDataContaining(relocAddress);
-				if (data != null) {
-					reloc = table.getRelocation(data.getAddress());
-					if (reloc != null) {
-						String name = relocationToID(reloc);
-						if (name != null) {
-							return name;
-						}
+				Address relocationAddress = getAbsoluteAddress(program, address);
+				if (relocationAddress == null || relocationAddress.getOffset() == 0) {
+					return "";
+				}
+				MemoryBlock block = program.getMemory().getBlock(relocationAddress);
+				if (block == null || !block.isInitialized()) {
+					String name = relocationToID(reloc);
+					if (name != null) {
+						return name;
 					}
 				}
-				String name = externalSymbolToID(program, relocAddress);
-				if (name != null) {
-					return name;
+			}
+		}
+		Address relocAddress = getAbsoluteAddress(program, address);
+		if (relocAddress != null) {
+			Data data = program.getListing().getDataContaining(relocAddress);
+			if (data != null) {
+				relocs = table.getRelocations(data.getAddress());
+				for (Relocation reloc : relocs) {
+					String name = relocationToID(reloc);
+					if (name != null) {
+						return name;
+					}
 				}
+			}
+			String name = externalSymbolToID(program, relocAddress);
+			if (name != null) {
+				return name;
 			}
 		}
 		final int POINTER_SIZE = program.getDefaultPointerSize();
@@ -399,8 +400,8 @@ public class TypeInfoUtils {
 						  id))
 			   .append("Potential typename: ")
 			   .append(getTypeName(program, address));
-		Relocation reloc = program.getRelocationTable().getRelocation(address);
-		if (reloc != null) {
+		List<Relocation> relocs = program.getRelocationTable().getRelocations(address);
+		for (Relocation reloc : relocs) {
 			builder.append(String.format(
 				"\nrelocation at %s to symbol %s", reloc.getAddress(), reloc.getSymbolName()));
 		}

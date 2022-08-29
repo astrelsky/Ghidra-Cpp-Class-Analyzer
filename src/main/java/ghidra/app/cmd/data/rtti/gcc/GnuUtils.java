@@ -145,8 +145,8 @@ public final class GnuUtils {
 	public static boolean isFunctionPointer(Program program, Address address) {
 		RelocationTable table = program.getRelocationTable();
 		if (table.isRelocatable()) {
-			Relocation reloc = table.getRelocation(address);
-			if (reloc != null) {
+			List<Relocation> relocs = table.getRelocations(address);
+			for (Relocation reloc : relocs) {
 				String name = reloc.getSymbolName();
 				if (name != null) {
 					if (name.equals(GnuVtable.PURE_VIRTUAL_FUNCTION_NAME)) {

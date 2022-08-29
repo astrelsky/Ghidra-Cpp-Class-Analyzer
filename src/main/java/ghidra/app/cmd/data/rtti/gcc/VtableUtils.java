@@ -267,8 +267,8 @@ public class VtableUtils {
 	private static Address getFunctionAddress(Program program, Address currentAddress) {
 		Address functionAddress = getAbsoluteAddress(program, currentAddress);
 		if (GnuUtils.hasFunctionDescriptors(program) && functionAddress.getOffset() != 0) {
-			Relocation reloc = program.getRelocationTable().getRelocation(currentAddress);
-			if (reloc == null || reloc.getSymbolName() == null) {
+			List<Relocation> relocs = program.getRelocationTable().getRelocations(currentAddress);
+			if (relocs.isEmpty() || relocs.stream().allMatch(reloc -> reloc.getSymbolName() == null)) {
 				return getAbsoluteAddress(program, functionAddress);
 			}
 		} return functionAddress;
