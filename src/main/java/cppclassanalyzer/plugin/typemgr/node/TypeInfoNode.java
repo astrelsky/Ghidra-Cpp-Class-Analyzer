@@ -18,7 +18,7 @@ import docking.widgets.tree.GTreeLazyNode;
 import docking.widgets.tree.GTreeNode;
 import generic.util.image.ImageUtils;
 import resources.ResourceManager;
-import resources.icons.ImageIconWrapper;
+import resources.icons.DerivedImageIcon;
 
 public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNode {
 
@@ -200,7 +200,7 @@ public final class TypeInfoNode extends GTreeLazyNode implements TypeInfoTreeNod
 			Hashtable<String, Object> properties = getProperties(image);
 			boolean preMultiplied = image.isAlphaPremultiplied();
 			image = new BufferedImage(model, raster, preMultiplied, properties);
-			return new ImageIconWrapper(image, type.name());
+			return new DerivedImageIcon(type.name(), image);
 		}
 
 		private static Hashtable<String, Object> getProperties(BufferedImage image) {
