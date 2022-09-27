@@ -1,8 +1,6 @@
 package ghidra.app.cmd.data.rtti.gcc;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -152,6 +150,7 @@ public class TypeInfoUtils {
 			.filter(s -> s.getName().equals(TypeInfo.SYMBOL_NAME))
 			.map(Symbol::getAddress)
 			.map(manager::getTypeInfo)
+			.filter(Objects::nonNull)
 			.findFirst()
 			.orElse(null);
 	}
