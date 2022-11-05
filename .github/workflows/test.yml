@@ -20,5 +20,5 @@ jobs:
           version: ${{ matrix.ghidra }}
       - uses: eskatos/gradle-command-action@v1
         with:
-          gradle-version: 6.9
+          gradle-version: 7.3
           arguments: test --info -PGHIDRA_INSTALL_DIR=${{ env.GHIDRA_INSTALL_DIR }}
