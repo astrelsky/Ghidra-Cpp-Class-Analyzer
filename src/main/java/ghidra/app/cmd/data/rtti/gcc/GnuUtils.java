@@ -146,19 +146,18 @@ public final class GnuUtils {
 		RelocationTable table = program.getRelocationTable();
 		if (table.isRelocatable()) {
 			List<Relocation> relocs = table.getRelocations(address);
-			if (relocs.isEmpty()) {
-				return false;
-			}
-			Relocation reloc = relocs.get(0);
-			if (reloc != null) {
-				String name = reloc.getSymbolName();
-				if (name != null) {
-					if (name.equals(GnuVtable.PURE_VIRTUAL_FUNCTION_NAME)) {
-						return true;
-					}
-					DemangledObject demangled = demangle(name);
-					if (demangled != null && demangled instanceof DemangledFunction) {
-						return true;
+			if (!relocs.isEmpty()) {
+				Relocation reloc = relocs.get(0);
+				if (reloc != null) {
+					String name = reloc.getSymbolName();
+					if (name != null) {
+						if (name.equals(GnuVtable.PURE_VIRTUAL_FUNCTION_NAME)) {
+							return true;
+						}
+						DemangledObject demangled = demangle(name);
+						if (demangled != null && demangled instanceof DemangledFunction) {
+							return true;
+						}
 					}
 				}
 			}
