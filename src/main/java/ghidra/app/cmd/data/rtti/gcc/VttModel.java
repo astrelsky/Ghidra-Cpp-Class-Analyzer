@@ -278,7 +278,7 @@ public class VttModel {
 
 	@Override
 	public String toString() {
-		return "VTT for " + typeinfo.getName();
+		return "VTT for " + typeinfo.getFullName();
 	}
 
 }

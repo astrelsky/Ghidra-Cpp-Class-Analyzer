@@ -94,7 +94,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 	}
 
 	@Override
-	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
+	public boolean added(Program program, AddressSetView memory, TaskMonitor monitor, MessageLog log)
 		throws CancelledException {
 			this.program = program;
 			this.bMan = program.getBookmarkManager();
