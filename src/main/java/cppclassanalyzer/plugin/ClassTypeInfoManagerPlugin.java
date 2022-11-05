@@ -81,7 +81,7 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 	private ProgramClassTypeInfoManager currentManager;
 
 	public ClassTypeInfoManagerPlugin(PluginTool tool) {
-		super(tool, true, true);
+		super(tool);
 		this.api = new DecompilerAPI(tool);
 		this.clipboard = new Clipboard(getName());
 		this.managers = Collections.synchronizedList(new ArrayList<>());
