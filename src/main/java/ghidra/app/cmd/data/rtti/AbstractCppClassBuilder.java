@@ -1,26 +1,21 @@
 package ghidra.app.cmd.data.rtti;
 
 import java.util.*;
-import java.util.function.IntSupplier;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils.Vptr;
 import ghidra.app.cmd.data.rtti.gcc.TypeInfoUtils;
 import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeComponent;
 import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
-import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.util.CompositeDataTypeElementInfo;
-import ghidra.util.InvalidNameException;
-import ghidra.util.Msg;
 import ghidra.util.exception.AssertException;
-import ghidra.util.exception.DuplicateNameException;
 
 public abstract class AbstractCppClassBuilder {
 
@@ -30,6 +25,7 @@ public abstract class AbstractCppClassBuilder {
 	protected Structure struct;
 	private final CategoryPath path;
 	private final ClassTypeInfo type;
+	private Vptr[] vptrs = null;
 
 	private Map<CompositeDataTypeElementInfo, String> dtComps = Collections.emptyMap();
 
@@ -40,71 +36,77 @@ public abstract class AbstractCppClassBuilder {
 		this.struct = ClassTypeInfoUtils.getPlaceholderStruct(type, program.getDataTypeManager());
 		this.struct = resolveStruct(struct);
 		this.path = new CategoryPath(TypeInfoUtils.getCategoryPath(type), type.getName());
-	}
 
-	protected abstract AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent);
+		Vtable vtable = getType().getVtable();
+		if (Vtable.isValid(vtable)) {
+			this.vptrs = ClassTypeInfoUtils.getVptrDataTypes(getProgram(), getType());
+		}
+	}
 
 	protected ClassTypeInfo getType() {
 		return type;
+	}
+
+	protected Vptr[] getVptrs() {
+		return vptrs;
 	}
 
 	protected final Program getProgram() {
 		return program;
 	}
 
-	private String getSuperName() {
-		return SUPER + type.getName();
-	}
-
-	protected final void addVptr() {
-		addVptr(struct);
+	protected int pointerSize() {
+		return program.getDefaultPointerSize();
 	}
 
 	protected abstract Map<ClassTypeInfo, Integer> getBaseOffsets();
-	protected abstract void addVptr(Structure struct);
+
+	/**
+	 * Add implementation-specific virtual pointers for the subobject residing at the
+	 * given offset into the beginning of the given struct.
+	 * @param struct the struct to add the vptrs to.
+	 * @return offset the offset of the subobject inside the type.
+	 */
+	protected abstract void addVptrs(Structure struct, int offset);
+	protected abstract boolean invalidFieldName(String name);
 
 	public Structure getDataType() {
 		if (struct.isDeleted()) {
-			struct = ClassTypeInfoUtils.getPlaceholderStruct(
-				type, program.getDataTypeManager());
-		}
-		Integer id = null;
-		boolean success = false;
-		if (program.getCurrentTransaction() == null) {
-			id = program.startTransaction("creating datatype for "+type.getName());
+			struct = ClassTypeInfoUtils.getPlaceholderStruct(type, program.getDataTypeManager());
+			struct = resolveStruct(struct);
 		}
 
+		boolean success = false;
 		try {
 			stashComponents();
+
 			Map<ClassTypeInfo, Integer> baseMap = getBaseOffsets();
-			boolean primaryBaseSet = false;
 			for (ClassTypeInfo parent : baseMap.keySet()) {
-				AbstractCppClassBuilder parentBuilder = getParentBuilder(parent);
-				Structure parentStruct = parentBuilder.getSuperClassDataType();
-				String memberName = SUPER + parent.getName();
 				int offset = baseMap.get(parent);
 				if (offset == 0) {
-					if (parentStruct.isNotYetDefined()) {
-						// it is an empty class, interface or essentially a namespace
-						continue;
-					}
-					if (!primaryBaseSet) {
-						replaceComponent(struct, parentStruct, memberName, 0);
-						primaryBaseSet = true;
-					}
+					// A direct or indirect primary base - add later.
 				} else if (offset < 0) {
 					// it is contained within another base class
 					// or unable to resolve and already reported
 					continue;
 				} else {
-					replaceComponent(struct, parentStruct, memberName, offset);
+					Structure parentStruct = getSuperStruct(parent);
+					addVptrs(parentStruct, offset);
+					replaceComponent(struct, parentStruct, SUPER+parent.getName(), offset);
 				}
 			}
-			addVptr();
+
+			// The derived class shares its own vtable with the primary base's at offset 0.
+			// Embed this vtable directly into the derived struct.
+			addVptrs(struct, 0);
+
 			fixComponents();
-			getSuperClassDataType();
 			success = true;
 		} finally {
+			Integer id = null;
+			if (program.getCurrentTransaction() == null) {
+				id = program.startTransaction("creating datatype for "+type.getName());
+			}
 			if (id != null) {
 				program.endTransaction(id, success);
 			}
@@ -112,46 +114,16 @@ public abstract class AbstractCppClassBuilder {
 		return struct;
 	}
 
-	protected void setSuperStructureCategoryPath(Structure parent) {
-		try {
-			parent.setCategoryPath(path);
-			parent.setName(SUPER+parent.getName());
-		} catch (InvalidNameException | DuplicateNameException e) {
-			Msg.error(
-				this, "Failed to change placeholder struct "+type.getName()+"'s CategoryPath", e);
-		}
+	protected Structure getSuperStruct(ClassTypeInfo superType) {
+		DataTypeManager dtm = program.getDataTypeManager();
+		StructureDataType struct = new StructureDataType(path, SUPER+superType.getName(), 0, dtm);
+		return (Structure) dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
 	}
 
-	protected Structure getSuperClassDataType() {
-		if (type.getVirtualParents().isEmpty()) {
-			return struct;
-		}
-		DataTypeManager dtm = program.getDataTypeManager();
-		DataTypePath dtPath = new DataTypePath(path, SUPER+type.getName());
-		DataType dt = dtm.getDataType(dtPath);
-		if (dt == null) {
-			Structure superStruct = (Structure) struct.copy(dtm);
-			setSuperStructureCategoryPath(superStruct);
-			superStruct = resolveStruct(superStruct);
-			int ordinal = getFirstVirtualOrdinal(superStruct);
-			if (ordinal != -1) {
-				ComponentInfo[] comps = new ComponentInfo[ordinal];
-				DataTypeComponent[] dcomps = superStruct.getDefinedComponents();
-				for (int i = 0; i < ordinal; i++) {
-					comps[i] = new ComponentInfo(dcomps[i]);
-				}
-				superStruct.deleteAll();
-				for (ComponentInfo comp : comps) {
-					comp.insert(superStruct);
-				}
-			}
-			addVptr(superStruct);
-			//if (!superStruct.isMachineAligned()) {
-			//	trimStructure(superStruct);
-			//}
-			return superStruct;
-		}
-		return (Structure) dt;
+	protected static void replaceComponent(Structure struct, DataType parent,
+			String name, int offset) {
+		clearComponent(struct, parent.getLength(), offset);
+		struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
 	}
 
 	protected static void clearComponent(Structure struct, int length, int offset) {
@@ -169,40 +141,9 @@ public abstract class AbstractCppClassBuilder {
 		}
 	}
 
-	protected static void replaceComponent(Structure struct, DataType parent,
-			String name, int offset) {
-		clearComponent(struct, parent.getLength(), offset);
-		struct.insertAtOffset(offset, parent, parent.getLength(), name, null);
-	}
-
 	protected static Structure resolveStruct(Structure struct) {
 		DataTypeManager dtm = struct.getDataTypeManager();
 		return (Structure) dtm.resolve(struct, DataTypeConflictHandler.KEEP_HANDLER);
-	}
-
-	protected int getFirstVirtualOrdinal(Structure superStruct) {
-		Set<String> parents = type.getVirtualParents()
-			.stream()
-			.map(this::getParentBuilder)
-			.map(AbstractCppClassBuilder::getSuperName)
-			.collect(Collectors.toSet());
-		DataTypeComponent[] comps = superStruct.getDefinedComponents();
-		return getReverseIndexStream(comps.length)
-			.filter(i -> parents.contains(comps[i].getFieldName()))
-			.findFirst()
-			.orElse(-1);
-	}
-
-	private static IntStream getReverseIndexStream(int max) {
-		return IntStream.generate(new ReverseIndexSupplier(max - 1))
-			.limit(max);
-	}
-
-	private boolean validFieldName(String name) {
-		if (name == null) {
-			return true;
-		}
-		return !name.startsWith(SUPER) && !name.contains("_vptr");
 	}
 
 	private void stashComponents() {
@@ -218,7 +159,7 @@ public abstract class AbstractCppClassBuilder {
 					throw new AssertException(msg);
 				}
 				String fieldName = comp.getFieldName();
-				if (validFieldName(fieldName)) {
+				if (invalidFieldName(fieldName)) {
 					if (!comp.getDataType().isNotYetDefined()) {
 						CompositeDataTypeElementInfo savedComp = new CompositeDataTypeElementInfo(
 							comp.getDataType(), comp.getOffset(),
@@ -235,43 +176,11 @@ public abstract class AbstractCppClassBuilder {
 		for (CompositeDataTypeElementInfo comp : dtComps.keySet()) {
 			int offset = comp.getDataTypeOffset();
 			DataTypeComponent replaced = struct.getComponentContaining(offset);
-			if (replaced != null && !validFieldName(replaced.getFieldName())) {
+			if (replaced != null && !invalidFieldName(replaced.getFieldName())) {
 				continue;
 			}
 			replaceComponent(struct, (DataType) comp.getDataTypeHandle(),
 							 dtComps.get(comp), offset);
-		}
-	}
-
-	private static final class ReverseIndexSupplier implements IntSupplier {
-
-		private int index;
-
-		ReverseIndexSupplier(int index) {
-			this.index = index;
-		}
-
-		@Override
-		public int getAsInt() {
-			return index--;
-		}
-	}
-	
-	private static class ComponentInfo {
-		final DataType type;
-		final String name;
-		final String comment;
-		final int offset;
-		
-		ComponentInfo(DataTypeComponent comp) {
-			type = comp.getDataType();
-			name = comp.getFieldName();
-			comment = comp.getComment();
-			offset = comp.getOffset();
-		}
-		
-		void insert(Structure struct) {
-			struct.insertAtOffset(offset, type, type.getLength(), name, comment);
 		}
 	}
 }

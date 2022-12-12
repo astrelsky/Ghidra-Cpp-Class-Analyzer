@@ -4,42 +4,40 @@ import java.util.Map;
 
 import ghidra.app.cmd.data.rtti.AbstractCppClassBuilder;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
-import ghidra.app.cmd.data.rtti.Vtable;
 import cppclassanalyzer.data.typeinfo.AbstractClassTypeInfoDB;
-import ghidra.program.model.data.DataType;
-import ghidra.program.model.data.DataTypeComponent;
+import ghidra.program.model.address.Address;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils.Vptr;
 import ghidra.program.model.data.Structure;
-
-import static ghidra.program.model.data.Undefined.isUndefined;
+import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBufferImpl;
+import ghidra.util.Msg;
 
 public class GccCppClassBuilder extends AbstractCppClassBuilder {
 
-	private static final String VPTR = "_vptr";
+	public static final String VPTR = "vptr";
 
 	public GccCppClassBuilder(ClassTypeInfo type) {
 		super(type);
 	}
 
 	@Override
-	protected AbstractCppClassBuilder getParentBuilder(ClassTypeInfo parent) {
-		return new GccCppClassBuilder(parent);
-	}
-
-	@Override
-	protected void addVptr(Structure struct) {
-		if (!Vtable.isValid(getType().getVtable())) {
+	protected void addVptrs(Structure struct, int offset) {
+		Vptr[] vptrs = getVptrs();
+		if (vptrs == null)
 			return;
-		}
-		DataType vptr = ClassTypeInfoUtils.getVptrDataType(getProgram(), getType());
-		DataTypeComponent comp = struct.getComponentAt(0);
-		if (comp == null || isUndefined(comp.getDataType())) {
-			if (vptr != null) {
-				clearComponent(struct, getProgram().getDefaultPointerSize(), 0);
-				struct.insertAtOffset(0, vptr, vptr.getLength(), VPTR, null);
+
+		for (int i = 0; i < vptrs.length; i++) {
+			Address topOffsetAddr = vptrs[i].getTableAddr().subtract(2*pointerSize());
+			MemoryBufferImpl buf = new MemoryBufferImpl(getProgram().getMemory(), topOffsetAddr);
+			try {
+				int topOffset = buf.getInt(0);
+				if (offset == -topOffset) {
+					replaceComponent(struct, vptrs[i].getDataType(), VPTR, 0);
+					return;
+				}
+			} catch (MemoryAccessException e) {
+				Msg.error(this, e);
 			}
-		} else if (comp.getFieldName() == null || !comp.getFieldName().startsWith(SUPER)) {
-			clearComponent(struct, getProgram().getDefaultPointerSize(), 0);
-			struct.insertAtOffset(0, vptr, vptr.getLength(), VPTR, null);
 		}
 	}
 
@@ -50,5 +48,13 @@ public class GccCppClassBuilder extends AbstractCppClassBuilder {
 			return ((AbstractClassTypeInfoDB) type).getBaseOffsets();
 		}
 		return ClassTypeInfoUtils.getBaseOffsets(type);
+	}
+
+	@Override
+	protected boolean invalidFieldName(String name) {
+		if (name == null) {
+			return true;
+		}
+		return !name.startsWith(SUPER) && !name.contains(VPTR);
 	}
 }

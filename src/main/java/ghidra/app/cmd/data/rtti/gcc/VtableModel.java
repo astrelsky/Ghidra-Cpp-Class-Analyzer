@@ -173,7 +173,8 @@ public final class VtableModel implements GnuVtable {
 		Function[][] result = new Function[tableAddresses.length][];
 		for (int i = 0; i < tableAddresses.length; i++) {
 			result[i] = VtableUtils.getFunctionTable(program, tableAddresses[i]);
-		} return result;
+		}
+		return result;
 	}
 
 	@Override

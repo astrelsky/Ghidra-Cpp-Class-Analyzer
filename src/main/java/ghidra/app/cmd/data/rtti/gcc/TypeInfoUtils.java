@@ -450,7 +450,7 @@ public class TypeInfoUtils {
 			.orElse("_ZTI" + type.getTypeName());
 	}
 
-	private static Address getAbsoluteAddress(Program program, Address address) {
+	public static Address getAbsoluteAddress(Program program, Address address) {
 		Memory mem = program.getMemory();
 		if (!mem.contains(address)) {
 			return null;

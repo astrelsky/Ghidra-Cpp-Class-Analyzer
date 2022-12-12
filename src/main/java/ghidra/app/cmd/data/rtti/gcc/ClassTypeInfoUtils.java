@@ -354,61 +354,59 @@ public class ClassTypeInfoUtils {
 	}
 
 	/**
-	 * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
+	 * Gets all the instances for the virtual function tables of this ClassTypeInfo.
 	 * @param program the program containing the ClassTypeInfo
 	 * @param type the ClassTypeInfo
 	 * @return the ClassTypeInfo's _vptr DataType
 	 */
-	public static DataType getVptrDataType(Program program, ClassTypeInfo type) {
-		try {
-			Vtable vtable = type.getVtable();
+	public static Vptr[] getVptrDataTypes(Program program, ClassTypeInfo type) {
+		Vtable vtable = type.getVtable();
+		Function[][] funcTables = vtable.getFunctionTables();
+		Address[] funcTableAddrs = vtable.getTableAddresses();
+		if (funcTables.length != funcTableAddrs.length)
+			return null;
+
+		Vptr[] vptrs = new Vptr[funcTables.length];
+		for (int i = 0; i < funcTables.length; i++) {
 			CategoryPath path =
-				new CategoryPath(TypeInfoUtils.getCategoryPath(type), type.getName());
+					new CategoryPath(TypeInfoUtils.getCategoryPath(type), type.getName());
 			DataTypeManager dtm = program.getDataTypeManager();
 			Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);
-			Function[][] functionTable = vtable.getFunctionTables();
-			if (functionTable.length > 0 && functionTable[0].length > 0) {
-				for (Function function : functionTable[0]) {
-					if (function != null) {
-						if (function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
-							DataType dt = dtm.getPointer(VoidDataType.dataType);
-							struct.add(dt, dt.getLength(), PURE_VIRTUAL_FUNCTION_NAME, null);
-							continue;
-						}
-						DataType dt = new FunctionDefinitionDataType(function, false);
-						dt.setCategoryPath(path);
-						if (dtm.contains(dt)) {
-							dt = dtm.getDataType(dt.getDataTypePath());
-						} else {
-							dt = dtm.resolve(dt, DataTypeConflictHandler.KEEP_HANDLER);
-						}
-						dt = dtm.getPointer(dt);
-						struct.add(dt, dt.getLength(), function.getName(), null);
-					} else {
-						struct.add(PointerDataType.dataType);
+			for (Function func : funcTables[i]) {
+				if (func != null) {
+					if (func.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
+						DataType dt = dtm.getPointer(VoidDataType.dataType);
+						struct.add(dt, dt.getLength(), PURE_VIRTUAL_FUNCTION_NAME, null);
+						continue;
 					}
+
+					DataType dt = new FunctionDefinitionDataType(func, false);
+					try {
+						dt.setCategoryPath(path);
+					} catch (DuplicateNameException e) {
+						throw new AssertException("Ghidra-Cpp-Class-Analyzer: "+e.getMessage(), e);
+					}
+					if (dtm.contains(dt)) {
+						dt = dtm.getDataType(dt.getDataTypePath());
+					} else {
+						dt = dtm.resolve(dt, DataTypeConflictHandler.KEEP_HANDLER);
+					}
+					dt = dtm.getPointer(dt);
+					String memberName = func.getName();
+					Namespace ns = func.getParentNamespace();
+					if (ns != null)
+						memberName = ns.getName() + "::" + memberName;
+					struct.add(dt, dt.getLength(), memberName, null);
+				} else {
+					struct.add(PointerDataType.dataType);
 				}
 			}
 			struct.setPackingEnabled(true);
 			struct.setToMachineAligned();
 			struct = (Structure) dtm.resolve(struct, DataTypeConflictHandler.REPLACE_HANDLER);
-			return dtm.getPointer(struct);
-		} catch (DuplicateNameException e) {
-			throw new AssertException("Ghidra-Cpp-Class-Analyzer: "+e.getMessage(), e);
+			vptrs[i] = new Vptr(funcTableAddrs[i], dtm.getPointer(struct));
 		}
-	}
-
-	/**
-	 * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
-	 * @param program the program containing the ClassTypeInfo
-	 * @param type the ClassTypeInfo
-	 * @param path The category path to place the datatype in.
-	 * @return the ClassTypeInfo's _vptr DataType
-	 * @deprecated the path parameter is now ignored
-	 */
-	@Deprecated(forRemoval=true)
-	public static DataType getVptrDataType(Program program, ClassTypeInfo type, CategoryPath path) {
-		return getVptrDataType(program, type);
+		return vptrs;
 	}
 
 	public static Map<ClassTypeInfo, Integer> getBaseOffsets(ClassTypeInfo type) {
@@ -490,4 +488,21 @@ public class ClassTypeInfoUtils {
 		return Math.max(defaultMax, Math.abs(offset) / program.getDefaultPointerSize() - 1);
 	}
 
+	public static class Vptr {
+		private Address tableAddr;
+		private DataType dataType;
+
+		public Vptr(Address addr, DataType dataType) {
+			this.tableAddr = addr;
+			this.dataType = dataType;
+		}
+
+		public Address getTableAddr() {
+			return tableAddr;
+		}
+
+		public DataType getDataType() {
+			return dataType;
+		}
+	}
 }
