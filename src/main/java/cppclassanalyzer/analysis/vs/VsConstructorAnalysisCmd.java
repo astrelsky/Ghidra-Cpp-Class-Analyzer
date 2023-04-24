@@ -57,7 +57,7 @@ public class VsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 				return true;
 			}
 			Address tableAddress = tableAddresses[0];
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			Data data = listing.getDataContaining(tableAddress);
 			if (data == null) {
 				return false;
@@ -91,7 +91,7 @@ public class VsConstructorAnalysisCmd extends AbstractConstructorAnalysisCmd {
 			}
 			Collections.reverse(references);
 			for (Reference ref : references) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				Address fromAddress = ref.getFromAddress();
 				if(!fManager.isInFunction(fromAddress)) {
 					continue;

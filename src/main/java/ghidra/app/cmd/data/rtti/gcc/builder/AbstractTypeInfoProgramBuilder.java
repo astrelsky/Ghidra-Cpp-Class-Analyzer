@@ -24,6 +24,7 @@ import cppclassanalyzer.utils.CppClassAnalyzerUtils;
 import ghidra.program.model.data.StringDataType;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.model.reloc.Relocation;
 import ghidra.program.model.reloc.RelocationTable;
 import ghidra.util.Msg;
 
@@ -87,7 +88,7 @@ public abstract class AbstractTypeInfoProgramBuilder extends ProgramBuilder {
 		}
 		RelocationTable table = program.getRelocationTable();
 		for (Long offset : relocationMap.keySet()) {
-			table.add(addr(offset), 1, null, null, relocationMap.get(offset));
+			table.add(addr(offset), Relocation.Status.APPLIED, 1, null, null, relocationMap.get(offset));
 		}
 		buildTypes();
 		endTransaction();

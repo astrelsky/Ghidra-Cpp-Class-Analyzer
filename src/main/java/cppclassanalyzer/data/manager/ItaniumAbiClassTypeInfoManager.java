@@ -113,7 +113,7 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 		monitor.initialize(getTypeCount());
 		monitor.setMessage("Finding vtables");
 		for (ClassTypeInfoDB type : getTypes(true)) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			try {
 				type.findVtable(dummy);
 			} catch (CancelledException e) {
@@ -155,7 +155,7 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 				.map(ReferenceCounter::new)
 				.collect(Collectors.toMap(ReferenceCounter::getKey, r -> r));
 			for (ClassTypeInfoRecord record : records) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				if (keys.containsKey(record.getKey())) {
 					long[] baseKeys = AbstractClassTypeInfoDB.getBaseKeys(record);
 					for (long key : baseKeys) {
@@ -171,10 +171,10 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 			newKeys = sortByMostDerived(newKeys, monitor);
 			rebuildTable(newKeys, monitor);
 			for (long key = 0; key < classTable.getMaxKey(); key++) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				ClassTypeInfoRecord record = worker.getTypeRecord(key);
 				for (long baseKey : AbstractClassTypeInfoDB.getBaseKeys(record)) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					if (baseKey > key) {
 						throw new AssertException(String.format(
 							"%d must come before %d because it is inherited by it.",
@@ -183,7 +183,7 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 				}
 			}
 			for (ClassTypeInfoRecord record : getClassRecords()) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				AbstractClassTypeInfoDB type =
 					(AbstractClassTypeInfoDB) worker.getType(record.getKey());
 				Vtable vtable = type.getVtable();
@@ -213,12 +213,12 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 				new SchemaRecordIterator<>(classTable.iterator(), ClassTypeInfoRecord::new);
 			LongIntHashtable keyMap = new LongIntHashtable(newKeys.length);
 			for (int i = 0; i < newKeys.length; i++) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				keyMap.put(newKeys[i], i);
 			}
 			try {
 				while (iter.hasNext()) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					ClassTypeInfoRecord oldRecord = iter.next();
 					if (!keyMap.contains(oldRecord.getKey())) {
 						continue;
@@ -243,7 +243,7 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 			iter = new SchemaRecordIterator<>(
 				tmpTable.getTable().iterator(), ClassTypeInfoRecord::new);
 			while (iter.hasNext()) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				classTable.putRecord(iter.next().copy().getRecord());
 			}
 			handle.deleteTable(tmpTable.getName());
@@ -263,10 +263,10 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 		LongStack stack = new LongStack();
 		int index = 0;
 		for (long oldKey : oldKeys) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			stack.push(oldKey);
 			while (!stack.isEmpty()) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				long key = stack.pop();
 				if (processed.containsKey(key)) {
 					continue;
@@ -274,7 +274,7 @@ public final class ItaniumAbiClassTypeInfoManager extends ClassTypeInfoManagerDB
 				ClassTypeInfoRecord record = worker.getTypeRecord(key);
 				boolean dirty = false;
 				for (long base : AbstractClassTypeInfoDB.getBaseKeys(record)) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					if (!processed.containsKey(base)) {
 						if (!dirty) {
 							stack.push(key);

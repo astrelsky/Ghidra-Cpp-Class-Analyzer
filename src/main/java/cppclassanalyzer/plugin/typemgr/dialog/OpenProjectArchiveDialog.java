@@ -5,16 +5,16 @@ import java.awt.event.ActionListener;
 
 import ghidra.app.plugin.core.datamgr.archive.DataTypeManagerHandler;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
-import cppclassanalyzer.plugin.typemgr.filter.ProjectArchiveFilter;
 import ghidra.app.util.HelpTopics;
 import ghidra.framework.main.OpenVersionedFileDialog;
 import ghidra.framework.model.DomainFile;
+import ghidra.program.model.listing.DataTypeArchive;
 import ghidra.util.HelpLocation;
 import ghidra.util.MessageType;
 
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
 
-public class OpenProjectArchiveDialog extends OpenVersionedFileDialog {
+public class OpenProjectArchiveDialog extends OpenVersionedFileDialog<DataTypeArchive> {
 
 	private static final HelpLocation HELP_LOCATION =
 		new HelpLocation(HelpTopics.PROGRAM, "Open_File_Dialog");
@@ -22,7 +22,7 @@ public class OpenProjectArchiveDialog extends OpenVersionedFileDialog {
 	private final ClassTypeInfoManagerPlugin plugin;
 
 	public OpenProjectArchiveDialog(ClassTypeInfoManagerPlugin plugin) {
-		super(plugin.getTool(), "Open Project Data Type Archive", ProjectArchiveFilter.FILTER);
+		super(plugin.getTool(), "Open Project Data Type Archive", DataTypeArchive.class);
 		this.plugin = plugin;
 		setHelpLocation(HELP_LOCATION);
 		addOkActionListener(new ProjectArchiveActionListener());

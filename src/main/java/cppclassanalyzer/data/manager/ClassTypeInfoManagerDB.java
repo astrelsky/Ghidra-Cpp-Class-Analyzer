@@ -8,6 +8,7 @@ import java.util.stream.Stream;
 import javax.swing.Icon;
 
 import ghidra.app.cmd.data.rtti.*;
+import ghidra.app.cmd.data.rtti.gcc.ClassTypeInfoUtils;
 
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
@@ -24,7 +25,6 @@ import cppclassanalyzer.data.vtable.*;
 import ghidra.program.database.map.AddressMap;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOverflowException;
-import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 import ghidra.util.Msg;
@@ -267,7 +267,7 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		LongArrayList keys = new LongArrayList();
 		Address currentAddress = startAddr;
 		while (currentAddress.compareTo(endAddr) < 0) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			long key = keyFinder.applyAsLong(currentAddress);
 			if (key != INVALID_KEY) {
 				keys.add(key);
@@ -283,12 +283,12 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		try {
 			Table table = worker.getTables().getTypeTable();
 			for (long key : getTypeKeys(startAddr, endAddr, monitor)) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				table.deleteRecord(key);
 			}
 			table = worker.getTables().getVtableTable();
 			for (long key : getVtableKeys(startAddr, endAddr, monitor)) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				table.deleteRecord(key);
 			}
 		} catch (IOException e) {
@@ -304,7 +304,7 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 			Table table = worker.getTables().getTypeTable();
 			int ordinal = ClassTypeInfoSchemaFields.ADDRESS.ordinal();
 			for (long key : getTypeKeys(fromAddr, endAddr, monitor)) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				DBRecord record = table.getRecord(key);
 				Address addr = decodeAddress(record.getLongValue(ordinal));
 				long offset = addr.subtract(fromAddr);
@@ -313,7 +313,7 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 			table = worker.getTables().getVtableTable();
 			ordinal = VtableSchemaFields.ADDRESS.ordinal();
 			for (long key : getVtableKeys(fromAddr, endAddr, monitor)) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				DBRecord record = table.getRecord(key);
 				Address addr = decodeAddress(record.getLongValue(ordinal));
 				long offset = addr.subtract(fromAddr);
@@ -360,8 +360,8 @@ public abstract class ClassTypeInfoManagerDB implements ManagerDB, ProgramClassT
 		if (fun.getParentNamespace().isGlobal()) {
 			return null;
 		}
-		GenericCallingConvention cc = fun.getSignature().getGenericCallingConvention();
-		if (cc.equals(GenericCallingConvention.thiscall)) {
+		String cc = fun.getSignature().getCallingConventionName();
+		if (cc.equals(ClassTypeInfoUtils.THISCALL)) {
 			if (!(fun.getParentNamespace() instanceof GhidraClass)) {
 				Msg.info(this, fun.getParentNamespace().getName(true)+" is not a class");
 				return null;

@@ -234,7 +234,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 			monitor.initialize(manager.getTypeCount());
 			monitor.setMessage("Populating Data Archive");
 			for (ClassTypeInfo type : manager.getTypes()) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				if (!(type instanceof GnuClassTypeInfoDB)) {
 					monitor.setMessage("Only GNU db are supported");
 					break;

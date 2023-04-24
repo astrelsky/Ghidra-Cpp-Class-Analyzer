@@ -46,7 +46,7 @@ final class RttiModelSearcher {
 				.sorted(Comparator.reverseOrder())
 				.iterator();
 			for (Address address : CollectionUtils.asIterable(addresses)) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				AnyRttiModel result = getAnyRttiModel(program, address);
 				if (result.isPresent()) {
 					// short circuit rtti4 comes after rtti3
@@ -68,7 +68,7 @@ final class RttiModelSearcher {
 				.sorted(Comparator.reverseOrder())
 				.iterator();
 			for (Address address : CollectionUtils.asIterable(addresses)) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				AnyRttiModel result = getAnyRttiModel(program, address);
 				if (result.isPresent()) {
 					this.any = result;

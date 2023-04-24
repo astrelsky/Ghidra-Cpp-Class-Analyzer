@@ -44,7 +44,7 @@ public abstract class AbstractDecompilerBasedConstructorAnalysisCmd
 			return false;
 		}
 		for (ClassFunction function : getFunctions()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (function.function.isThunk()) {
 				continue;
 			}

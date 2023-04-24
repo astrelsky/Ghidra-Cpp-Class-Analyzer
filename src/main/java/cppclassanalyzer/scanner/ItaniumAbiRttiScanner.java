@@ -162,7 +162,7 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 		}
 		Set<Address> addresses = new TreeSet<>();
 		for (String typeString : FUNDAMENTAL_TYPESTRINGS) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			try {
 				addresses.addAll(getReferences(typeString));
 			} catch (CancelledException e) {
@@ -194,7 +194,7 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 			addresses, refList, dummy);
 		monitor.setProgress(monitor.getMaximum());
 		for (ReferenceAddressPair ref : refList) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (CppClassAnalyzerUtils.isDataBlock(mem.getBlock(ref.getSource()))) {
 				refMan.addMemoryReference(
 					ref.getSource(), ref.getDestination(),
@@ -215,7 +215,7 @@ public class ItaniumAbiRttiScanner implements RttiScanner {
 		monitor.setMessage(
 				"Scanning for "+typeClass.getName()+" structures");
 		for (Address reference : types) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			try {
 				TypeInfo type = getTypeInfo(reference);
 				if (type != null) {

@@ -56,7 +56,7 @@ public abstract class AbstractCreateVtableBackgroundCmd extends BackgroundComman
 
 	private boolean doApplyTo() throws CancelledException {
 		try {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			createData(vtable.getDataTypes());
 			return createAssociatedData();
 		} catch (CodeUnitInsertionException e) {

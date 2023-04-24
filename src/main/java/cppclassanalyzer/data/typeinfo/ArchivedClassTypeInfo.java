@@ -174,6 +174,7 @@ public final class ArchivedClassTypeInfo extends ClassTypeInfoDB implements Arch
 		return symbols.get(0).getAddress();
 	}
 
+	@SuppressWarnings("removal")
 	public Address getExternalAddress(Program program) {
 		if (address != 0) {
 			return program.getAddressMap().decodeAddress(address);

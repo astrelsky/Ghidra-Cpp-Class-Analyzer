@@ -126,7 +126,7 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 		monitor.initialize(symbols.size());
 		monitor.setMessage("Locating Type Information");
 		for (Symbol symbol : symbols) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			TypeDescriptorModel descriptor = new TypeDescriptorModel(
 				program, symbol.getAddress(), VsClassTypeInfo.DEFAULT_OPTIONS);
 			processor.process(descriptor);

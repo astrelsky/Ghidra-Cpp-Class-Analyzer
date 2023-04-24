@@ -47,7 +47,7 @@ public class NamespaceSymbolFixer extends GhidraScript {
 		monitor.setMessage("Repairing DataTypes");
 		monitor.initialize(types.size());
 		for (DataType dt : types) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			String name = dt.getName();
 			try {
 				dt.setName(name.replaceAll("--", "::"));
@@ -65,7 +65,7 @@ public class NamespaceSymbolFixer extends GhidraScript {
 		List<Structure> structs = CollectionUtils.asList(dtm.getAllStructures());
 		monitor.setMessage("Repairing Structure Members");
 		for (Structure struct : structs) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (!struct.getName().equals("vtable")) {
 				for (DataTypeComponent comp : struct.getComponents()) {
 					String name = comp.getFieldName();
@@ -84,7 +84,7 @@ public class NamespaceSymbolFixer extends GhidraScript {
 		monitor.setMessage("Repairing Categories");
 		monitor.initialize(types.size());
 		for (DataType dt : types) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			fixCategory(dt);
 			monitor.incrementProgress(1);
 		}
@@ -104,7 +104,7 @@ public class NamespaceSymbolFixer extends GhidraScript {
 		monitor.setMessage("Repairing Symbols");
 		monitor.initialize(table.getNumSymbols());
 		for (Symbol symbol : table.getAllSymbols(false)) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			String name = symbol.getName();
 			if (name.contains("--")) {
 				symbol.setName(name.replaceAll("--", "::"), SourceType.USER_DEFINED);
@@ -119,7 +119,7 @@ public class NamespaceSymbolFixer extends GhidraScript {
 		monitor.setMessage("Repairing Classes");
 		monitor.initialize(classes.size());
 		for (GhidraClass gc : classes) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			String name = gc.getName();
 			if (name.contains("--")) {
 				gc.getSymbol().setName(name.replaceAll("--", "::"), SourceType.USER_DEFINED);

@@ -13,7 +13,6 @@ import ghidra.framework.model.DomainObject;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.data.DataTypeComponent;
-import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
@@ -113,7 +112,7 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 		String name = destructor ? "~"+typeinfo.getName() : typeinfo.getName();
 		function.setName(name, SourceType.IMPORTED);
 		function.setParentNamespace(typeinfo.getGhidraClass());
-		function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
+		function.setCallingConvention(ClassTypeInfoUtils.THISCALL);
 		CppClassAnalyzerUtils.setConstructorDestructorTag(function, !destructor);
 	}
 
@@ -127,12 +126,12 @@ public abstract class AbstractConstructorAnalysisCmd extends BackgroundCommand {
 			SymbolicPropogator symProp = analyzeFunction(constructor);
 			Register thisReg = getThisRegister(constructor.getParameter(0));
 			for (Address address : helper.getCalledFunctionAddresses()) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				Instruction inst = listing.getInstructionAt(address);
 				int delayDepth = inst.getDelaySlotDepth();
 				if (delayDepth > 0) {
 					while (inst.isInDelaySlot()) {
-						monitor.checkCanceled();
+						monitor.checkCancelled();
 						inst = inst.getNext();
 					}
 				}

@@ -47,7 +47,7 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 	@Override
 	public boolean applyTo(DomainObject obj, TaskMonitor monitor) {
 		try {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			doApplyTo(monitor);
 			return true;
 		} catch (CancelledException e) {
@@ -71,7 +71,7 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 		monitor.setMessage("Analyzing "+type.getName()+" member usage in calls");
 		monitor.initialize(calls.size());
 		for (HighFunctionCall call : calls) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			analyzeCall(call);
 			monitor.incrementProgress(1);
 		}
@@ -83,7 +83,7 @@ public final class FillOutClassBackgroundCmd extends BackgroundCommand {
 		monitor.setMessage("Analyzing "+type.getName()+" member vptr assignments");
 		monitor.initialize(statements.size());
 		for (ClangStatement statement : statements) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			HighVariableAssignment assignment = new HighVariableAssignment(statement);
 			if (assignment.hasGlobalRef() && isThisVariable(assignment)) {
 				final int offset;

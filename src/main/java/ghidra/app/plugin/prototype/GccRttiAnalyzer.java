@@ -25,6 +25,7 @@ import ghidra.app.services.*;
 import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.program.model.data.*;
+import ghidra.program.model.lang.PrototypeModel;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.address.AddressSetView;
 import ghidra.app.cmd.data.rtti.ClassTypeInfo;
@@ -111,7 +112,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				RttiScanner scanner = RttiScanner.getScanner(program);
 				if (fundamentalOption) {
 					for (Address addr : scanner.scanFundamentals(log, monitor)) {
-						monitor.checkCanceled();
+						monitor.checkCancelled();
 						if (addr == null) {
 							String name = scanner.getClass().getName();
 							Msg.warn(this, name + ".scanFundamentals returned a null address");
@@ -125,7 +126,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 				monitor.initialize(manager.getTypeCount());
 				monitor.setMessage("Creating ClassTypeInfo's");
 				for (ClassTypeInfo type : manager.getTypes()) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					if (applyTypeInfo(type)) {
 						this.set.add(type.getAddress());
 					}
@@ -164,7 +165,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			addresses, refList, dummy);
 		monitor.setProgress(monitor.getMaximum());
 		for (ReferenceAddressPair ref : refList) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (CppClassAnalyzerUtils.isDataBlock(mem.getBlock(ref.getSource()))) {
 				refMan.addMemoryReference(
 					ref.getSource(), ref.getDestination(),
@@ -199,7 +200,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 			}
 		}
 		for (ClassTypeInfo type : manager.getTypes()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (isPureVirtualType(type)) {
 				try {
 					Vtable vtable = type.findVtable(dummy);
@@ -225,12 +226,15 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		pureVirtual.setName(PURE_VIRTUAL_FUNCTION_NAME, SourceType.IMPORTED);
 		pureVirtual.setNoReturn(true);
 		pureVirtual.setReturnType(VoidDataType.dataType, SourceType.IMPORTED);
-		try {
-			String cc = GenericCallingConvention.stdcall.getDeclarationName();
-			pureVirtual.setCallingConvention(cc);
-		} catch (Exception e) {
-			// compiler spec doesn't have __stdcall
+		PrototypeModel cc = program.getFunctionManager().getDefaultCallingConvention();
+		if (cc == null) {
+			return;
 		}
+		String name = cc.getName();
+		if (name == null) {
+			return;
+		}
+		pureVirtual.setCallingConvention(name);
 	}
 
 	private void createVtable(GnuVtable vtable) throws Exception {
@@ -279,7 +283,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Locating VTTs");
 		for (Vtable vtable : manager.getVtables()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			try {
 				locateVTT((GnuVtable) vtable);
 			} catch (Exception e) {
@@ -325,7 +329,7 @@ public class GccRttiAnalyzer extends AbstractAnalyzer {
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Creating vtables");
 		for (Vtable vtable : manager.getVtables()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			try {
 				createVtable((GnuVtable) vtable);
 			} catch (Exception e) {

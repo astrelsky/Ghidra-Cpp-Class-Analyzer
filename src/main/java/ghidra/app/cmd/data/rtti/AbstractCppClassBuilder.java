@@ -70,7 +70,7 @@ public abstract class AbstractCppClassBuilder {
 		}
 		Integer id = null;
 		boolean success = false;
-		if (program.getCurrentTransaction() == null) {
+		if (program.getCurrentTransactionInfo() == null) {
 			id = program.startTransaction("creating datatype for "+type.getName());
 		}
 
