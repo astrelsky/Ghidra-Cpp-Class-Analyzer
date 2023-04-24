@@ -52,9 +52,9 @@ public class ApplyVtableDefinitionsBackgroundCmd extends BackgroundCommand {
 		}
 		try {
 			for (int i = 0; i < functions.length; i++) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				for (int j = 0; j < functions[i].length; j++) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					Function function = functions[i][j];
 					FunctionDefinition definition = definitions[i][j];
 					if (function == null || definition == null) {

@@ -60,7 +60,7 @@ public class ClassReferences extends CppClassAnalyzerGhidraScript {
 		monitor.setMessage("Setting variable datatypes");
 		monitor.initialize(vftables.size());
 		for (Vtable vtable : vftables) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			processVtable(vtable);
 			monitor.incrementProgress(1);
 		}
@@ -71,7 +71,7 @@ public class ClassReferences extends CppClassAnalyzerGhidraScript {
 		Address vtableAddress = vtable.getTableAddresses()[0];
 		ReferenceManager manager = currentProgram.getReferenceManager();
 		for (Reference ref : manager.getReferencesTo(vtableAddress)) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (manager.getReferencedVariable(ref) != null) {
 				Variable var = manager.getReferencedVariable(ref);
 				if (!(var.getDataType() instanceof Structure)) {

@@ -128,7 +128,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		monitor.initialize(manager.getTypeCount());
 		monitor.setMessage("Fixing Class Inheritance...");
 		for (ClassTypeInfo type : manager.getTypes()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (type.getName().contains(TypeInfoModel.STRUCTURE_NAME)) {
 				// this works for both vs and gcc
 				monitor.incrementProgress(1);
@@ -158,7 +158,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Analyzing Vftables");
 		for (Vtable vtable : manager.getVtables()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (useArchivedData) {
 				ArchivedVtable data =
 					service.getArchivedVtable(VtableUtils.getSymbolName(vtable));
@@ -166,7 +166,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 					ApplyVtableDefinitionsBackgroundCmd cmd =
 						new ApplyVtableDefinitionsBackgroundCmd(vtable, data);
 					if (!cmd.applyTo(program, monitor)) {
-						monitor.checkCanceled();
+						monitor.checkCancelled();
 					}
 					monitor.incrementProgress(1);
 					continue;
@@ -192,7 +192,7 @@ public abstract class AbstractCppClassAnalyzer extends AbstractAnalyzer {
 		monitor.initialize(manager.getVtableCount());
 		monitor.setMessage("Creating Constructors");
 		for (Vtable vtable : manager.getVtableIterable(true)) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			analyzeConstructor(vtable.getTypeInfo());
 			monitor.incrementProgress(1);
 		}

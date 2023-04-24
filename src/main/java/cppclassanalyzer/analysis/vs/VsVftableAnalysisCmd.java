@@ -61,9 +61,9 @@ public class VsVftableAnalysisCmd extends BackgroundCommand {
 	private void setupFunctions(Vtable vftable) throws CancelledException {
 		Function[][] functionTables = vftable.getFunctionTables();
 		for (Function[] functionTable : functionTables) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			for (Function f : functionTable) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				CppClassAnalyzerUtils.createThunkFunctions(f);
 				while (f.isThunk()) {
 					f = f.getThunkedFunction(true);

@@ -316,7 +316,7 @@ public class TypeInfoUtils {
 	public static Namespace getNamespaceFromTypeName(Program program, TypeInfo type) {
 		int id = -1;
 		String typename = type.getTypeName();
-		if (program.getCurrentTransaction() == null) {
+		if (program.getCurrentTransactionInfo() == null) {
 			id = program.startTransaction("Creating namespace for " + typename);
 		}
 		try {

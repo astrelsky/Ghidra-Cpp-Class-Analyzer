@@ -56,7 +56,7 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 			}
 			if (vtt != null && vtt.isValid()) {
 				for (Vtable parentVtable : vtt.getConstructionVtableModels()) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					setupFunctions(parentVtable);
 				}
 			}
@@ -78,10 +78,10 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 		Function[][] functionTables = vftable.getFunctionTables();
 		// Also if the function has a reference to this::vtable, then it owns the function
 		for (int i = 0; i < functionTables.length; i++) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (i == 0) {
 				for (Function f : functionTables[i]) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					if (!CppClassAnalyzerUtils.isDefaultFunction(f) || isPureVirtual(f)) {
 						continue;
 					}
@@ -96,7 +96,7 @@ public class GccVtableAnalysisCmd extends BackgroundCommand {
 	private void setupThunkFunctions(ClassTypeInfo type, Vtable vftable,
 		Function[] functionTable, int ordinal) throws CancelledException {
 		for (Function function : functionTable) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			if (!CppClassAnalyzerUtils.isDefaultFunction(function)) {
 				continue;
 			}

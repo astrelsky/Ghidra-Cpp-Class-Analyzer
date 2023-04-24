@@ -61,7 +61,7 @@ public class CreateTypeInfoBackgroundCmd extends BackgroundCommand {
 
 	private boolean doApplyTo() throws CancelledException {
 		try {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			Data data = createData(type.getAddress(), type.getDataType());
 			if (type.getIdentifier().equals(VmiClassTypeInfoModel.ID_STRING)) {
 				DataType array = VmiClassTypeInfoModel.getBaseArrayDataType(data);

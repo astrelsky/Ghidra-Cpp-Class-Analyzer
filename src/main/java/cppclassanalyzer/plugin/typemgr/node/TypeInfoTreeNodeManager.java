@@ -41,6 +41,7 @@ public class TypeInfoTreeNodeManager implements DomainObjectListener, Disposable
 		plugin.getTree().getModelRoot().addNode(root);
 	}
 
+	@SuppressWarnings("resource")
 	public TypeInfoTreeNodeManager(ClassTypeInfoManagerPlugin plugin,
 			LibraryClassTypeInfoManager manager) {
 		this(new TypeInfoLibraryNode(manager));
@@ -132,7 +133,7 @@ public class TypeInfoTreeNodeManager implements DomainObjectListener, Disposable
 			ClassTypeInfoManager manager = node.getTypeManager();
 			monitor.initialize(manager.getTypeCount());
 			for (ClassTypeInfoDB type : manager.getTypes()) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				node.addNode(type);
 				monitor.incrementProgress(1);
 			}

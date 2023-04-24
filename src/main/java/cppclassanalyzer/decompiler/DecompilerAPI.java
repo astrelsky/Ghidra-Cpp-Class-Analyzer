@@ -89,8 +89,9 @@ public final class DecompilerAPI implements Disposable, AutoCloseable {
 
 		// call it to get results
 		if (!decompiler.openProgram(program)) {
-			decompiler.dispose();
-			throw new AssertException("Decompile Error: " + decompiler.getLastMessage());
+			decompiler.resetDecompiler();
+			//decompiler.dispose();
+			//throw new AssertException("Decompile Error: " + decompiler.getLastMessage());
 		}
 
 		DecompileOptions options;
@@ -199,7 +200,7 @@ public final class DecompilerAPI implements Disposable, AutoCloseable {
 			return results;
 		}
 		results = decompiler.decompileFunction(function, timeout, monitor);
-		monitor.checkCanceled();
+		monitor.checkCancelled();
 		cache.put(function, results);
 		return results;
 	}

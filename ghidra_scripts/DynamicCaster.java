@@ -92,7 +92,7 @@ public class DynamicCaster extends CppClassAnalyzerGhidraScript {
 		monitor.initialize(functions.size());
 		monitor.setMessage("Analyzing __dynamic_cast calls");
 		for (Function function : functions) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			doDynamicCast(function);
 			monitor.incrementProgress(1);
 		}
@@ -125,7 +125,7 @@ public class DynamicCaster extends CppClassAnalyzerGhidraScript {
 			.filter(f -> f.getFunction().equals(dynamicCast))
 			.collect(Collectors.toList());
 		for (HighFunctionCall call : calls) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			List<HighFunctionCallParameter> params = call.getParameters();
 			Symbol srcSymbol = getSymbol(params.get(1));
 			Symbol destSymbol = getSymbol(params.get(2));

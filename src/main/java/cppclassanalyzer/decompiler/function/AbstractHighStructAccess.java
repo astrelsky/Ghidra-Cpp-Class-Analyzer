@@ -9,6 +9,8 @@ import ghidra.app.decompiler.*;
 import ghidra.program.model.pcode.*;
 import ghidra.program.model.scalar.Scalar;
 
+import util.CollectionUtils;
+
 abstract class AbstractHighStructAccess implements HighStructAccess {
 
 	private final List<ClangNode> tokens;
@@ -67,7 +69,12 @@ abstract class AbstractHighStructAccess implements HighStructAccess {
 		if (var == null) {
 			return false;
 		}
-		return hf.getLocalSymbolMap().containsVariableWithName(var.getName());
+		String name = var.getName();
+		return CollectionUtils.asStream(hf.getLocalSymbolMap().getSymbols())
+			.map(HighSymbol::getName)
+			.filter(name::equals)
+			.findFirst()
+			.isPresent();
 	}
 
 	@Override

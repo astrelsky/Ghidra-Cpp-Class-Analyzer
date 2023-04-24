@@ -64,7 +64,7 @@ public class CreateVttBackgroundCmd extends BackgroundCommand {
 
 	private boolean doApplyTo() throws CancelledException {
 		try {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			Data data = program.getListing().getDataContaining(vtt.getAddress());
 			if (data != null && data.isArray()) {
 				Array array = (Array) data.getDataType();

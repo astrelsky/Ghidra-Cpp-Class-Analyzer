@@ -41,6 +41,7 @@ public class ArchivedGnuVtable extends DatabaseObject implements ArchivedVtable 
 	private final String symbolName;
 	private final ArchivedVtablePrefix[] prefixes;
 
+	@SuppressWarnings("removal")
 	public ArchivedGnuVtable(ArchiveRttiRecordManager worker, GnuVtable vtable,
 			ArchivedGnuVtableRecord record) {
 		super(worker.getVtableCache(), record.getKey());
@@ -87,6 +88,7 @@ public class ArchivedGnuVtable extends DatabaseObject implements ArchivedVtable 
 			.toArray(FunctionDefinition[][]::new);
 	}
 
+	@SuppressWarnings("removal")
 	public Address getAddress(Program program) {
 		return program.getAddressMap().decodeAddress(address);
 	}

@@ -10,22 +10,11 @@ import ghidra.app.cmd.data.rtti.ClassTypeInfo;
 import ghidra.app.cmd.data.rtti.gcc.UnresolvedClassTypeInfoException;
 import ghidra.app.plugin.core.datamgr.archive.Archive;
 import ghidra.app.plugin.core.datamgr.archive.ProjectArchive;
-import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
-import cppclassanalyzer.service.ClassTypeInfoManagerService;
-
 import ghidra.framework.cmd.BackgroundCommand;
 import ghidra.framework.model.DomainObjectListener;
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.program.database.BaseProjectDataTypeManager;
 import ghidra.program.database.DataTypeArchiveDB;
-import ghidra.program.database.data.ProjectDataTypeManager;
-
-import cppclassanalyzer.data.ArchivedRttiData;
-import cppclassanalyzer.data.ClassTypeInfoManager;
-import cppclassanalyzer.data.ProgramClassTypeInfoManager;
-import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
-import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
-import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
-import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.GhidraClass;
 import ghidra.program.model.listing.Program;
@@ -34,26 +23,32 @@ import ghidra.program.util.ChangeManager;
 import ghidra.util.InvalidNameException;
 import ghidra.util.Lock;
 import ghidra.util.Msg;
-import ghidra.util.exception.AssertException;
-import ghidra.util.exception.CancelledException;
-import ghidra.util.exception.DuplicateNameException;
-import ghidra.util.exception.VersionException;
+import ghidra.util.exception.*;
 import ghidra.util.task.CancelOnlyWrappingTaskMonitor;
 import ghidra.util.task.TaskMonitor;
 
+import cppclassanalyzer.data.ArchivedRttiData;
+import cppclassanalyzer.data.ClassTypeInfoManager;
+import cppclassanalyzer.data.ProgramClassTypeInfoManager;
+import cppclassanalyzer.data.manager.tables.ArchivedRttiTablePair;
+import cppclassanalyzer.data.typeinfo.ArchivedClassTypeInfo;
+import cppclassanalyzer.data.typeinfo.ClassTypeInfoDB;
+import cppclassanalyzer.data.vtable.ArchivedGnuVtable;
 import cppclassanalyzer.database.schema.ArchivedClassTypeInfoSchema;
 import cppclassanalyzer.database.schema.ArchivedGnuVtableSchema;
 import cppclassanalyzer.database.tables.ArchivedClassTypeInfoDatabaseTable;
 import cppclassanalyzer.database.tables.ArchivedGnuVtableDatabaseTable;
 import cppclassanalyzer.database.utils.TransactionHandler;
 import cppclassanalyzer.plugin.ClassTypeInfoManagerPlugin;
+import cppclassanalyzer.plugin.typemgr.node.TypeInfoTreeNodeManager;
+import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import db.*;
 import resources.ResourceManager;
 
 /**
  * A ClassTypeInfoManager representing a project containing external libraries
  */
-public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
+public final class ProjectClassTypeInfoManager extends BaseProjectDataTypeManager
 		implements FileArchiveClassTypeInfoManager {
 
 	private static final Icon[] ICONS = new Icon[] {
@@ -78,11 +73,10 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 
 	private ProjectClassTypeInfoManager(ClassTypeInfoManagerService service, ProjectArchive archive)
 			throws CancelledException, VersionException, IOException {
-		super(getDBHandle(archive), DBConstants.UPDATE, getDB(archive),
+		super(getDB(archive), getDBHandle(archive), DBConstants.UPDATE, getDB(archive),
 			getLock(archive), TaskMonitor.DUMMY);
 		this.archive = archive;
 		this.plugin = service;
-		setDataTypeArchive(getDB(archive));
 		if (service instanceof ClassTypeInfoManagerPlugin) {
 			this.treeNodeManager =
 				new TypeInfoTreeNodeManager((ClassTypeInfoManagerPlugin) service, this);
@@ -328,7 +322,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		int size = managers.size();
 		int i = 0;
 		for (ClassTypeInfoManager manager : managers) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			String msg = String.format(format, manager.getName(), ++i, size);
 			monitor.setMessage(msg);
 			doInsert(manager, monitor);
@@ -347,7 +341,7 @@ public final class ProjectClassTypeInfoManager extends ProjectDataTypeManager
 		LibraryClassTypeInfoManager libManager = getManager(manager.getName());
 		monitor.initialize(manager.getTypeCount());
 		for (ClassTypeInfo type : manager.getTypes()) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			libManager.resolve(type);
 			monitor.incrementProgress(1);
 		}

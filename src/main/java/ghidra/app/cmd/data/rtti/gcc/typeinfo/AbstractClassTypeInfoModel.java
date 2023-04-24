@@ -131,7 +131,7 @@ public abstract class AbstractClassTypeInfoModel extends AbstractTypeInfoModel
 			Integer id = null;
 			boolean success = false;
 			try {
-				if (program.getCurrentTransaction() == null) {
+				if (program.getCurrentTransactionInfo() == null) {
 					id = program.startTransaction("creating GhidraClass for "+getName());
 				}
 				if (namespace.getSymbol().isDeleted()) {
