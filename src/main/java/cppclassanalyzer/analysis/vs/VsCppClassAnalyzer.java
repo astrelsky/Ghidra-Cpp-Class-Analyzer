@@ -73,6 +73,7 @@ public class VsCppClassAnalyzer extends AbstractCppClassAnalyzer {
 	}
 
 	private boolean hasGuardedVftables() {
+		return false;
 		Iterable<Function> functions = program.getFunctionManager().getFunctions(true);
 		return CollectionUtils.asStream(functions)
 			.map(Function::getName)
