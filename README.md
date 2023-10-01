@@ -1,6 +1,13 @@
-[![Run tests](https://github.com/astrelsky/Ghidra-Cpp-Class-Analyzer/actions/workflows/test.yml/badge.svg)](https://github.com/astrelsky/Ghidra-Cpp-Class-Analyzer/actions/workflows/test.yml)  
+[![Run tests](https://github.com/astrelsky/Ghidra-Cpp-Class-Analyzer/actions/workflows/test.yml/badge.svg)](https://github.com/astrelsky/Ghidra-Cpp-Class-Analyzer/actions/workflows/test.yml)
 Ghidra C++ Class and Run Time Type Information Analyzer
 =======================================================
+
+NOTICE
+------
+
+This project has reached its end of life and is no longer being maintained.
+Ghidra currently provides scripts for RTTI analysis and class reconstruction.
+These scripts should now be used and improved upon.
 
 API Documentation
 -----------------
@@ -49,10 +56,10 @@ Inheritance Modeling via the Type Info Tree
 Class Type Info Color Coding
 ----------------------------
 
-![#FFFF00](https://via.placeholder.com/15/ffff00/000000?text=+) - Nested Class  
-![#28a745](https://via.placeholder.com/15/28a745/000000?text=+) - Basic Class  
-![#d73a49](https://via.placeholder.com/15/d73a49/000000?text=+) - Abstract Class  
-![#0366d6](https://via.placeholder.com/15/0366d6/000000?text=+) - Virtual Class  
+![#FFFF00](https://via.placeholder.com/15/ffff00/000000?text=+) - Nested Class
+![#28a745](https://via.placeholder.com/15/28a745/000000?text=+) - Basic Class
+![#d73a49](https://via.placeholder.com/15/d73a49/000000?text=+) - Abstract Class
+![#0366d6](https://via.placeholder.com/15/0366d6/000000?text=+) - Virtual Class
 ![#6f42c1](https://via.placeholder.com/15/6f42c1/000000?text=+) - Virtual Abstract Class
 
 CppClassAnalyzerGhidraScript
