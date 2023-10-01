@@ -122,25 +122,25 @@ public class TypeInfoUtils {
 			}
 			int pointerAlignment =
 				program.getDataTypeManager().getDataOrganization().getDefaultPointerAlignment();
-			List<Address> stringAddress = findTypeString(program, set, typename, monitor);
-			if (stringAddress.isEmpty() || stringAddress.size() > 1) {
-				return null;
-			}
-			Set<Address> references = ProgramMemoryUtil.findDirectReferences(program,
-				pointerAlignment, stringAddress.get(0), monitor);
-			if (references.isEmpty()) {
-				return null;
-			}
-			for (Address reference : references) {
-				Address typeinfoAddress = reference.subtract(program.getDefaultPointerSize());
-				type = manager.getTypeInfo(typeinfoAddress);
-				if (type == null) {
+			List<Address> stringAddresses = findTypeString(program, set, typename, monitor);
+			for (Address stringAddress : stringAddresses) {
+				Set<Address> references = ProgramMemoryUtil.findDirectReferences(program,
+					pointerAlignment, stringAddress, monitor);
+				if (references.isEmpty()) {
 					continue;
 				}
-				if (type.getTypeName().equals(typename)) {
-					return type;
+				for (Address reference : references) {
+					Address typeinfoAddress = reference.subtract(program.getDefaultPointerSize());
+					type = manager.getTypeInfo(typeinfoAddress);
+					if (type == null) {
+						continue;
+					}
+					if (type.getTypeName().equals(typename)) {
+						return type;
+					}
 				}
-			} return null;
+			}
+			return null;
 	}
 
 	private static TypeInfo getExistingTypeInfo(Program program, TypeInfoManager manager,
